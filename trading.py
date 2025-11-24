@@ -61,7 +61,7 @@ with st.sidebar:
     
     st.info("**Recuerda:** Sin *Shift of Structure* ni *Vela Envolvente*, NO HAY TRADE.")
     
-    # CHATBOT GEMINI (CON MODELO FLASH)
+    # CHATBOT GEMINI (VERSIÓN ESTÁNDAR - SIN ERRORES)
     st.markdown("---")
     st.header("Coach IA 🧠")
     
@@ -74,8 +74,9 @@ with st.sidebar:
     if api_key:
         try:
             genai.configure(api_key=api_key)
-            # --- AQUÍ ESTÁ LA SOLUCIÓN: USAMOS FLASH ---
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            # --- CAMBIO FINAL: Usamos el modelo clásico que siempre funciona ---
+            model = genai.GenerativeModel('gemini-pro') 
             
             if "messages" not in st.session_state: st.session_state.messages = []
             for msg in st.session_state.messages:
@@ -276,4 +277,3 @@ with col_resultados:
         st.markdown(f'<div class="plan-box">{plan}</div>', unsafe_allow_html=True)
     else:
         st.error("### ❌ NO OPERAR")
-
