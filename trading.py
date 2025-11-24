@@ -76,7 +76,7 @@ with st.sidebar:
         try:
             genai.configure(api_key=api_key)
             # --- CAMBIO IMPORTANTE AQUÍ: USAMOS FLASH 1.5 ---
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-pro')
             
             if "messages" not in st.session_state: st.session_state.messages = []
             for msg in st.session_state.messages:
@@ -277,3 +277,4 @@ with col_resultados:
         st.markdown(f'<div class="plan-box">{plan}</div>', unsafe_allow_html=True)
     else:
         st.error("### ❌ NO OPERAR")
+
