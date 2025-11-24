@@ -65,7 +65,15 @@ with st.sidebar:
     st.markdown("---")
     st.header("Coach IA 🧠")
     api_key = st.text_input("API Key", type="password")
+    # --- CAMBIO AQUÍ: BUSCAR EN SECRETOS PRIMERO ---
+    if "GEMINI_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_KEY"] # La toma de la caja fuerte
+    else:
+        api_key = st.text_input("API Key", type="password") # Si no hay, la pide
     
+    if api_key:
+        # ... (el resto del código sigue igual)   
+        
     if api_key:
         try:
             genai.configure(api_key=api_key)
@@ -270,3 +278,4 @@ with col_resultados:
         st.markdown(f'<div class="plan-box">{plan}</div>', unsafe_allow_html=True)
     else:
         st.error("### ❌ NO OPERAR")
+
