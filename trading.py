@@ -57,37 +57,4 @@ with st.sidebar:
     st.image("https://cdn-icons-png.flaticon.com/512/7210/7210633.png", width=80)
     
     # SELECTOR DE MODO
-    modo = st.radio("Modo de Operativa", ["Swing / Day (W-D-4H)", "Scalping (4H-2H-1H)"])
-    
-    st.info("**Recuerda:** Sin *Shift of Structure* ni *Vela Envolvente*, NO HAY TRADE.")
-    
-    # CHATBOT GEMINI 1.5 PRO
-    st.markdown("---")
-    st.header("Coach IA (Pro) 🧠")
-    api_key = st.text_input("API Key", type="password")
-    
-    if api_key:
-        try:
-            genai.configure(api_key=api_key)
-            model = genai.GenerativeModel('gemini-1.5-pro')
-            
-            if "messages" not in st.session_state: st.session_state.messages = []
-            for msg in st.session_state.messages:
-                with st.chat_message(msg["role"]): st.markdown(msg["content"])
-            
-            if prompt := st.chat_input("Consulta..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                with st.chat_message("user"): st.markdown(prompt)
-                
-                contexto = "Scalping (4H/2H/1H)" if "Scalping" in modo else "Swing (W/D/4H)"
-                prompt_sistema = f"""
-                Eres experto en Set&Forget ({contexto}). 
-                Reglas: SL 5-7 pips fuera de AOI, No BE, No Parciales. Ratio min 1:2.5.
-                Usuario: {prompt}
-                """
-                
-                resp = model.generate_content(prompt_sistema)
-                st.session_state.messages.append({"role": "assistant", "content": resp.text})
-                with st.chat_message("assistant"): st.markdown(resp.text)
-        except Exception as
-
+    modo = st.radio("Modo de Operativa", ["Swing / Day (W-D-4H)", "Scalping (4H-2H-1H)
