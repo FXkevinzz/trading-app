@@ -265,4 +265,3 @@ with col_resultados:
         st.markdown(f'<div class="plan-box">{plan}</div>', unsafe_allow_html=True)
     else:
         st.error("### ❌ NO OPERAR")
-
