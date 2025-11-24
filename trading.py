@@ -64,16 +64,14 @@ with st.sidebar:
     # CHATBOT GEMINI 1.5 PRO
     st.markdown("---")
     st.header("Coach IA 🧠")
-    api_key = st.text_input("API Key", type="password")
-    # --- CAMBIO AQUÍ: BUSCAR EN SECRETOS PRIMERO ---
-    if "GEMINI_KEY" in st.secrets:
-        api_key = st.secrets["GEMINI_KEY"] # La toma de la caja fuerte
-    else:
-        api_key = st.text_input("API Key", type="password") # Si no hay, la pide
     
-    if api_key:
-        # ... (el resto del código sigue igual)   
-        
+    # Lógica segura para la API Key
+    api_key = None
+    if "GEMINI_KEY" in st.secrets:
+        api_key = st.secrets["GEMINI_KEY"]
+    else:
+        api_key = st.text_input("API Key", type="password")
+    
     if api_key:
         try:
             genai.configure(api_key=api_key)
