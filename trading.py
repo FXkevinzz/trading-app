@@ -1,5 +1,5 @@
 import streamlit as st
-import streamlit.components.v1 as components # NECESARIO PARA EL WIDGET
+import streamlit.components.v1 as components
 import pandas as pd
 import os
 import json
@@ -18,10 +18,9 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# --- 3. SISTEMA DE TEMAS (CSS DINÁMICO) ---
+# --- 3. SISTEMA DE TEMAS ---
 def inject_theme(theme_mode):
     if theme_mode == "Claro (High Contrast)":
-        # === MODO CLARO ===
         css_vars = """
             --bg-app: #ffffff;
             --bg-card: #f8f9fa;
@@ -40,7 +39,6 @@ def inject_theme(theme_mode):
             --chart-grid: #e2e8f0;
         """
     else:
-        # === MODO OSCURO (NAVY PRO) ===
         css_vars = """
             --bg-app: #0f172a;
             --bg-card: #1e293b;
@@ -64,100 +62,120 @@ def inject_theme(theme_mode):
     :root {{ {css_vars} }}
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
-
     .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
     h1, h2, h3, h4, h5, p, li, span, div {{ color: var(--text-main) !important; }}
     .stMarkdown p {{ color: var(--text-main) !important; }}
-    
-    /* Checkboxes */
     .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
-    
-    /* Labels */
     label, .stTextInput label, .stNumberInput label, .stSelectbox label {{ color: var(--text-muted) !important; font-weight: 600 !important; }}
-    
-    /* Sidebar */
     [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: var(--text-muted) !important; }}
-    
-    /* Inputs */
-    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
-        background-color: var(--input-bg) !important;
-        color: var(--text-main) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 8px;
-    }}
+    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{ background-color: var(--input-bg) !important; color: var(--text-main) !important; border: 1px solid var(--border-color) !important; border-radius: 8px; }}
     .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
-    
-    /* Menus */
     ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
     li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
-    
-    /* Buttons */
-    .stButton button {{
-        background-color: var(--button-bg) !important;
-        color: var(--button-text) !important;
-        border: none !important;
-        border-radius: 8px;
-        font-weight: bold;
-        transition: all 0.3s ease;
-        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-    }}
+    .stButton button {{ background-color: var(--button-bg) !important; color: var(--button-text) !important; border: none !important; border-radius: 8px; font-weight: bold; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
     .stButton button:hover {{ opacity: 0.9; transform: translateY(-1px); }}
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab"] {{
-        background-color: var(--bg-card) !important;
-        color: var(--text-muted) !important;
-        border: 1px solid var(--border-color);
-        border-radius: 30px !important;
-        padding: 0 25px !important;
-        height: 50px;
-        box-shadow: var(--shadow);
-    }}
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-        background-color: var(--accent) !important;
-        color: white !important;
-        border: none !important;
-    }}
+    .stTabs [data-baseweb="tab"] {{ background-color: var(--bg-card) !important; color: var(--text-muted) !important; border: 1px solid var(--border-color); border-radius: 30px !important; padding: 0 25px !important; height: 50px; box-shadow: var(--shadow); }}
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{ background-color: var(--accent) !important; color: white !important; border: none !important; }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
-    
-    /* Components */
     .strategy-box {{ background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }}
     .hud-container {{ background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%); border: 2px solid var(--accent); border-radius: 15px; padding: 20px; margin-top: 20px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; }}
     .calendar-header {{ color: var(--text-muted) !important; }}
-    
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNCIONES BACKEND ---
-def load_json(fp): return json.load(open(fp)) if os.path.exists(fp) else {}
-def save_json(fp, data): json.dump(data, open(fp, "w"))
-def verify_user(u, p): d = load_json(USERS_FILE); return u in d and d[u] == p
-def register_user(u, p): d = load_json(USERS_FILE); d[u] = p; save_json(USERS_FILE, d)
-def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {}).keys()) if u in d else ["Principal"]
+# --- 4. FUNCIONES BACKEND (A PRUEBA DE FALLOS) ---
+def load_json(fp):
+    # Si el archivo no existe, devolvemos vacio
+    if not os.path.exists(fp): return {}
+    try:
+        with open(fp, "r") as f: return json.load(f)
+    except:
+        # SI EL ARCHIVO ESTÁ CORRUPTO, LO IGNORAMOS Y DEVOLVEMOS VACÍO
+        return {}
+
+def save_json(fp, data):
+    try:
+        with open(fp, "w") as f: json.dump(data, f)
+    except:
+        pass
+
+# --- USUARIO DE RESCATE ---
+# Esto garantiza que siempre puedas entrar, aunque se borre todo
+users_db = load_json(USERS_FILE)
+if not users_db:
+    users_db = {"admin": "1234"}
+    save_json(USERS_FILE, users_db)
+
+def verify_user(u, p): 
+    d = load_json(USERS_FILE)
+    # Respaldo por si load_json falla
+    if not d: d = {"admin": "1234"} 
+    return u in d and d[u] == p
+
+def register_user(u, p): 
+    d = load_json(USERS_FILE)
+    d[u] = p
+    save_json(USERS_FILE, d)
+
+def get_user_accounts(u): 
+    d = load_json(ACCOUNTS_FILE)
+    return list(d.get(u, {}).keys()) if u in d else ["Principal"]
+
 def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
     if u not in d: d[u] = {}
-    if name not in d[u]: d[u][name] = bal; save_json(ACCOUNTS_FILE, d); save_trade(u, name, None, init=True)
+    if name not in d[u]: 
+        d[u][name] = bal
+        save_json(ACCOUNTS_FILE, d)
+        save_trade(u, name, None, init=True)
+
 def get_balance_data(u, acc):
     d = load_json(ACCOUNTS_FILE)
     ini = d.get(u, {}).get(acc, 0.0)
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame()
-    pnl = df["Dinero"].sum() if not df.empty else 0
+    
+    if os.path.exists(fp):
+        try:
+            df = pd.read_csv(fp)
+            pnl = df["Dinero"].sum() if not df.empty else 0
+        except:
+            df = pd.DataFrame()
+            pnl = 0
+    else:
+        df = pd.DataFrame()
+        pnl = 0
+        
     return ini, ini + pnl, df
+
 def save_trade(u, acc, data, init=False):
     folder = os.path.join(DATA_DIR, u)
     if not os.path.exists(folder): os.makedirs(folder)
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
-    if init and not os.path.exists(fp): pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]).to_csv(fp, index=False); return
-    if not init:
-        df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
-        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-        df.to_csv(fp, index=False)
+    
+    cols = ["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]
+    
+    if init:
+        if not os.path.exists(fp): pd.DataFrame(columns=cols).to_csv(fp, index=False)
+        return
+
+    try:
+        df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=cols)
+    except:
+        df = pd.DataFrame(columns=cols)
+        
+    df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+    df.to_csv(fp, index=False)
+
 def load_trades(u, acc):
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    return pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
+    cols = ["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]
+    if os.path.exists(fp):
+        try:
+            return pd.read_csv(fp)
+        except:
+            return pd.DataFrame(columns=cols)
+    return pd.DataFrame(columns=cols)
 
 # --- 5. FUNCIONES VISUALES ---
 def mostrar_imagen(nombre, caption):
@@ -184,16 +202,15 @@ def render_cal_html(df, is_dark):
     y, m = d.year, d.month
     data = {}
     if not df.empty:
-        df['Fecha'] = pd.to_datetime(df['Fecha'])
-        df_m = df[(df['Fecha'].dt.year==y) & (df['Fecha'].dt.month==m)]
-        data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
+        try:
+            df['Fecha'] = pd.to_datetime(df['Fecha'])
+            df_m = df[(df['Fecha'].dt.year==y) & (df['Fecha'].dt.month==m)]
+            data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
+        except: pass
 
     cal = calendar.Calendar(firstweekday=0)
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
-    
-    # Colores
     day_col = "#94a3b8" if is_dark else "#64748b"
-    
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
         html += f'<div style="text-align:center; color:{day_col}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
     
@@ -203,21 +220,10 @@ def render_cal_html(df, is_dark):
             else:
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
-                
-                bg = "var(--bg-card)"
-                border = "var(--border-color)"
-                col = "var(--text-main)"
-                
-                if val > 0:
-                    bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
-                elif val < 0:
-                    bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
-
-                html += f'''
-                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
-                    <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div>
-                    <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
-                </div>'''
+                bg = "var(--bg-card)"; border = "var(--border-color)"; col = "var(--text-main)"
+                if val > 0: bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
+                elif val < 0: bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
+                html += f'<div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;"><div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div><div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div></div>'
     html += '</div>'
     return html, y, m
 
@@ -233,7 +239,7 @@ def login_screen():
             p = st.text_input("Password", type="password")
             if st.button("ACCEDER", type="primary", use_container_width=True):
                 if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Error")
+                else: st.error("Error. Intenta: admin / 1234")
         with t2:
             nu = st.text_input("Nuevo Usuario")
             np = st.text_input("Nueva Password", type="password")
@@ -245,11 +251,8 @@ def main_app():
     user = st.session_state.user
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
 
-    # --- SIDEBAR ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
-        
-        # SELECTOR TEMA
         tema = st.radio("🎨 TEMA VISUAL", ["Oscuro (Navy)", "Claro (High Contrast)"], index=0)
         inject_theme(tema)
         is_dark = True if tema == "Oscuro (Navy)" else False
@@ -280,7 +283,6 @@ def main_app():
             if st.button("CREAR", use_container_width=True):
                 if na: create_account(user, na, nb); st.rerun()
 
-    # --- CUERPO ---
     t_op, t_reg, t_dash, t_cal, t_news = st.tabs(["🦁 OPERATIVA", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
     # === 1. OPERATIVA ===
@@ -299,7 +301,6 @@ def main_app():
                 with cd: mostrar_imagen("shooting_star.png", "Shooting Star")
 
         st.markdown("<br>", unsafe_allow_html=True)
-        
         st.markdown(f"""
         <div style="background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center; margin-bottom:20px; box-shadow: var(--shadow);">
             <h4 style="margin:0; color:var(--accent); text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN ESTRATEGIA</h4>
@@ -307,8 +308,7 @@ def main_app():
         """, unsafe_allow_html=True)
         
         c_ml, c_mm, c_mr = st.columns([1, 2, 1])
-        with c_mm:
-             modo = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
+        with c_mm: modo = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
 
         r1_c1, r1_c2 = st.columns(2)
         r2_c1, r2_c2 = st.columns(2)
@@ -388,7 +388,6 @@ def main_app():
 
         st.markdown("<br>", unsafe_allow_html=True)
         valid = sos and eng and rr
-        
         msg, css_cl = "💤 ESPERAR", "status-warning"
         if not sos: msg, css_cl = "⛔ FALTA ESTRUCTURA", "status-stop"
         elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
@@ -398,22 +397,13 @@ def main_app():
 
         st.markdown(f"""
         <div class="hud-container">
-            <div class="hud-stat">
-                <div class="hud-label">PUNTAJE TOTAL</div>
-                <div class="hud-value-large">{total}%</div>
-            </div>
-            <div style="flex-grow:1; text-align:center; margin:0 20px;">
-                <span class="{css_cl}">{msg}</span>
-            </div>
-            <div class="hud-stat">
-                <div class="hud-label">ESTADO</div>
-                <div style="font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if valid else 'var(--accent-red)'}">
-                    {'LISTO' if valid else 'PENDIENTE'}
-                </div>
-            </div>
+            <div class="hud-stat"><div class="hud-label">PUNTAJE TOTAL</div><div class="hud-value">{total}%</div></div>
+            <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div>
+            <div class="hud-stat"><div class="hud-label">ESTADO</div><div style="font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if valid else 'var(--accent-red)'}">{'LISTO' if valid else 'PENDIENTE'}</div></div>
         </div>
         """, unsafe_allow_html=True)
         st.progress(min(total, 100))
+        if valid and total >= 60: st.info(f"📝 PLAN: SL {'5-7 pips' if 'Swing' in modo else '3-5 pips'} | TP: Liquidez | Riesgo 1%")
 
     # === 2. REGISTRO ===
     with t_reg:
@@ -440,12 +430,10 @@ def main_app():
             k1,k2,k3,k4 = st.columns(4)
             wins = len(df[df["Resultado"]=="WIN"])
             net = df['Dinero'].sum()
-            
             k1.markdown(f"<div class='strategy-box' style='text-align:center'><div style='color:var(--text-muted); font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if net>=0 else 'var(--accent-red)'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
             k2.metric("WIN RATE", f"{(wins/len(df)*100):.1f}%")
             k3.metric("TRADES", len(df))
             k4.metric("SALDO FINAL", f"${act:,.2f}")
-            
             st.markdown("#### Curva de Crecimiento")
             df = df.sort_values("Fecha")
             fechas = [df["Fecha"].iloc[0]] if not df.empty else [datetime.now().date()]
@@ -455,7 +443,6 @@ def main_app():
                 fechas.append(r["Fecha"])
                 acum += r["Dinero"]
                 valores.append(acum)
-
             line_col = "var(--accent)"
             bg_chart = "rgba(0,0,0,0)"
             text_chart = "var(--chart-text)"
@@ -463,7 +450,6 @@ def main_app():
             line_hex = "#3b82f6" if is_dark else "#2563eb"
             text_hex = "#94a3b8" if is_dark else "#000000"
             grid_hex = "#334155" if is_dark else "#e2e8f0"
-
             fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color=line_hex, width=3), fill='tozeroy'))
             fig.update_layout(paper_bgcolor=bg_chart, plot_bgcolor=bg_chart, font=dict(color=text_hex), xaxis=dict(showgrid=False), yaxis=dict(gridcolor=grid_hex))
             st.plotly_chart(fig, use_container_width=True)
@@ -476,37 +462,21 @@ def main_app():
             if st.button("⬅️", use_container_width=True): change_month(-1); st.rerun()
         with c_n: 
             if st.button("➡️", use_container_width=True): change_month(1); st.rerun()
-            
         _, _, df = get_balance_data(user, sel_acc)
         html, y, m = render_cal_html(df, is_dark)
         with c_t: st.markdown(f"<h3 style='text-align:center; color:var(--text-main); margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
-    # === 5. NOTICIAS (FOREX FACTORY ALTERNATIVE - TRADINGVIEW) ===
+    # === 5. NOTICIAS ===
     with t_news:
         st.markdown(f"<h3 style='color:var(--accent)'>📰 Calendario Económico</h3>", unsafe_allow_html=True)
-        
-        # Widget Configurado
         tv_theme = "dark" if is_dark else "light"
-        
-        html_code = f"""
-        <div class="tradingview-widget-container">
-          <div class="tradingview-widget-container__widget"></div>
-          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
-          {{
-          "colorTheme": "{tv_theme}",
-          "isTransparent": true,
-          "width": "100%",
-          "height": "600",
-          "locale": "es",
-          "importanceFilter": "-1,0,1",
-          "currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"
-        }}
-          </script>
-        </div>
-        """
+        html_code = f"""<div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>{{"colorTheme": "{tv_theme}","isTransparent": true,"width": "100%","height": "600","locale": "es","importanceFilter": "-1,0,1","currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}}</script></div>"""
         components.html(html_code, height=600, scrolling=True)
 
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
 else: login_screen()
+if st.session_state.user: main_app()
+else: login_screen()
+
