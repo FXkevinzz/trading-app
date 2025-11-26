@@ -31,7 +31,9 @@ def init_ai():
 
 def load_brain():
     if not os.path.exists(BRAIN_FILE): return []
-    try: return json.load(open(BRAIN_FILE, "r"))
+    try:
+        with open(BRAIN_FILE, "r") as f:
+            return json.load(f)
     except: return []
 
 def save_to_brain(analysis_text, pair, timeframe):
@@ -43,8 +45,11 @@ def save_to_brain(analysis_text, pair, timeframe):
         "analysis": analysis_text
     }
     memory.append(new_mem)
-    try: with open(BRAIN_FILE, "w") as f: json.dump(memory, f)
-    except: pass
+    try:
+        with open(BRAIN_FILE, "w") as f:
+            json.dump(memory, f)
+    except:
+        pass
 
 def generate_performance_audit(df):
     if df.empty: return "No hay suficientes datos para auditar."
@@ -71,7 +76,7 @@ def analyze_chart(image, mode, pair, tf):
     context = ""
     if brain:
         examples = brain[-2:]
-        context = f"TUS MEJORES TRADES PREVIOS:\n{str(examples)}\n\n"
+        context = f"TUS MEJORES TRADES GANADORES PREVIOS (REFERENCIA):\n{str(examples)}\n\n"
     
     prompt = f"""
     Eres un Mentor de la estrategia 'Set & Forget' (Alex G).
@@ -216,14 +221,21 @@ def inject_theme(theme_mode):
 # --- 5. FUNCIONES BACKEND ---
 def load_json(fp):
     if not os.path.exists(fp): return {}
-    try: return json.load(open(fp))
+    try:
+        with open(fp, "r") as f:
+            return json.load(f)
     except: return {}
+
 def save_json(fp, data):
-    try: json.dump(data, open(fp, "w"))
+    try:
+        with open(fp, "w") as f:
+            json.dump(data, f)
     except: pass
+
 def verify_user(u, p):
     if u == "admin" and p == "1234": return True
-    d = load_json(USERS_FILE); return u in d and d[u] == p
+    d = load_json(USERS_FILE)
+    return u in d and d[u] == p
 def register_user(u, p): d = load_json(USERS_FILE); d[u] = p; save_json(USERS_FILE, d)
 def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {}).keys()) if u in d else ["Principal"]
 def create_account(u, name, bal): d = load_json(ACCOUNTS_FILE); d.setdefault(u, {})[name] = bal; save_json(ACCOUNTS_FILE, d); save_trade(u, name, None, init=True)
@@ -334,7 +346,7 @@ def main_app():
             na = st.text_input("Nombre"); nb = st.number_input("Capital", 100.0)
             if st.button("CREAR"): create_account(user, na, nb); st.rerun()
 
-    tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📰 NOTICIAS"])
+    tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
     # TAB 1: OPERATIVA MANUAL (ESTRATEGIA CORRECTA)
     with tabs[0]:
@@ -547,7 +559,7 @@ def main_app():
         with c_t: st.markdown(f"<h3 style='text-align:center; color:var(--text-main); margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
-    # TAB 6: NOTICIAS
+    # TAB 6: NOTICIAS (TRADINGVIEW)
     with tabs[5]:
         tv_theme = "dark" if is_dark else "light"
         html_code = f"""<div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>{{"colorTheme": "{tv_theme}","isTransparent": true,"width": "100%","height": "800","locale": "es","importanceFilter": "-1,0","currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}}</script></div>"""
