@@ -17,27 +17,29 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# --- 3. SISTEMA DE TEMAS (CSS DINÁMICO) ---
+# --- 3. SISTEMA DE TEMAS (CSS DINÁMICO CORREGIDO) ---
 def inject_theme(theme_mode):
     if theme_mode == "Claro (High Contrast)":
-        # === PALETA MODO CLARO (TEXTO NEGRO / CASILLAS DEFINIDAS) ===
+        # === MODO CLARO CORREGIDO ===
         css_vars = """
             --bg-app: #ffffff;
-            --bg-card: #f3f4f6;       /* Gris muy suave para diferenciar tarjetas del fondo */
-            --bg-sidebar: #ffffff;
-            --text-main: #000000;     /* NEGRO PURO */
-            --text-muted: #333333;    /* Gris muy oscuro para etiquetas */
-            --border-color: #9ca3af;  /* Borde más oscuro para que se vean las casillas */
+            --bg-card: #f8f9fa;       /* Gris muy claro para tarjetas */
+            --bg-sidebar: #f1f5f9;    /* Sidebar clara */
+            --text-main: #000000;     /* TEXTO NEGRO PURO */
+            --text-muted: #333333;    /* Gris oscuro */
+            --border-color: #cbd5e1;  /* Borde visible */
             --input-bg: #ffffff;
-            --accent: #0056b3;        /* Azul más oscuro y serio */
-            --accent-green: #059669;  /* Verde más oscuro para contraste */
-            --accent-red: #dc2626;    /* Rojo más oscuro para contraste */
-            --shadow: 0 2px 4px rgba(0,0,0,0.15); /* Sombra más marcada */
-            --chart-grid: #e5e7eb;
+            --accent: #2563eb;        /* Azul Royal */
+            --accent-green: #16a34a;  /* Verde oscuro legible */
+            --accent-red: #dc2626;    /* Rojo oscuro legible */
+            --button-bg: #2563eb;     /* Botón Azul Sólido */
+            --button-text: #ffffff;   /* Texto botón Blanco */
+            --shadow: 0 2px 5px rgba(0,0,0,0.1);
             --chart-text: #000000;
+            --chart-grid: #e2e8f0;
         """
     else:
-        # === PALETA MODO OSCURO (NAVY PRO - TU FAVORITO) ===
+        # === MODO OSCURO (NAVY PRO) ===
         css_vars = """
             --bg-app: #0f172a;
             --bg-card: #1e293b;
@@ -49,54 +51,74 @@ def inject_theme(theme_mode):
             --accent: #3b82f6;
             --accent-green: #34d399;
             --accent-red: #f87171;
+            --button-bg: #3b82f6;
+            --button-text: #ffffff;
             --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
-            --chart-grid: #334155;
             --chart-text: #94a3b8;
+            --chart-grid: #334155;
         """
 
     st.markdown(f"""
     <style>
     :root {{ {css_vars} }}
 
-    /* FUENTE GLOBAL */
+    /* FUENTE */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
 
     /* APLICACIÓN GLOBAL */
     .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
     
-    /* TEXTOS (NEGRO EN MODO CLARO) */
+    /* TEXTOS GENERALES (Forzar color según tema) */
     h1, h2, h3, h4, h5, p, li, span, div {{ color: var(--text-main) !important; }}
     .stMarkdown p {{ color: var(--text-main) !important; }}
     
-    /* ETIQUETAS DE INPUTS (Labels) */
+    /* CHECKBOXES (Corrección específica para Operativa) */
+    .stCheckbox label p {{
+        color: var(--text-main) !important;
+        font-weight: 500;
+    }}
+    
+    /* ETIQUETAS DE INPUTS */
     label, .stTextInput label, .stNumberInput label, .stSelectbox label {{
         color: var(--text-muted) !important;
-        font-weight: 600 !important; /* Más negrita para que se lea bien */
+        font-weight: 600 !important;
     }}
     
     /* SIDEBAR */
     [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: var(--text-muted) !important; }}
     
-    /* === CASILLAS (INPUTS) MEJORADAS === */
+    /* INPUTS */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
-        color: var(--text-main) !important; /* Texto negro al escribir */
-        border: 2px solid var(--border-color) !important; /* Borde más grueso */
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-color) !important;
         border-radius: 8px;
-        font-weight: 500;
-        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); /* Sombra interna sutil */
     }}
-    
     /* Iconos inputs */
     .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
     
-    /* MENUS DESPLEGABLES (Opciones) */
+    /* MENUS DESPLEGABLES */
     ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
-    li[data-baseweb="option"] {{ color: var(--text-main) !important; font-weight: 500; }}
+    li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
     
-    /* TABS (PESTAÑAS) */
+    /* BOTONES (Corrección: Sólidos y Legibles) */
+    .stButton button {{
+        background-color: var(--button-bg) !important;
+        color: var(--button-text) !important;
+        border: none !important;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }}
+    .stButton button:hover {{
+        opacity: 0.9;
+        transform: translateY(-1px);
+    }}
+    
+    /* TABS */
     .stTabs [data-baseweb="tab"] {{
         background-color: var(--bg-card) !important;
         color: var(--text-muted) !important;
@@ -105,17 +127,15 @@ def inject_theme(theme_mode):
         padding: 0 25px !important;
         height: 50px;
         box-shadow: var(--shadow);
-        font-weight: 700;
     }}
     .stTabs [data-baseweb="tab"][aria-selected="true"] {{
         background-color: var(--accent) !important;
-        color: white !important; /* Texto blanco en tab activo */
+        color: white !important;
         border: none !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
-    /* TARJETAS ESTRATEGIA */
+    /* TARJETAS */
     .strategy-box {{
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -135,23 +155,8 @@ def inject_theme(theme_mode):
         display: flex; justify-content: space-between; align-items: center;
     }}
     
-    /* CHECKBOXES */
-    .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
-    
     /* CALENDARIO */
-    .calendar-header {{ color: var(--text-muted) !important; font-weight: bold; }}
-    
-    /* BOTONES */
-    .stButton button {{
-        border: 1px solid var(--accent) !important;
-        color: var(--accent) !important;
-        font-weight: bold;
-        background: transparent;
-    }}
-    .stButton button:hover {{
-        background: var(--accent) !important;
-        color: white !important;
-    }}
+    .calendar-header {{ color: var(--text-muted) !important; }}
     
     </style>
     """, unsafe_allow_html=True)
@@ -218,11 +223,11 @@ def render_cal_html(df, is_dark):
     cal = calendar.Calendar(firstweekday=0)
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
     
-    # Colores para días de la semana
-    text_h = "#333333" if not is_dark else "#94a3b8"
-
+    # Colores
+    day_col = "#94a3b8" if is_dark else "#64748b"
+    
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
-        html += f'<div style="text-align:center; color:{text_h}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
+        html += f'<div style="text-align:center; color:{day_col}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
     
     for week in cal.monthdayscalendar(y, m):
         for day in week:
@@ -236,9 +241,9 @@ def render_cal_html(df, is_dark):
                 col = "var(--text-main)"
                 
                 if val > 0:
-                    bg = "rgba(16, 185, 129, 0.2)"; border = "var(--accent-green)"; col = "var(--accent-green)"
+                    bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
                 elif val < 0:
-                    bg = "rgba(239, 68, 68, 0.2)"; border = "var(--accent-red)"; col = "var(--accent-red)"
+                    bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
 
                 html += f'''
                 <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
@@ -290,7 +295,7 @@ def main_app():
         ini, act, _ = get_balance_data(user, sel_acc)
         
         col_s = "#10b981" if act >= ini else "#ef4444"
-        bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#f3f4f6"
+        bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#ffffff"
         
         st.markdown(f"""
         <div style="background:{bg_bal}; padding:20px; border-radius:12px; border:1px solid var(--border-color); text-align:center; box-shadow: var(--shadow);">
@@ -427,7 +432,7 @@ def main_app():
         <div class="hud-container">
             <div class="hud-stat">
                 <div class="hud-label">PUNTAJE TOTAL</div>
-                <div class="hud-value">{total}%</div>
+                <div class="hud-value-large">{total}%</div>
             </div>
             <div style="flex-grow:1; text-align:center; margin:0 20px;">
                 <span class="{css_cl}">{msg}</span>
@@ -483,11 +488,20 @@ def main_app():
                 acum += r["Dinero"]
                 valores.append(acum)
 
-            grid_col = "#334155" if is_dark else "#e5e7eb"
-            text_col = "#94a3b8" if is_dark else "#000000"
+            # Colores gráfico dinámicos
+            line_col = "var(--accent)"
+            bg_chart = "rgba(0,0,0,0)"
+            text_chart = "var(--chart-text)"
+            grid_chart = "var(--chart-grid)"
             
-            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#3b82f6', width=3), fill='tozeroy'))
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=text_col), xaxis=dict(showgrid=False), yaxis=dict(gridcolor=grid_col))
+            # Plotly necesita valores hexadecimales exactos a veces, pero intentaremos heredar
+            # Truco: Leeremos la variable de tema
+            line_hex = "#3b82f6" if is_dark else "#2563eb"
+            text_hex = "#94a3b8" if is_dark else "#000000"
+            grid_hex = "#334155" if is_dark else "#e2e8f0"
+
+            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color=line_hex, width=3), fill='tozeroy'))
+            fig.update_layout(paper_bgcolor=bg_chart, plot_bgcolor=bg_chart, font=dict(color=text_hex), xaxis=dict(showgrid=False), yaxis=dict(gridcolor=grid_hex))
             st.plotly_chart(fig, use_container_width=True)
         else: st.info("Sin datos")
 
