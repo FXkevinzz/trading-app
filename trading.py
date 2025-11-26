@@ -22,7 +22,7 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# --- 3. INTELIGENCIA ARTIFICIAL (CON FALLBACK DE SEGURIDAD) ---
+# --- 3. INTELIGENCIA ARTIFICIAL (SISTEMA BLINDADO) ---
 def init_ai():
     if "GEMINI_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_KEY"])
@@ -48,7 +48,7 @@ def save_to_brain(analysis_text, pair, timeframe):
     except: pass
 
 def analyze_chart(image, mode, pair, tf):
-    # Contexto RAG
+    # Contexto RAG (Memoria)
     brain = load_brain()
     context = ""
     if brain:
@@ -72,19 +72,22 @@ def analyze_chart(image, mode, pair, tf):
     - 📝 ANÁLISIS: (Máx 3 líneas)
     """
     
-    # INTENTO 1: Usar Flash (Rápido)
-    try:
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        response = model.generate_content([prompt, image])
-        return response.text
-    except Exception as e_flash:
-        # INTENTO 2: Usar Pro (Si Flash falla por versión)
+    # --- CASCADA DE MODELOS (FIX ERROR 404) ---
+    # Intentamos modelos desde el más nuevo al más compatible
+    modelos_a_probar = ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro-vision']
+    
+    last_error = ""
+    
+    for modelo_nombre in modelos_a_probar:
         try:
-            model = genai.GenerativeModel('gemini-1.5-pro')
+            model = genai.GenerativeModel(modelo_nombre)
             response = model.generate_content([prompt, image])
             return response.text
-        except Exception as e_pro:
-            return f"Error de conexión IA: Verifica tu API KEY o actualiza requirements.txt. Detalle: {str(e_flash)}"
+        except Exception as e:
+            last_error = str(e)
+            continue # Si falla, prueba el siguiente modelo
+            
+    return f"Error de IA: No se pudo conectar con ningún modelo. Detalle: {last_error}"
 
 # --- 4. SISTEMA DE TEMAS ---
 def inject_theme(theme_mode):
@@ -237,6 +240,13 @@ def mostrar_imagen(nombre, caption):
         }
         if nombre in urls: st.image(urls[nombre], caption=caption, use_container_width=True)
 
+def change_month(delta):
+    d = st.session_state.get('cal_date', datetime.now())
+    m, y = d.month + delta, d.year
+    if m > 12: m, y = 1, y+1
+    elif m < 1: m, y = 12, y-1
+    st.session_state['cal_date'] = d.replace(year=y, month=m, day=1)
+
 def render_cal_html(df, is_dark):
     d = st.session_state.get('cal_date', datetime.now())
     y, m = d.year, d.month
@@ -266,13 +276,6 @@ def render_cal_html(df, is_dark):
                 html += f'<div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;"><div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div><div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div></div>'
     html += '</div>'
     return html, y, m
-
-def change_month(delta):
-    d = st.session_state.get('cal_date', datetime.now())
-    m, y = d.month + delta, d.year
-    if m > 12: m, y = 1, y+1
-    elif m < 1: m, y = 12, y-1
-    st.session_state['cal_date'] = d.replace(year=y, month=m, day=1)
 
 # --- 7. LOGIN ---
 def login_screen():
