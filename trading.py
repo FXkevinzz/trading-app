@@ -17,7 +17,117 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# --- 3. FUNCIONES BACKEND ---
+# --- 3. SISTEMA DE TEMAS (CSS DINÁMICO) ---
+def inject_theme(theme_mode):
+    if theme_mode == "Claro (Fintech)":
+        # PALETA CLEAN FINTECH
+        css_vars = """
+            --bg-app: #f1f5f9;
+            --bg-card: #ffffff;
+            --bg-sidebar: #ffffff;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --border-color: #e2e8f0;
+            --input-bg: #ffffff;
+            --accent: #2563eb;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+            --chart-grid: #e2e8f0;
+            --chart-text: #0f172a;
+        """
+    else:
+        # PALETA DARK NAVY
+        css_vars = """
+            --bg-app: #0f172a;
+            --bg-card: #1e293b;
+            --bg-sidebar: #020617;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            --input-bg: #1e293b;
+            --accent: #3b82f6;
+            --accent-green: #34d399;
+            --accent-red: #f87171;
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            --chart-grid: #334155;
+            --chart-text: #94a3b8;
+        """
+
+    st.markdown(f"""
+    <style>
+    :root {{ {css_vars} }}
+
+    /* APLICACIÓN GLOBAL */
+    .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
+    
+    /* TEXTOS */
+    h1, h2, h3, h4, h5, p, li, span, label, div {{ color: var(--text-main) !important; }}
+    .stMarkdown p {{ color: var(--text-main) !important; }}
+    
+    /* SIDEBAR */
+    [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: var(--text-muted) !important; }}
+    
+    /* INPUTS (Crucial para modo claro) */
+    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
+        background-color: var(--input-bg) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px;
+    }}
+    /* Iconos inputs */
+    .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
+    
+    /* MENUS DESPLEGABLES */
+    ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
+    li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
+    
+    /* TABS */
+    .stTabs [data-baseweb="tab"] {{
+        background-color: var(--bg-card) !important;
+        color: var(--text-muted) !important;
+        border: 1px solid var(--border-color);
+        border-radius: 30px !important;
+        padding: 0 25px !important;
+        height: 50px;
+        box-shadow: var(--shadow);
+    }}
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+        background-color: var(--accent) !important;
+        color: white !important;
+        border: none !important;
+        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+    }}
+    .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
+    
+    /* TARJETAS ESTRATEGIA */
+    .strategy-box {{
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+    }}
+    
+    /* HUD SCORE */
+    .hud-container {{
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%);
+        border: 1px solid var(--accent);
+        border-radius: 15px;
+        padding: 20px;
+        margin-top: 20px;
+        box-shadow: var(--shadow);
+        display: flex; justify-content: space-between; align-items: center;
+    }}
+    
+    /* CALENDARIO */
+    .calendar-header {{ color: var(--text-muted) !important; }}
+    
+    </style>
+    """, unsafe_allow_html=True)
+
+# --- 4. FUNCIONES BACKEND ---
 def load_json(fp): return json.load(open(fp)) if os.path.exists(fp) else {}
 def save_json(fp, data): json.dump(data, open(fp, "w"))
 def verify_user(u, p): d = load_json(USERS_FILE); return u in d and d[u] == p
@@ -47,7 +157,7 @@ def load_trades(u, acc):
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
     return pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
 
-# --- 4. FUNCIONES VISUALES ---
+# --- 5. FUNCIONES VISUALES ---
 def mostrar_imagen(nombre, caption):
     local = os.path.join(IMG_DIR, nombre)
     if os.path.exists(local): st.image(local, caption=caption, use_container_width=True)
@@ -77,16 +187,16 @@ def render_cal_html(df, is_dark):
         data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
 
     cal = calendar.Calendar(firstweekday=0)
-    
-    # Colores dinámicos para el calendario
-    bg_day = "#0a0a0a" if is_dark else "#ffffff"
-    border_def = "#333" if is_dark else "#e2e8f0"
-    text_day = "#666" if is_dark else "#94a3b8"
-    text_val_def = "#fff" if is_dark else "#0f172a"
-    
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
+    
+    # Colores dinámicos
+    day_color = "#94a3b8"
+    bg_def = "#1e293b" if is_dark else "#ffffff"
+    border_def = "#334155" if is_dark else "#e2e8f0"
+    text_def = "#ffffff" if is_dark else "#0f172a"
+
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
-        html += f'<div style="text-align:center; color:{text_day}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
+        html += f'<div style="text-align:center; color:{day_color}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
     
     for week in cal.monthdayscalendar(y, m):
         for day in week:
@@ -95,138 +205,35 @@ def render_cal_html(df, is_dark):
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
                 
-                bg = bg_day
-                border = border_def
-                col = text_val_def
+                bg, border, col = bg_def, border_def, text_def
                 
                 if val > 0:
-                    bg = "rgba(16, 185, 129, 0.15)"
-                    border = "#10b981"
-                    col = "#10b981" # Verde siempre igual
+                    bg = "rgba(16, 185, 129, 0.15)"; border = "#10b981"; col = "#10b981"
                 elif val < 0:
-                    bg = "rgba(239, 68, 68, 0.15)"
-                    border = "#ef4444"
-                    col = "#ef4444" # Rojo siempre igual
+                    bg = "rgba(239, 68, 68, 0.15)"; border = "#ef4444"; col = "#ef4444"
 
                 html += f'''
                 <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
-                    <div style="color:{text_day}; font-size:0.8rem; font-weight:bold;">{day}</div>
+                    <div style="color:{day_color}; font-size:0.8rem; font-weight:bold;">{day}</div>
                     <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
                 </div>'''
     html += '</div>'
     return html, y, m
 
-# --- 5. SISTEMA DE TEMAS (CSS DINÁMICO) ---
-def inject_css(theme_name):
-    # DEFINICIÓN DE COLORES
-    if theme_name == "Oscuro (Navy)":
-        vars = """
-            --bg-main: #0f172a;
-            --bg-card: #1e293b;
-            --bg-sidebar: #020617;
-            --text-main: #f8fafc;
-            --text-muted: #94a3b8;
-            --border-color: #334155;
-            --accent: #3b82f6;
-            --input-bg: #1e293b;
-            --input-text: #ffffff;
-        """
-    else: # CLARO
-        vars = """
-            --bg-main: #f8fafc;
-            --bg-card: #ffffff;
-            --bg-sidebar: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
-            --accent: #2563eb;
-            --input-bg: #ffffff;
-            --input-text: #0f172a;
-        """
-
-    st.markdown(f"""
-    <style>
-    :root {{ {vars} }}
-    
-    /* APLICACIÓN UNIVERSAL */
-    .stApp {{ background-color: var(--bg-main) !important; color: var(--text-main) !important; }}
-    
-    /* TEXTOS */
-    h1, h2, h3, h4, h5, h6, p, li, span, div, label, .stMarkdown {{ color: var(--text-main) !important; }}
-    .stMarkdown p {{ color: var(--text-main) !important; }}
-    
-    /* SIDEBAR */
-    [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
-    
-    /* INPUTS */
-    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
-        background-color: var(--input-bg) !important;
-        color: var(--input-text) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 8px;
-    }}
-    .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
-    
-    /* MENÚS DESPLEGABLES */
-    ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
-    li[data-baseweb="option"] {{ color: var(--input-text) !important; }}
-    
-    /* TABS */
-    .stTabs [data-baseweb="tab"] {{
-        background-color: var(--bg-card) !important;
-        color: var(--text-muted) !important;
-        border: 1px solid var(--border-color);
-        border-radius: 30px !important;
-        padding: 0 25px !important;
-        height: 50px;
-    }}
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-        background-color: var(--accent) !important;
-        color: white !important;
-        border: none !important;
-    }}
-    .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
-    
-    /* COMPONENTES */
-    .strategy-box {{
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-    }}
-    
-    /* HUD */
-    .hud-container {{
-        background: var(--bg-card);
-        border: 1px solid var(--accent);
-        border-radius: 15px;
-        padding: 20px;
-        margin-top: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        display: flex; justify-content: space-between; align-items: center;
-    }}
-    
-    /* CHECKBOXES */
-    .stCheckbox label p {{ color: var(--text-main) !important; }}
-    
-    </style>
-    """, unsafe_allow_html=True)
-
 # --- 6. LOGIN ---
 def login_screen():
-    # Inyectamos un tema por defecto para el login
-    inject_css("Oscuro (Navy)")
+    # Inyectar tema oscuro por defecto para login
+    inject_theme("Oscuro (Navy)")
     c1,c2,c3 = st.columns([1,1,1])
     with c2:
-        st.markdown("<h1 style='text-align:center; color:#3b82f6;'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center; color:var(--accent);'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
         t1, t2 = st.tabs(["INGRESAR", "REGISTRARSE"])
         with t1:
             u = st.text_input("Usuario")
             p = st.text_input("Password", type="password")
             if st.button("ACCEDER", type="primary", use_container_width=True):
                 if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Credenciales incorrectas")
+                else: st.error("Error")
         with t2:
             nu = st.text_input("Nuevo Usuario")
             np = st.text_input("Nueva Password", type="password")
@@ -238,13 +245,13 @@ def main_app():
     user = st.session_state.user
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
 
-    # --- SIDEBAR ---
+    # --- SIDEBAR CON SELECTOR DE TEMA ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
         
-        # === SELECTOR DE TEMA (SOLUCIÓN DEFINITIVA) ===
-        tema = st.radio("🎨 TEMA VISUAL", ["Oscuro (Navy)", "Claro (Clean)"], index=0)
-        inject_css(tema) # INYECTA EL CSS SEGUN SELECCION
+        # SELECTOR DE TEMA (El motor del cambio)
+        tema = st.radio("🎨 TEMA VISUAL", ["Oscuro (Navy)", "Claro (Fintech)"], index=0)
+        inject_theme(tema)
         is_dark = True if tema == "Oscuro (Navy)" else False
         
         st.markdown("---")
@@ -257,13 +264,12 @@ def main_app():
         
         col_s = "#10b981" if act >= ini else "#ef4444"
         bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#ffffff"
-        border_bal = "rgba(255,255,255,0.1)" if is_dark else "#e2e8f0"
         
         st.markdown(f"""
-        <div style="background:{bg_bal}; padding:20px; border-radius:12px; border:1px solid {border_bal}; text-align:center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <div style="color:#94a3b8; font-size:0.8rem; letter-spacing:1px; margin-bottom:5px;">BALANCE TOTAL</div>
+        <div style="background:{bg_bal}; padding:20px; border-radius:12px; border:1px solid var(--border-color); text-align:center; box-shadow: var(--shadow);">
+            <div style="color:var(--text-muted); font-size:0.8rem; letter-spacing:1px; margin-bottom:5px;">BALANCE TOTAL</div>
             <div style="color:{col_s}; font-size:2rem; font-weight:900;">${act:,.2f}</div>
-            <div style="color:#64748b; font-size:0.8rem; margin-top:5px">Inicial: ${ini:,.2f}</div>
+            <div style="color:var(--text-muted); font-size:0.8rem; margin-top:5px">Inicial: ${ini:,.2f}</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -274,7 +280,7 @@ def main_app():
             if st.button("CREAR", use_container_width=True):
                 if na: create_account(user, na, nb); st.rerun()
 
-    # --- PESTAÑAS ---
+    # --- CUERPO PRINCIPAL ---
     t_op, t_reg, t_dash, t_cal = st.tabs(["🦁 OPERATIVA", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO"])
 
     # === 1. OPERATIVA ===
@@ -295,12 +301,9 @@ def main_app():
         st.markdown("<br>", unsafe_allow_html=True)
         
         # Box selector
-        bg_sel = "#1e293b" if is_dark else "#ffffff"
-        border_sel = "#334155" if is_dark else "#e2e8f0"
-        
         st.markdown(f"""
-        <div style="background:{bg_sel}; padding:15px; border-radius:10px; border:1px solid {border_sel}; text-align:center; margin-bottom:20px;">
-            <h4 style="margin:0; color:var(--accent); text-transform:uppercase; letter-spacing:1px;">⚡ ESTRATEGIA</h4>
+        <div style="background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center; margin-bottom:20px; box-shadow: var(--shadow);">
+            <h4 style="margin:0; color:var(--accent); text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN ESTRATEGIA</h4>
         </div>
         """, unsafe_allow_html=True)
         
@@ -312,9 +315,8 @@ def main_app():
         r2_c1, r2_c2 = st.columns(2)
         total = 0; sos, eng, rr = False, False, False
 
-        # Helper para headers con color dinámico
-        def header_html(text):
-            return f"<div style='color:var(--accent); font-weight:800; text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:8px;'>{text}</div>"
+        # Helper header
+        def header_html(text): return f"<div style='color:var(--accent); font-weight:800; text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:8px;'>{text}</div>"
 
         if "Swing" in modo:
             with r1_c1:
@@ -399,25 +401,30 @@ def main_app():
         st.markdown(f"""
         <div class="hud-container">
             <div class="hud-stat">
-                <div class="hud-label">PUNTAJE</div>
-                <div class="hud-value-large">{total}%</div>
+                <div class="hud-label">PUNTAJE TOTAL</div>
+                <div class="hud-value">{total}%</div>
             </div>
             <div style="flex-grow:1; text-align:center; margin:0 20px;">
                 <span style="padding:10px 20px; border-radius:50px; font-weight:bold; {css_cl}">{msg}</span>
             </div>
             <div class="hud-stat">
-                <div class="hud-label">GATILLOS</div>
+                <div class="hud-label">ESTADO</div>
                 <div style="font-size:1.5rem; font-weight:bold; color:{'#10b981' if valid else '#ef4444'}">
                     {'LISTO' if valid else 'PENDIENTE'}
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
+        
         st.progress(min(total, 100))
+
+        if valid and total >= 60:
+            sl = "5-7 pips" if "Swing" in modo else "3-5 pips"
+            st.info(f"📝 PLAN: Stop Loss {sl} | TP: Liquidez Opuesta | Riesgo 1%")
 
     # === 2. REGISTRO ===
     with t_reg:
-        st.markdown("<h3 style='color:var(--accent)'>📝 Registrar Trade</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:var(--accent)'>📝 Registrar Trade</h3>", unsafe_allow_html=True)
         with st.form("reg"):
             c1,c2 = st.columns(2)
             dt = c1.date_input("Fecha", datetime.now())
@@ -441,7 +448,7 @@ def main_app():
             wins = len(df[df["Resultado"]=="WIN"])
             net = df['Dinero'].sum()
             
-            k1.markdown(f"<div class='strategy-box' style='text-align:center'><div style='color:var(--text-muted); font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
+            k1.markdown(f"<div style='background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center; box-shadow:var(--shadow)'><div style='color:var(--text-muted); font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
             k2.metric("WIN RATE", f"{(wins/len(df)*100):.1f}%")
             k3.metric("TRADES", len(df))
             k4.metric("SALDO FINAL", f"${act:,.2f}")
@@ -456,7 +463,7 @@ def main_app():
                 acum += r["Dinero"]
                 valores.append(acum)
 
-            # Color gráfico dinámico
+            # Colores gráfico
             line_col = "#3b82f6" if is_dark else "#2563eb"
             grid_col = "#334155" if is_dark else "#e2e8f0"
             text_col = "#94a3b8" if is_dark else "#64748b"
