@@ -19,25 +19,25 @@ ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
 # --- 3. SISTEMA DE TEMAS (CSS DINÁMICO) ---
 def inject_theme(theme_mode):
-    if theme_mode == "Claro (Fintech)":
-        # PALETA CLEAN FINTECH
+    if theme_mode == "Claro (High Contrast)":
+        # === PALETA MODO CLARO (TEXTO NEGRO / CASILLAS DEFINIDAS) ===
         css_vars = """
-            --bg-app: #f1f5f9;
-            --bg-card: #ffffff;
+            --bg-app: #ffffff;
+            --bg-card: #f3f4f6;       /* Gris muy suave para diferenciar tarjetas del fondo */
             --bg-sidebar: #ffffff;
-            --text-main: #0f172a;
-            --text-muted: #64748b;
-            --border-color: #e2e8f0;
+            --text-main: #000000;     /* NEGRO PURO */
+            --text-muted: #333333;    /* Gris muy oscuro para etiquetas */
+            --border-color: #9ca3af;  /* Borde más oscuro para que se vean las casillas */
             --input-bg: #ffffff;
-            --accent: #2563eb;
-            --accent-green: #10b981;
-            --accent-red: #ef4444;
-            --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
-            --chart-grid: #e2e8f0;
-            --chart-text: #0f172a;
+            --accent: #0056b3;        /* Azul más oscuro y serio */
+            --accent-green: #059669;  /* Verde más oscuro para contraste */
+            --accent-red: #dc2626;    /* Rojo más oscuro para contraste */
+            --shadow: 0 2px 4px rgba(0,0,0,0.15); /* Sombra más marcada */
+            --chart-grid: #e5e7eb;
+            --chart-text: #000000;
         """
     else:
-        # PALETA DARK NAVY
+        # === PALETA MODO OSCURO (NAVY PRO - TU FAVORITO) ===
         css_vars = """
             --bg-app: #0f172a;
             --bg-card: #1e293b;
@@ -58,32 +58,45 @@ def inject_theme(theme_mode):
     <style>
     :root {{ {css_vars} }}
 
+    /* FUENTE GLOBAL */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
+
     /* APLICACIÓN GLOBAL */
     .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
     
-    /* TEXTOS */
-    h1, h2, h3, h4, h5, p, li, span, label, div {{ color: var(--text-main) !important; }}
+    /* TEXTOS (NEGRO EN MODO CLARO) */
+    h1, h2, h3, h4, h5, p, li, span, div {{ color: var(--text-main) !important; }}
     .stMarkdown p {{ color: var(--text-main) !important; }}
+    
+    /* ETIQUETAS DE INPUTS (Labels) */
+    label, .stTextInput label, .stNumberInput label, .stSelectbox label {{
+        color: var(--text-muted) !important;
+        font-weight: 600 !important; /* Más negrita para que se lea bien */
+    }}
     
     /* SIDEBAR */
     [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: var(--text-muted) !important; }}
     
-    /* INPUTS (Crucial para modo claro) */
+    /* === CASILLAS (INPUTS) MEJORADAS === */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
-        color: var(--text-main) !important;
-        border: 1px solid var(--border-color) !important;
+        color: var(--text-main) !important; /* Texto negro al escribir */
+        border: 2px solid var(--border-color) !important; /* Borde más grueso */
         border-radius: 8px;
+        font-weight: 500;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.05); /* Sombra interna sutil */
     }}
+    
     /* Iconos inputs */
     .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
     
-    /* MENUS DESPLEGABLES */
+    /* MENUS DESPLEGABLES (Opciones) */
     ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
-    li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
+    li[data-baseweb="option"] {{ color: var(--text-main) !important; font-weight: 500; }}
     
-    /* TABS */
+    /* TABS (PESTAÑAS) */
     .stTabs [data-baseweb="tab"] {{
         background-color: var(--bg-card) !important;
         color: var(--text-muted) !important;
@@ -92,12 +105,13 @@ def inject_theme(theme_mode):
         padding: 0 25px !important;
         height: 50px;
         box-shadow: var(--shadow);
+        font-weight: 700;
     }}
     .stTabs [data-baseweb="tab"][aria-selected="true"] {{
         background-color: var(--accent) !important;
-        color: white !important;
+        color: white !important; /* Texto blanco en tab activo */
         border: none !important;
-        box-shadow: 0 4px 10px rgba(37, 99, 235, 0.3);
+        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
@@ -113,7 +127,7 @@ def inject_theme(theme_mode):
     /* HUD SCORE */
     .hud-container {{
         background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%);
-        border: 1px solid var(--accent);
+        border: 2px solid var(--accent);
         border-radius: 15px;
         padding: 20px;
         margin-top: 20px;
@@ -121,8 +135,23 @@ def inject_theme(theme_mode):
         display: flex; justify-content: space-between; align-items: center;
     }}
     
+    /* CHECKBOXES */
+    .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
+    
     /* CALENDARIO */
-    .calendar-header {{ color: var(--text-muted) !important; }}
+    .calendar-header {{ color: var(--text-muted) !important; font-weight: bold; }}
+    
+    /* BOTONES */
+    .stButton button {{
+        border: 1px solid var(--accent) !important;
+        color: var(--accent) !important;
+        font-weight: bold;
+        background: transparent;
+    }}
+    .stButton button:hover {{
+        background: var(--accent) !important;
+        color: white !important;
+    }}
     
     </style>
     """, unsafe_allow_html=True)
@@ -189,14 +218,11 @@ def render_cal_html(df, is_dark):
     cal = calendar.Calendar(firstweekday=0)
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
     
-    # Colores dinámicos
-    day_color = "#94a3b8"
-    bg_def = "#1e293b" if is_dark else "#ffffff"
-    border_def = "#334155" if is_dark else "#e2e8f0"
-    text_def = "#ffffff" if is_dark else "#0f172a"
+    # Colores para días de la semana
+    text_h = "#333333" if not is_dark else "#94a3b8"
 
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
-        html += f'<div style="text-align:center; color:{day_color}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
+        html += f'<div style="text-align:center; color:{text_h}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
     
     for week in cal.monthdayscalendar(y, m):
         for day in week:
@@ -205,16 +231,18 @@ def render_cal_html(df, is_dark):
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
                 
-                bg, border, col = bg_def, border_def, text_def
+                bg = "var(--bg-card)"
+                border = "var(--border-color)"
+                col = "var(--text-main)"
                 
                 if val > 0:
-                    bg = "rgba(16, 185, 129, 0.15)"; border = "#10b981"; col = "#10b981"
+                    bg = "rgba(16, 185, 129, 0.2)"; border = "var(--accent-green)"; col = "var(--accent-green)"
                 elif val < 0:
-                    bg = "rgba(239, 68, 68, 0.15)"; border = "#ef4444"; col = "#ef4444"
+                    bg = "rgba(239, 68, 68, 0.2)"; border = "var(--accent-red)"; col = "var(--accent-red)"
 
                 html += f'''
                 <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
-                    <div style="color:{day_color}; font-size:0.8rem; font-weight:bold;">{day}</div>
+                    <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div>
                     <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
                 </div>'''
     html += '</div>'
@@ -222,7 +250,6 @@ def render_cal_html(df, is_dark):
 
 # --- 6. LOGIN ---
 def login_screen():
-    # Inyectar tema oscuro por defecto para login
     inject_theme("Oscuro (Navy)")
     c1,c2,c3 = st.columns([1,1,1])
     with c2:
@@ -245,12 +272,12 @@ def main_app():
     user = st.session_state.user
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
 
-    # --- SIDEBAR CON SELECTOR DE TEMA ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
         
-        # SELECTOR DE TEMA (El motor del cambio)
-        tema = st.radio("🎨 TEMA VISUAL", ["Oscuro (Navy)", "Claro (Fintech)"], index=0)
+        # SELECTOR TEMA
+        tema = st.radio("🎨 TEMA VISUAL", ["Oscuro (Navy)", "Claro (High Contrast)"], index=0)
         inject_theme(tema)
         is_dark = True if tema == "Oscuro (Navy)" else False
         
@@ -263,7 +290,7 @@ def main_app():
         ini, act, _ = get_balance_data(user, sel_acc)
         
         col_s = "#10b981" if act >= ini else "#ef4444"
-        bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#ffffff"
+        bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#f3f4f6"
         
         st.markdown(f"""
         <div style="background:{bg_bal}; padding:20px; border-radius:12px; border:1px solid var(--border-color); text-align:center; box-shadow: var(--shadow);">
@@ -280,7 +307,7 @@ def main_app():
             if st.button("CREAR", use_container_width=True):
                 if na: create_account(user, na, nb); st.rerun()
 
-    # --- CUERPO PRINCIPAL ---
+    # --- CUERPO ---
     t_op, t_reg, t_dash, t_cal = st.tabs(["🦁 OPERATIVA", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO"])
 
     # === 1. OPERATIVA ===
@@ -300,7 +327,6 @@ def main_app():
 
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Box selector
         st.markdown(f"""
         <div style="background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center; margin-bottom:20px; box-shadow: var(--shadow);">
             <h4 style="margin:0; color:var(--accent); text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN ESTRATEGIA</h4>
@@ -315,8 +341,7 @@ def main_app():
         r2_c1, r2_c2 = st.columns(2)
         total = 0; sos, eng, rr = False, False, False
 
-        # Helper header
-        def header_html(text): return f"<div style='color:var(--accent); font-weight:800; text-transform:uppercase; margin-bottom:15px; border-bottom:1px solid var(--border-color); padding-bottom:8px;'>{text}</div>"
+        def header_html(text): return f"<div style='color:var(--accent); font-weight:800; text-transform:uppercase; margin-bottom:15px; border-bottom:2px solid var(--border-color); padding-bottom:8px;'>{text}</div>"
 
         if "Swing" in modo:
             with r1_c1:
@@ -391,12 +416,12 @@ def main_app():
         st.markdown("<br>", unsafe_allow_html=True)
         valid = sos and eng and rr
         
-        msg, css_cl = "💤 ESPERAR", "background:rgba(250,204,21,0.1); color:#d97706; border:1px solid #facc15"
-        if not sos: msg, css_cl = "⛔ FALTA ESTRUCTURA", "background:rgba(239,68,68,0.1); color:#ef4444; border:1px solid #ef4444"
-        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "background:rgba(250,204,21,0.1); color:#d97706; border:1px solid #facc15"
-        elif not rr: msg, css_cl = "💸 RATIO BAJO", "background:rgba(250,204,21,0.1); color:#d97706; border:1px solid #facc15"
-        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "background:rgba(16,185,129,0.1); color:#10b981; border:1px solid #10b981"
-        elif total >= 60 and valid: msg, css_cl = "✅ TRADE VÁLIDO", "background:rgba(16,185,129,0.1); color:#10b981; border:1px solid #10b981"
+        msg, css_cl = "💤 ESPERAR", "status-warning"
+        if not sos: msg, css_cl = "⛔ FALTA ESTRUCTURA", "status-stop"
+        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
+        elif not rr: msg, css_cl = "💸 RATIO BAJO", "status-warning"
+        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
+        elif total >= 60 and valid: msg, css_cl = "✅ TRADE VÁLIDO", "status-sniper"
 
         st.markdown(f"""
         <div class="hud-container">
@@ -405,22 +430,17 @@ def main_app():
                 <div class="hud-value">{total}%</div>
             </div>
             <div style="flex-grow:1; text-align:center; margin:0 20px;">
-                <span style="padding:10px 20px; border-radius:50px; font-weight:bold; {css_cl}">{msg}</span>
+                <span class="{css_cl}">{msg}</span>
             </div>
             <div class="hud-stat">
                 <div class="hud-label">ESTADO</div>
-                <div style="font-size:1.5rem; font-weight:bold; color:{'#10b981' if valid else '#ef4444'}">
+                <div style="font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if valid else 'var(--accent-red)'}">
                     {'LISTO' if valid else 'PENDIENTE'}
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
-        
         st.progress(min(total, 100))
-
-        if valid and total >= 60:
-            sl = "5-7 pips" if "Swing" in modo else "3-5 pips"
-            st.info(f"📝 PLAN: Stop Loss {sl} | TP: Liquidez Opuesta | Riesgo 1%")
 
     # === 2. REGISTRO ===
     with t_reg:
@@ -448,7 +468,7 @@ def main_app():
             wins = len(df[df["Resultado"]=="WIN"])
             net = df['Dinero'].sum()
             
-            k1.markdown(f"<div style='background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center; box-shadow:var(--shadow)'><div style='color:var(--text-muted); font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
+            k1.markdown(f"<div class='strategy-box' style='text-align:center'><div style='color:var(--text-muted); font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if net>=0 else 'var(--accent-red)'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
             k2.metric("WIN RATE", f"{(wins/len(df)*100):.1f}%")
             k3.metric("TRADES", len(df))
             k4.metric("SALDO FINAL", f"${act:,.2f}")
@@ -463,12 +483,10 @@ def main_app():
                 acum += r["Dinero"]
                 valores.append(acum)
 
-            # Colores gráfico
-            line_col = "#3b82f6" if is_dark else "#2563eb"
-            grid_col = "#334155" if is_dark else "#e2e8f0"
-            text_col = "#94a3b8" if is_dark else "#64748b"
-
-            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color=line_col, width=3), fill='tozeroy'))
+            grid_col = "#334155" if is_dark else "#e5e7eb"
+            text_col = "#94a3b8" if is_dark else "#000000"
+            
+            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#3b82f6', width=3), fill='tozeroy'))
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=text_col), xaxis=dict(showgrid=False), yaxis=dict(gridcolor=grid_col))
             st.plotly_chart(fig, use_container_width=True)
         else: st.info("Sin datos")
