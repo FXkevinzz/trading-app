@@ -4,17 +4,15 @@ import os
 import json
 import calendar
 from datetime import datetime
-import plotly.graph_objects as go # Usamos Plotly para gráficos pro
+import plotly.graph_objects as go
 import pytz
 
 # --- CONFIGURACIÓN DE PÁGINA ---
-st.set_page_config(page_title="Bloomberg Trading Suite", layout="wide", page_icon="📈")
+st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 
-# --- GESTIÓN DE DIRECTORIOS Y USUARIOS ---
+# --- GESTIÓN DE USUARIOS Y DATOS (BACKEND) ---
 DATA_DIR = "user_data"
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
-
+if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 
 def load_users():
@@ -30,15 +28,14 @@ def verify_user(username, password):
     users = load_users()
     return username in users and users[username] == password
 
-# --- GESTIÓN DE DATOS (POR CUENTA) ---
 def get_user_folder(username):
     folder = os.path.join(DATA_DIR, username)
     if not os.path.exists(folder): os.makedirs(folder)
     return folder
 
 def get_account_file(username, account_name):
-    clean_name = "".join(c for c in account_name if c.isalnum() or c in (' ', '_')).strip().replace(" ", "_")
-    return os.path.join(get_user_folder(username), f"{clean_name}.csv")
+    clean = "".join(c for c in account_name if c.isalnum() or c in (' ', '_')).strip().replace(" ", "_")
+    return os.path.join(get_user_folder(username), f"{clean}.csv")
 
 def get_user_accounts(username):
     folder = get_user_folder(username)
@@ -47,18 +44,17 @@ def get_user_accounts(username):
     return files
 
 def cargar_trades(username, account_name):
-    file_path = get_account_file(username, account_name)
-    if not os.path.exists(file_path):
-        return pd.DataFrame(columns=["Fecha", "Par", "Tipo", "Resultado", "Dinero", "Ratio", "Notas"])
-    return pd.read_csv(file_path)
+    path = get_account_file(username, account_name)
+    if not os.path.exists(path): return pd.DataFrame(columns=["Fecha", "Par", "Tipo", "Resultado", "Dinero", "Ratio", "Notas"])
+    return pd.read_csv(path)
 
-def guardar_trade(username, account_name, data_dict):
+def guardar_trade(username, account_name, data):
     df = cargar_trades(username, account_name)
-    new_row = pd.DataFrame([data_dict])
-    df = pd.concat([df, new_row], ignore_index=True)
+    new = pd.DataFrame([data])
+    df = pd.concat([df, new], ignore_index=True)
     df.to_csv(get_account_file(username, account_name), index=False)
 
-# --- FUNCIÓN IMÁGENES ---
+# --- FUNCIÓN IMÁGENES (RESTAURADA ORIGINAL) ---
 def mostrar_imagen(nombre_archivo, caption):
     links = {
         "bullish_engulfing.png": "https://forexbee.co/wp-content/uploads/2019/10/Bullish-Engulfing-Pattern-1.png",
@@ -67,266 +63,303 @@ def mostrar_imagen(nombre_archivo, caption):
         "bearish_engulfing.png": "https://forexbee.co/wp-content/uploads/2019/10/Bearish-Engulfing-Pattern.png",
         "shooting_star.png": "https://a.c-dn.net/b/4hQ18X/Shooting-Star-Candlestick_body_ShootingStar.png.full.png"
     }
-    if nombre_archivo in links: st.image(links[nombre_archivo], caption=caption)
-    else: st.warning(f"⚠️ Falta foto")
+    if nombre_archivo in links: 
+        st.image(links[nombre_archivo], caption=caption, use_container_width=True)
+    else: 
+        st.warning(f"⚠️ Imagen no encontrada: {nombre_archivo}")
 
-# --- ESTILOS CSS (BLOOMBERG DARK) ---
+# --- ESTILOS CSS ---
 st.markdown("""
     <style>
-    .stApp {background-color: #000000; color: #e0e0e0;}
+    .stApp {background-color: #0E1117; color: white;}
     
+    /* Contenedores */
+    div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {
+        background-color: #161B22; padding: 15px; border-radius: 8px; border: 1px solid #30363D;
+    }
     /* Inputs */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-        background-color: #1a1a1a !important; color: #00ff00 !important; border: 1px solid #333;
+        background-color: #0E1117 !important; color: white !important; border: 1px solid #444;
     }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] { gap: 10px; }
-    .stTabs [data-baseweb="tab"] { background-color: #111; border: 1px solid #333; color: #888; }
-    .stTabs [aria-selected="true"] { background-color: #00ff00 !important; color: black !important; font-weight: bold;}
-
     /* Calendario */
-    .calendar-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; background-color: #333; border: 1px solid #444;}
-    .calendar-header { background-color: #111; color: #ff9900; font-weight: bold; text-align: center; padding: 5px; }
-    .calendar-day { min-height: 80px; background-color: #000; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; }
-    .day-number { color: #555; font-size: 0.9em; }
-    .day-profit { text-align: right; font-weight: bold; font-size: 1.1em; }
+    .calendar-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; background: #222; border: 1px solid #444; }
+    .calendar-header { background: #111; color: #ff9900; text-align: center; padding: 5px; font-weight: bold; }
+    .calendar-day { min-height: 80px; background: #000; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; }
+    .day-num { color: #666; font-size: 0.8em; }
+    .day-val { text-align: right; font-weight: bold; }
     
-    /* Operativa Box */
-    .op-box { background-color: #111; padding: 15px; border-left: 3px solid #ff9900; margin-bottom: 10px; }
+    /* Alertas */
+    .plan-box {border-left: 5px solid #4CAF50; padding: 15px; background-color: rgba(76, 175, 80, 0.1); border-radius: 5px; margin-top: 10px;}
     </style>
     """, unsafe_allow_html=True)
 
 # --- CALENDARIO HTML ---
-def render_calendar_html(year, month, df_trades):
-    if not df_trades.empty:
-        df_trades['Fecha'] = pd.to_datetime(df_trades['Fecha'])
-        df_month = df_trades[(df_trades['Fecha'].dt.year == year) & (df_trades['Fecha'].dt.month == month)]
-        daily_pnl = df_month.groupby(df_trades['Fecha'].dt.day)['Dinero'].sum().to_dict()
-    else: daily_pnl = {}
+def render_calendar(year, month, df):
+    if not df.empty:
+        df['Fecha'] = pd.to_datetime(df['Fecha'])
+        df_m = df[(df['Fecha'].dt.year == year) & (df['Fecha'].dt.month == month)]
+        data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
+    else: data = {}
 
     cal = calendar.Calendar(firstweekday=0)
     month_days = cal.monthdayscalendar(year, month)
-    days = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
     
     html = '<div class="calendar-container">'
-    for d in days: html += f'<div class="calendar-header">{d}</div>'
+    for d in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: html += f'<div class="calendar-header">{d}</div>'
     
     for week in month_days:
         for day in week:
-            if day == 0: html += '<div class="calendar-day" style="background:#0a0a0a;"></div>'
+            if day == 0: html += '<div class="calendar-day" style="background:#111;"></div>'
             else:
-                pnl = daily_pnl.get(day, 0)
-                color = "#00ff00" if pnl > 0 else "#ff3333" if pnl < 0 else "#444"
-                pnl_txt = f"${pnl:,.0f}" if pnl != 0 else "-"
-                html += f'<div class="calendar-day"><div class="day-number">{day}</div><div class="day-profit" style="color:{color}">{pnl_txt}</div></div>'
+                val = data.get(day, 0)
+                color = "#00ff00" if val > 0 else "#ff4444" if val < 0 else "#555"
+                txt = f"${val:,.0f}" if val != 0 else "-"
+                html += f'<div class="calendar-day"><div class="day-num">{day}</div><div class="day-val" style="color:{color}">{txt}</div></div>'
     html += '</div>'
     return html
 
-# --- GRÁFICOS PLOTLY ---
-def plot_equity_curve(df):
-    if df.empty: return None
+# --- GRÁFICOS ---
+def plot_charts(df):
+    if df.empty: return
     df = df.sort_values("Fecha")
-    df['Acumulado'] = df['Dinero'].cumsum()
+    df['Equity'] = df['Dinero'].cumsum()
     
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['Fecha'], y=df['Acumulado'], mode='lines+markers', 
-                             line=dict(color='#00ff00', width=2), marker=dict(size=6), name='Balance'))
-    fig.update_layout(
-        title="Curva de Crecimiento (Equity)",
-        paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#e0e0e0'), xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#333')
-    )
-    return fig
+    fig.add_trace(go.Scatter(x=df['Fecha'], y=df['Equity'], mode='lines+markers', line=dict(color='#00ff00')))
+    fig.update_layout(title="Equity Curve", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
+    st.plotly_chart(fig, use_container_width=True)
 
-# --- LOGIN ---
-def login_screen():
-    col1, col2, col3 = st.columns([1,1,1])
-    with col2:
-        st.title("🔒 Terminal Access")
-        tab1, tab2 = st.tabs(["LOGIN", "REGISTER"])
-        with tab1:
-            u = st.text_input("Usuario", key="l_u")
-            p = st.text_input("Password", type="password", key="l_p")
-            if st.button("INGRESAR", type="primary"):
-                if verify_user(u, p):
-                    st.session_state.user = u
-                    st.rerun()
-                else: st.error("Acceso Denegado")
-        with tab2:
-            nu = st.text_input("Nuevo Usuario", key="r_u")
-            np = st.text_input("Nueva Password", type="password", key="r_p")
-            if st.button("CREAR CUENTA"):
-                if nu and np: save_user(nu, np); st.success("Creado OK")
+# --- PANTALLAS ---
+def login():
+    c1,c2,c3 = st.columns([1,1,1])
+    with c2:
+        st.title("🔒 Trading Access")
+        t1, t2 = st.tabs(["LOGIN", "REGISTRO"])
+        with t1:
+            u = st.text_input("Usuario")
+            p = st.text_input("Pass", type="password")
+            if st.button("Entrar"):
+                if verify_user(u, p): st.session_state.user = u; st.rerun()
+                else: st.error("Error")
+        with t2:
+            nu = st.text_input("Nuevo User")
+            np = st.text_input("Nueva Pass", type="password")
+            if st.button("Crear"):
+                if nu and np: save_user(nu, np); st.success("Creado!")
 
-# --- APP ---
-def main_app():
+def app():
     user = st.session_state.user
-    
-    # SIDEBAR
     with st.sidebar:
-        st.title(f"👤 TRADER: {user.upper()}")
-        if st.button("LOGOUT"):
-            st.session_state.user = None
-            st.rerun()
+        st.title(f"👤 {user}")
+        if st.button("Salir"): st.session_state.user = None; st.rerun()
+        st.divider()
+        accs = get_user_accounts(user)
+        sel_acc = st.selectbox("Cuenta", accs)
+        with st.expander("Nueva Cuenta"):
+            n_acc = st.text_input("Nombre")
+            if st.button("Crear") and n_acc: guardar_trade(user, n_acc, {"Fecha":datetime.now(),"Dinero":0}); st.rerun()
         
-        st.markdown("---")
-        st.caption("CUENTAS ACTIVAS")
-        accounts = get_user_accounts(user)
+        st.divider()
+        # SELECTOR DE MODO ORIGINAL
+        modo = st.radio("Modo Operativa", ["Swing / Day (W-D-4H)", "Scalping (4H-2H-1H)"])
         
-        # Nueva cuenta
-        with st.expander("➕ Agregar Cuenta"):
-            new_acc = st.text_input("Nombre (ej: Prop 100k)")
-            if st.button("Crear") and new_acc:
-                guardar_trade(user, new_acc, {"Fecha": datetime.now(), "Dinero": 0})
-                st.rerun()
-                
-        selected_account = st.selectbox("Seleccionar Cuenta", accounts)
-        
-        # Estado mercado
         tz = pytz.timezone('America/Guayaquil')
-        hora = datetime.now(tz).hour
-        estado = "🔴 CERRADO" if 15 <= hora < 19 else "🟢 ABIERTO (Active Session)"
-        st.markdown(f"**MARKET STATUS:** {estado}")
+        h = datetime.now(tz).hour
+        st.markdown(f"**Mercado:** {'❌ CERRADO' if 15<=h<19 else '✅ ABIERTO'}")
 
-    # TABS
-    tab_op, tab_cal, tab_stats, tab_reg = st.tabs(["🦁 OPERATIVA", "📅 CALENDARIO", "📊 ANALYTICS", "📝 REGISTRO"])
+    t1, t2, t3, t4 = st.tabs(["🦁 OPERATIVA", "📅 CALENDARIO", "📊 DASHBOARD", "📝 REGISTRO"])
 
-    # 1. OPERATIVA (CHECKLIST COMPLETO)
-    with tab_op:
-        c1, c2 = st.columns([1, 2])
-        with c1:
-            modo = st.radio("MODO", ["SWING (W-D-4H)", "SCALPING (4H-2H-1H)"])
-            st.image("https://forexbee.co/wp-content/uploads/2019/10/Bullish-Engulfing-Pattern-1.png", caption="Bullish Engulfing")
-        
-        with c2:
-            st.markdown('<div class="op-box">', unsafe_allow_html=True)
+    # === TAB 1: OPERATIVA (LÓGICA ORIGINAL RESTAURADA) ===
+    with t1:
+        c_guia, c_check, c_res = st.columns([1, 2, 1.2], gap="medium")
+
+        # 1. IMÁGENES (RESTAURADO)
+        with c_guia:
+            st.header("📖 Chuleta")
+            with st.expander("🐂 Alcistas", expanded=True):
+                st.markdown("### Bullish Engulfing"); mostrar_imagen("bullish_engulfing.png", "Verde envuelve roja")
+                st.markdown("### Morning Star"); mostrar_imagen("morning_star.png", "Giro 3 velas")
+                st.markdown("### Hammer"); mostrar_imagen("hammer.png", "Rechazo abajo")
+            with st.expander("🐻 Bajistas"):
+                st.markdown("### Bearish Engulfing"); mostrar_imagen("bearish_engulfing.png", "Roja envuelve verde")
+                st.markdown("### Shooting Star"); mostrar_imagen("shooting_star.png", "Rechazo arriba")
+
+        # 2. CHECKLIST DETALLADO (RESTAURADO)
+        with c_check:
             if "Swing" in modo:
-                st.subheader("🛠️ SWING SETUP")
-                col_a, col_b, col_c = st.columns(3)
-                tw = col_a.selectbox("Weekly", ["UP", "DOWN"])
-                td = col_b.selectbox("Daily", ["UP", "DOWN"])
-                t4 = col_c.selectbox("H4", ["UP", "DOWN"])
+                st.subheader("🔗 Tendencias (W / D / 4H)")
+                c1, c2, c3 = st.columns(3)
+                tw = c1.selectbox("Semanal", ["Alcista", "Bajista"], key="tw")
+                td = c2.selectbox("Diario", ["Alcista", "Bajista"], key="td")
+                t4 = c3.selectbox("4 Horas", ["Alcista", "Bajista"], key="t4")
                 
-                if tw==td==t4: st.success("💎 TRIPLE CONFLUENCIA DETECTADA")
-                elif tw==td: st.info("✅ SWING ALINEADO")
-                else: st.warning("⚠️ TENDENCIA MIXTA - RIESGO ALTO")
+                if tw == td == t4: st.success("💎 TRIPLE SYNC")
+                elif tw == td: st.info("✅ SWING SYNC")
+                elif td == t4: st.info("✅ DAY SYNC")
+                else: st.warning("⚠️ MIXTO")
                 
-                st.markdown("---")
-                score = 0
-                st.write("**CONFIRMACIONES:**")
-                if st.checkbox("Precio en Zona de Valor (AOI)"): score += 20
-                if st.checkbox("Rechazo de Estructura / EMA 50"): score += 20
-                if st.checkbox("Patrón de Vela (H4/Daily)"): score += 20
+                st.divider()
+                # Puntuaciones SWING
+                c_a, c_b = st.columns(2)
+                with c_a:
+                    st.caption("1. Semanal (W)")
+                    w_sc = sum([
+                        st.checkbox("En/Rechazo AOI (+10%)", key="w1")*10,
+                        st.checkbox("Rechazo Estruc. Previa (+10%)", key="w2")*10,
+                        st.checkbox("Patrones (+10%)", key="w3")*10,
+                        st.checkbox("Rechazo EMA 50 (+5%)", key="w4")*5,
+                        st.checkbox("Nivel Psicológico (+5%)", key="w5")*5
+                    ])
+                with c_b:
+                    st.caption("2. Diario (D)")
+                    d_sc = sum([
+                        st.checkbox("En/Rechazo AOI (+10%)", key="d1")*10,
+                        st.checkbox("Rechazo Estruc. Previa (+10%)", key="d2")*10,
+                        st.checkbox("Rechazo Vela (+10%)", key="d3")*10,
+                        st.checkbox("Patrones (+10%)", key="d4")*10,
+                        st.checkbox("Rechazo EMA 50 (+5%)", key="d5")*5
+                    ])
+                st.divider()
+                c_c, c_d = st.columns(2)
+                with c_c:
+                    st.caption("3. Ejecución (4H)")
+                    h4_sc = sum([
+                        st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
+                        st.checkbox("Patrones (+10%)", key="h2")*10,
+                        st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5,
+                        st.checkbox("Rechazo Estructura (+5%)", key="h4")*5,
+                        st.checkbox("Rechazo EMA 50 (+5%)", key="h5")*5
+                    ])
+                with c_d:
+                    st.caption("4. GATILLO (Obligatorio)")
+                    entry_sos = st.checkbox("⚡ Shift of Structure", key="e1")
+                    entry_eng = st.checkbox("🕯️ Vela Envolvente", key="e2")
+                    entry_rr = st.checkbox("💰 Ratio 1:2.5", key="e3")
+                    entry_score = sum([entry_sos*10, entry_eng*10])
                 
-                st.write("**GATILLO (OBLIGATORIO):**")
-                entry = st.checkbox("⚡ Shift of Structure + Vela Envolvente")
-                ratio = st.checkbox("💰 Ratio Riesgo/Beneficio > 1:2.5")
-                
-                if entry and ratio: score += 40
-            
-            else: # Scalping
-                st.subheader("⚡ SCALP SETUP")
-                col_a, col_b, col_c = st.columns(3)
-                t4 = col_a.selectbox("H4", ["UP", "DOWN"])
-                t2 = col_b.selectbox("H2", ["UP", "DOWN"])
-                t1 = col_c.selectbox("H1", ["UP", "DOWN"])
-                
-                if t4==t2==t1: st.success("💎 TRIPLE CONFLUENCIA")
-                else: st.warning("⚠️ CUIDADO: TENDENCIA MIXTA")
-                
-                score = 0
-                if st.checkbox("Rechazo AOI (H1/H2)"): score += 25
-                if st.checkbox("Patrón Vela (H1)"): score += 25
-                entry = st.checkbox("⚡ Quiebre Estructura M15")
-                ratio = st.checkbox("💰 Ratio > 1:2.5")
-                if entry and ratio: score += 50
+                total = w_sc + d_sc + h4_sc + entry_score
 
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            # Resultado Score
-            st.progress(score)
-            if score >= 80:
-                st.success("✅ EJECUTAR TRADE - ALTA PROBABILIDAD")
-            elif score >= 50:
-                st.warning("⚠️ TRADE ARRIESGADO - FALTAN CONFIRMACIONES")
             else:
-                st.error("⛔ NO OPERAR - ESPERAR MEJOR SETUP")
+                # LÓGICA SCALPING RESTAURADA
+                st.subheader("🔗 Tendencias (4H / 2H / 1H)")
+                c1, c2, c3 = st.columns(3)
+                t4 = c1.selectbox("4H", ["Alcista", "Bajista"], key="st4")
+                t2 = c2.selectbox("2H", ["Alcista", "Bajista"], key="st2")
+                t1 = c3.selectbox("1H", ["Alcista", "Bajista"], key="st1")
+                
+                if t4 == t2 == t1: st.success("💎 TRIPLE SYNC")
+                elif t4 == t2: st.info("✅ 4H-2H SYNC")
+                elif t2 == t1: st.info("✅ 2H-1H SYNC")
+                else: st.warning("⚠️ MIXTO")
 
-    # 2. CALENDARIO
-    with tab_cal:
-        st.subheader(f"📅 P&L CALENDAR: {selected_account}")
-        df = cargar_trades(user, selected_account)
-        df = df[df["Dinero"] != 0] # Solo trades con dinero
-        
-        c_y, c_m = st.columns([1, 4])
-        year = c_y.number_input("Año", value=datetime.now().year)
-        mes_idx = datetime.now().month
-        month_names = list(calendar.month_name)[1:]
-        mes_sel = c_m.selectbox("Mes", month_names, index=mes_idx-1)
-        month = month_names.index(mes_sel) + 1
-        
-        st.markdown(render_calendar_html(year, month, df), unsafe_allow_html=True)
+                st.divider()
+                c_a, c_b = st.columns(2)
+                with c_a:
+                    st.caption("1. Contexto 4H")
+                    w_sc = sum([
+                        st.checkbox("En/Rechazo AOI (+5%)", key="sc1")*5,
+                        st.checkbox("Rechazo Estruc. (+5%)", key="sc2")*5,
+                        st.checkbox("Patrones (+5%)", key="sc3")*5,
+                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc4")*5,
+                        st.checkbox("Psicológico (+5%)", key="sc5")*5
+                    ])
+                with c_b:
+                    st.caption("2. Contexto 2H")
+                    d_sc = sum([
+                        st.checkbox("En/Rechazo AOI (+5%)", key="sc6")*5,
+                        st.checkbox("Rechazo Estruc. (+5%)", key="sc7")*5,
+                        st.checkbox("Rechazo Vela (+5%)", key="sc8")*5,
+                        st.checkbox("Patrones (+5%)", key="sc9")*5,
+                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc10")*5
+                    ])
+                st.divider()
+                c_c, c_d = st.columns(2)
+                with c_c:
+                    st.caption("3. Ejecución (1H)")
+                    h4_sc = sum([
+                        st.checkbox("Rechazo Vela (+5%)", key="sc11")*5,
+                        st.checkbox("Patrones (+5%)", key="sc12")*5,
+                        st.checkbox("Rechazo Estruc. (+5%)", key="sc13")*5,
+                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc14")*5
+                    ])
+                with c_d:
+                    st.caption("4. GATILLO (M15/M30)")
+                    entry_sos = st.checkbox("⚡ SOS", key="se1")
+                    entry_eng = st.checkbox("🕯️ Vela Entrada", key="se2")
+                    entry_rr = st.checkbox("💰 Ratio 1:2.5", key="se3")
+                    entry_score = sum([entry_sos*10, entry_eng*10])
+                
+                total = w_sc + d_sc + h4_sc + entry_score + 10
 
-    # 3. ANALYTICS (PLOTLY)
-    with tab_stats:
-        st.subheader(f"📊 PERFORMANCE: {selected_account}")
-        df = cargar_trades(user, selected_account)
-        df = df[df["Resultado"].notna()]
-        
-        if not df.empty:
-            kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-            net_pl = df["Dinero"].sum()
-            wins = len(df[df["Dinero"] > 0])
-            total = len(df)
-            wr = (wins/total*100) if total > 0 else 0
+        # 3. RESULTADOS (RESTAURADO)
+        with c_res:
+            is_valid = entry_sos and entry_eng and entry_rr
             
-            kpi1.metric("Net P&L", f"${net_pl:,.2f}", delta_color="normal")
-            kpi2.metric("Win Rate", f"{wr:.1f}%")
-            kpi3.metric("Trades", total)
-            kpi4.metric("Avg Trade", f"${df['Dinero'].mean():.2f}")
+            def get_advice():
+                if not entry_sos: return "⛔ STOP: Falta Estructura"
+                if not entry_eng: return "⚠️ CUIDADO: Falta Vela"
+                if not entry_rr: return "💸 RIESGO: Mal Ratio"
+                if total >= 90: return "💎 SNIPER: Ejecuta"
+                return "💤 ESPERA"
             
-            # GRAFICOS PLOTLY
-            col_chart1, col_chart2 = st.columns([2, 1])
-            with col_chart1:
-                fig_eq = plot_equity_curve(df)
-                if fig_eq: st.plotly_chart(fig_eq, use_container_width=True)
+            msg = get_advice()
+            st.header("🤖 Análisis")
+            if "STOP" in msg: st.error(msg)
+            elif "CUIDADO" in msg: st.warning(msg)
+            elif "SNIPER" in msg: st.success(msg)
+            else: st.info(msg)
             
-            with col_chart2:
-                # Pie Chart Win/Loss
-                counts = df['Resultado'].value_counts()
-                fig_pie = go.Figure(data=[go.Pie(labels=counts.index, values=counts.values, hole=.5)])
-                fig_pie.update_layout(title="Win vs Loss", paper_bgcolor='rgba(0,0,0,0)', font=dict(color='#e0e0e0'))
-                st.plotly_chart(fig_pie, use_container_width=True)
-        else:
-            st.info("Registra trades para ver las gráficas.")
+            st.divider()
+            st.metric("Probabilidad", f"{min(total, 100)}%")
+            st.progress(min(total, 100))
+            
+            if is_valid and total >= 60:
+                st.success("### ✅ EJECUTAR")
+                plan = "<b>Swing:</b> SL 5-7 pips<br><b>Scalp:</b> SL 3-5 pips"
+                st.markdown(f'<div class="plan-box">{plan}</div>', unsafe_allow_html=True)
+            else:
+                st.error("### ❌ NO OPERAR")
 
-    # 4. REGISTRO
-    with tab_reg:
-        st.subheader("📝 Nuevo Registro de Trade")
-        with st.form("add_trade"):
-            col_a, col_b = st.columns(2)
-            fecha = col_a.date_input("Fecha", datetime.now())
-            par = col_a.text_input("Par (ej: BTCUSD)", "EURUSD").upper()
-            tipo = col_a.selectbox("Tipo", ["BUY", "SELL"])
-            
-            res = col_b.selectbox("Resultado", ["WIN", "LOSS", "BE"])
-            dinero = col_b.number_input("Profit/Loss ($)", step=10.0, help="Usa negativo para pérdidas (-50)")
-            ratio = col_b.number_input("Ratio Obtenido", value=2.5)
-            
-            nota = st.text_area("Notas / Emociones")
-            
-            if st.form_submit_button("💾 GUARDAR TRADE"):
-                guardar_trade(user, selected_account, {
-                    "Fecha": fecha, "Par": par, "Tipo": tipo,
-                    "Resultado": res, "Dinero": dinero, "Ratio": ratio, "Notas": nota
-                })
-                st.success("Trade guardado exitosamente.")
+    # === TAB 2: CALENDARIO ===
+    with t2:
+        st.subheader(f"📅 Calendario: {sel_acc}")
+        df = cargar_trades(user, sel_acc)
+        df_real = df[df['Dinero'] != 0]
+        y = st.number_input("Año", value=2025)
+        m = st.slider("Mes", 1, 12, datetime.now().month)
+        st.markdown(render_calendar(y, m, df_real), unsafe_allow_html=True)
 
-# --- LANZADOR ---
+    # === TAB 3: DASHBOARD ===
+    with t3:
+        st.subheader(f"📊 Métricas: {sel_acc}")
+        df = cargar_trades(user, sel_acc)
+        df_res = df[df['Resultado'].notna()]
+        if not df_res.empty:
+            k1,k2,k3 = st.columns(3)
+            net = df_res['Dinero'].sum()
+            wins = len(df_res[df_res['Dinero']>0])
+            k1.metric("Neto", f"${net:,.2f}")
+            k2.metric("Wins", wins)
+            k3.metric("Total Trades", len(df_res))
+            plot_charts(df_res)
+        else: st.info("Sin datos")
+
+    # === TAB 4: REGISTRO ===
+    with t4:
+        st.subheader("📝 Registrar")
+        with st.form("reg"):
+            c1,c2 = st.columns(2)
+            dt = c1.date_input("Fecha", datetime.now())
+            pr = c1.text_input("Par", "XAUUSD")
+            tp = c1.selectbox("Tipo", ["BUY", "SELL"])
+            rs = c2.selectbox("Resultado", ["WIN", "LOSS", "BE"])
+            mn = c2.number_input("Dinero ($)", step=10.0)
+            rt = c2.number_input("Ratio", value=2.5)
+            nt = st.text_area("Notas")
+            if st.form_submit_button("Guardar"):
+                guardar_trade(user, sel_acc, {"Fecha":dt, "Par":pr, "Tipo":tp, "Resultado":rs, "Dinero":mn, "Ratio":rt, "Notas":nt})
+                st.success("Guardado")
+
 if 'user' not in st.session_state: st.session_state.user = None
-
-if st.session_state.user:
-    main_app()
-else:
-    login_screen()
+if st.session_state.user: app()
+else: login()
