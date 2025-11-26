@@ -11,7 +11,7 @@ from PIL import Image
 import google.generativeai as genai
 
 # ==========================================
-# 1. CONFIGURACIÓN INICIAL
+# 1. CONFIGURACIÓN DEL SISTEMA
 # ==========================================
 st.set_page_config(
     page_title="Trading Pro Suite AI", 
@@ -25,30 +25,29 @@ st.set_page_config(
 # ==========================================
 DATA_DIR = "user_data"
 IMG_DIR = "fotos"
-BRAIN_FILE = os.path.join(DATA_DIR, "brain_data.json") # Base de datos de la IA
+BRAIN_FILE = os.path.join(DATA_DIR, "brain_data.json")
+USERS_FILE = os.path.join(DATA_DIR, "users.json")
+ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# Crear carpetas si no existen
+# Crear estructura si no existe
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
 if not os.path.exists(IMG_DIR):
-    os.makedirs(IMG_DIR) # Asegúrate de poner tus fotos aquí
-
-USERS_FILE = os.path.join(DATA_DIR, "users.json")
-ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
+    os.makedirs(IMG_DIR)
 
 # ==========================================
-# 3. INTELIGENCIA ARTIFICIAL (CEREBRO)
+# 3. INTELIGENCIA ARTIFICIAL (CEREBRO & VISIÓN)
 # ==========================================
 def init_ai():
-    """Inicializa la conexión con Google Gemini."""
+    """Inicializa la conexión con Gemini."""
     if "GEMINI_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_KEY"])
         return True
     return False
 
 def load_brain():
-    """Carga el historial de aprendizaje de la IA."""
+    """Carga la memoria de trades pasados."""
     if not os.path.exists(BRAIN_FILE):
         return []
     try:
@@ -57,120 +56,106 @@ def load_brain():
     except:
         return []
 
-def save_to_brain(pair, timeframe, result, mode, analysis_text, notes):
-    """
-    Guarda el trade en la memoria de la IA para futuro aprendizaje.
-    Guarda WIN, LOSS y BE para evitar sesgos.
-    """
+def save_to_brain(analysis_text, pair, result, mode):
+    """Guarda el análisis en la base de datos de conocimiento (RAG)."""
     memory = load_brain()
-    new_memory = {
-        "timestamp": str(datetime.now()),
+    new_mem = {
+        "date": str(datetime.now()),
         "pair": pair,
-        "timeframe": timeframe,
-        "strategy_mode": mode,
-        "result": result,       # WIN / LOSS / BE
-        "analysis": analysis_text,
-        "user_notes": notes
+        "mode": mode,
+        "result": result,
+        "analysis": analysis_text
     }
-    memory.append(new_memory)
+    memory.append(new_mem)
     try:
         with open(BRAIN_FILE, "w") as f:
             json.dump(memory, f, indent=4)
     except Exception as e:
-        st.error(f"Error guardando en cerebro: {e}")
+        st.error(f"Error guardando memoria: {e}")
 
 def generate_performance_audit(df):
-    """Genera una auditoría de riesgo basada en el CSV de trades."""
+    """Auditor de Riesgo IA: Analiza el CSV completo."""
     if df.empty:
-        return "No hay suficientes datos registrados para realizar una auditoría."
+        return "No hay suficientes datos para auditar."
     
-    # Preparamos los datos para que la IA los lea
     data_str = df.to_string(index=False)
     
     prompt = f"""
     Actúa como un Auditor de Riesgo Senior de un Fondo de Inversión (Prop Firm).
-    Tu objetivo es analizar los datos crudos de este trader y encontrar patrones.
-
-    DATOS DEL TRADER (CSV):
+    Analiza los datos crudos de este trader:
     {data_str}
-
-    TU MISIÓN - DETECTA Y RESPONDE:
-    1. 🚨 FUGA DE CAPITAL: ¿Dónde está perdiendo más dinero? (Analiza Pares, Horas o Días si están disponibles, o Patrones de Loss).
-    2. ✅ ZONA DE PODER: ¿En qué activo o dirección (Buy/Sell) es más rentable?
-    3. 🧠 PSICOLOGÍA: ¿Ves patrones de sobre-operativa o ratios negativos?
+    
+    TU MISIÓN ES DETECTAR PATRONES OCULTOS:
+    1. 🚨 FUGA DE CAPITAL: ¿Dónde pierde más dinero? (Analiza Pares, Horas, Días o Tipos de Entrada).
+    2. ✅ ZONA DE PODER: ¿Dónde es más rentable? (Ratio promedio, Tasa de acierto).
+    3. 🧠 PSICOLOGÍA: ¿Ves patrones de venganza (muchos trades seguidos) o falta de respeto al plan?
     4. 💡 CONSEJO ACCIONABLE: Una instrucción directa para mejorar la rentabilidad esta semana.
     """
     
-    # Intentamos modelos en orden de capacidad/velocidad
     modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
-    
     for m in modelos:
         try:
             model = genai.GenerativeModel(m)
-            response = model.generate_content(prompt)
-            return response.text
-        except:
-            continue
+            return model.generate_content(prompt).text
+        except: continue
             
-    return "Error: No se pudo conectar con el Auditor IA. Verifica tu conexión o API Key."
+    return "Error: No se pudo conectar con el Auditor IA."
 
-def analyze_chart(image, mode, pair, tf):
-    """Analiza un gráfico subido usando Visión Computacional + Estrategia Set & Forget."""
-    
-    # 1. Recuperar contexto (RAG)
+def analyze_multiframe(images_data, mode, pair):
+    """Analiza 3 imágenes simultáneas para verificar Sincronización."""
     brain = load_brain()
     context = ""
     if brain:
-        # Filtramos solo los WINS para usarlos como ejemplos de "lo que buscamos"
-        wins = [entry for entry in brain if entry.get('result') == 'WIN']
-        # Tomamos los últimos 3 ejemplos
-        examples = wins[-3:] if len(wins) >= 3 else wins
-        if examples:
-            context = f"REFERENCIA: Aquí tienes ejemplos de tus mejores trades pasados:\n{str(examples)}\n\n"
+        # RAG: Usar solo trades ganadores como referencia
+        wins = [x for x in brain if x.get('result') == 'WIN']
+        examples = wins[-2:] if len(wins) >= 2 else wins
+        context = f"REFERENCIA (TUS MEJORES TRADES PREVIOS):\n{str(examples)}\n\n"
     
-    # 2. Prompt del Sistema (Basado estrictamente en tu PDF)
+    img_desc = ""
+    for i, data in enumerate(images_data):
+        img_desc += f"IMAGEN {i+1}: Temporalidad {data['tf']}.\n"
+
     prompt = f"""
-    Eres un Mentor de Trading Institucional experto en la estrategia 'Set & Forget' (Alex G).
-    Tu trabajo es validar si el gráfico cumple las reglas estrictas del PDF.
+    Eres un Mentor de Trading Institucional experto en la estrategia 'Set & Forget'.
+    Analiza estas {len(images_data)} imágenes del activo {pair} en conjunto.
     
-    ESTRATEGIA ACTIVA: {mode}
-    ACTIVO: {pair} | TEMPORALIDAD: {tf}
-    
+    ESTRATEGIA: {mode}
     {context}
     
-    ANALIZA LA IMAGEN BUSCANDO ESTAS REGLAS DE ORO:
-    1. TENDENCIA Y SINCRONIZACIÓN: ¿Hay alineación entre temporalidades (Ej: W y D alcistas)?
-    2. ZONA (AOI): ¿El precio está reaccionando en una zona de Oferta/Demanda válida o rebotando en la EMA?
-    3. GATILLO (VELAS): ¿Ves una Vela Envolvente (Engulfing), Morning/Evening Star o Pinbar clara?
+    ESTRUCTURA DE IMÁGENES SUMINISTRADAS:
+    {img_desc}
     
-    IMPORTANTE: Si no hay 'Shift of Structure' o 'Patrón de Vela', el trade es inválido.
+    TU MISIÓN ES VALIDAR LA "SINCRONIZACIÓN" (TRIPLE SYNC):
+    1. ¿La tendencia Macro (Img 1) apoya a la Intermedia (Img 2)?
+    2. ¿El precio está reaccionando en una Zona AOI válida en la temporalidad mayor?
+    3. ¿La imagen de Gatillo (Img 3) muestra un patrón de entrada claro (SOS + Vela Envolvente)?
     
-    Responde con este formato exacto:
-    🎯 VEREDICTO: [APROBADO / DUDOSO / DENEGADO]
-    📊 PROBABILIDAD: 0-100% (Basado en la calidad del setup)
-    📝 ANÁLISIS TÉCNICO: (Explica Estructura, AOI y Patrón detectado)
-    💡 CONSEJO: (Gestión de riesgo: SL 5-7 pips y TP en liquidez)
+    Responde con este formato:
+    🎯 SINCRONÍA: [PERFECTA / DUDOSA / DESALINEADA]
+    📊 PROBABILIDAD: 0-100%
+    📝 ANÁLISIS TÉCNICO: (Explica la relación entre las 3 temporalidades)
+    💡 CONSEJO DE EJECUCIÓN: (SL/TP sugeridos)
     """
     
-    # 3. Ejecución con Cascada de Modelos
+    content = [prompt]
+    for data in images_data:
+        content.append(data['img'])
+
     modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
-    
     for m in modelos:
         try:
             model = genai.GenerativeModel(m)
-            response = model.generate_content([prompt, image])
-            return response.text
-        except:
-            continue
+            return model.generate_content(content).text
+        except: continue
             
     return "Error de conexión IA. Verifica tu API Key."
 
 # ==========================================
-# 4. SISTEMA DE TEMAS Y CSS (ESTILOS)
+# 4. SISTEMA DE TEMAS Y CSS (EXTENDIDO)
 # ==========================================
 def inject_theme(theme_mode):
     if theme_mode == "Claro (Swiss Design)":
-        # --- MODO CLARO ---
+        # --- MODO CLARO (Texto Oscuro / Fondo Claro) ---
         css_vars = """
             --bg-app: #f8fafc;
             --bg-card: #ffffff;
@@ -216,7 +201,7 @@ def inject_theme(theme_mode):
         font-family: 'Inter', sans-serif;
     }}
 
-    /* FONDO Y TEXTOS */
+    /* --- ESTRUCTURA GENERAL --- */
     .stApp {{
         background-color: var(--bg-app);
         color: var(--text-main);
@@ -230,19 +215,19 @@ def inject_theme(theme_mode):
         color: var(--text-main) !important;
     }}
     
-    /* SIDEBAR (SIEMPRE OSCURA PARA CONTRASTE) */
+    /* --- SIDEBAR --- */
     [data-testid="stSidebar"] {{
         background-color: var(--bg-sidebar) !important;
         border-right: 1px solid var(--border-color);
     }}
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
-        color: #f8fafc !important;
+        color: #f8fafc !important; /* Siempre blanco en sidebar */
     }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {{
-        color: #94a3b8 !important;
+        color: #94a3b8 !important; /* Gris claro en sidebar */
     }}
     
-    /* INPUTS (ESTILO MODERNO) */
+    /* --- INPUTS Y FORMULARIOS --- */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
         color: var(--text-main) !important;
@@ -260,12 +245,7 @@ def inject_theme(theme_mode):
         fill: var(--text-muted) !important;
     }}
     
-    /* CHECKBOXES */
-    .stCheckbox label p {{
-        font-weight: 500;
-    }}
-    
-    /* MENUS DESPLEGABLES */
+    /* --- MENUS DESPLEGABLES --- */
     ul[data-baseweb="menu"] {{
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border-color);
@@ -274,14 +254,13 @@ def inject_theme(theme_mode):
         color: var(--text-main) !important;
     }}
     
-    /* BOTONES (GRADIENTE SUTIL) */
+    /* --- BOTONES --- */
     .stButton button {{
         background: var(--accent) !important;
         color: var(--button-text) !important;
         border: none !important;
         border-radius: 8px;
         font-weight: 600;
-        letter-spacing: 0.5px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
         transition: transform 0.1s, opacity 0.2s;
     }}
@@ -293,7 +272,7 @@ def inject_theme(theme_mode):
         transform: translateY(1px);
     }}
     
-    /* TABS (CÁPSULA FLOTANTE) */
+    /* --- TABS (PESTAÑAS) --- */
     .stTabs [data-baseweb="tab-list"] {{
         gap: 8px;
         padding-bottom: 15px;
@@ -307,16 +286,16 @@ def inject_theme(theme_mode):
         height: 45px;
         box-shadow: var(--shadow);
         font-weight: 600;
+        transition: all 0.3s;
     }}
     .stTabs [data-baseweb="tab"][aria-selected="true"] {{
         background-color: var(--accent) !important;
         color: white !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
-    /* TARJETAS CONTENEDORAS */
+    /* --- TARJETAS Y CONTENEDORES --- */
     .strategy-box {{
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -335,21 +314,7 @@ def inject_theme(theme_mode):
         padding-bottom: 8px;
     }}
     
-    /* EXPANDER (ACORDEON) */
-    .streamlit-expanderHeader {{
-        background-color: var(--bg-card) !important;
-        border-radius: 8px !important;
-        color: var(--text-main) !important;
-        border: 1px solid var(--border-color);
-    }}
-    .streamlit-expanderContent {{
-        background-color: var(--bg-app) !important;
-        border: 1px solid var(--border-color);
-        border-top: none;
-        padding: 15px !important;
-    }}
-
-    /* HUD SCORE */
+    /* --- HUD SCORE (DASHBOARD SUPERIOR) --- */
     .hud-container {{
         background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%);
         border: 1px solid var(--accent);
@@ -368,7 +333,13 @@ def inject_theme(theme_mode):
         line-height: 1;
     }}
     
-    /* ESTADOS DE ALERTA */
+    /* --- CHECKBOXES --- */
+    .stCheckbox label p {{
+        color: var(--text-main) !important;
+        font-weight: 500;
+    }}
+    
+    /* --- ALERTAS / ESTADOS --- */
     .status-sniper {{
         background-color: rgba(16, 185, 129, 0.15);
         color: var(--accent-green);
@@ -394,18 +365,16 @@ def inject_theme(theme_mode):
         font-weight: bold;
     }}
     
-    /* CALENDARIO */
+    /* --- CALENDARIO --- */
     .calendar-header {{
         color: var(--text-muted) !important;
-        font-size: 0.75rem;
-        text-transform: uppercase;
     }}
     
     </style>
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 5. FUNCIONES DE BACKEND (DATOS)
+# 5. FUNCIONES BACKEND (DATOS)
 # ==========================================
 def load_json(fp):
     if not os.path.exists(fp): return {}
@@ -421,7 +390,7 @@ def save_json(fp, data):
     except: pass
 
 def verify_user(u, p):
-    # PUERTA TRASERA DE SEGURIDAD
+    # PUERTA TRASERA: ADMIN MAESTRO
     if u == "admin" and p == "1234": return True
     d = load_json(USERS_FILE)
     return u in d and d[u] == p
@@ -492,15 +461,24 @@ def load_trades(u, acc):
     return pd.DataFrame(columns=cols)
 
 # ==========================================
-# 6. FUNCIONES VISUALES AUXILIARES
+# 6. FUNCIONES VISUALES (CALENDARIO/IMAGENES)
 # ==========================================
 def mostrar_imagen(nombre, caption):
     local = os.path.join(IMG_DIR, nombre)
     if os.path.exists(local):
         st.image(local, caption=caption, use_container_width=True)
     else:
-        # Fallback para evitar errores visuales si faltan imágenes
-        st.warning(f"Imagen no encontrada: {nombre}")
+        # URLS DE RESPALDO PARA NO ROMPER LA UI SI FALTAN FOTOS
+        urls = {
+            "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
+            "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
+            "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png",
+            "shooting_star.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Candlestick_Pattern_Shooting_Star.png/320px-Candlestick_Pattern_Shooting_Star.png"
+        }
+        if nombre in urls:
+            st.image(urls[nombre], caption=caption, use_container_width=True)
+        else:
+            st.warning(f"Imagen no encontrada: {nombre}")
 
 def change_month(delta):
     d = st.session_state.get('cal_date', datetime.now())
@@ -592,7 +570,7 @@ def login_screen():
 def main_app():
     user = st.session_state.user
     
-    # Variables globales de sesión
+    # Estado Global
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
     if 'global_pair' not in st.session_state: st.session_state.global_pair = "XAUUSD"
     if 'global_mode' not in st.session_state: st.session_state.global_mode = "Swing (W-D-4H)"
@@ -613,11 +591,10 @@ def main_app():
         sel_acc = st.selectbox("📂 CUENTA ACTIVA", accs)
         ini, act, _ = get_balance_data(user, sel_acc)
         
-        col_s = "#10b981" if act >= ini else "#ef4444"
         st.markdown(f"""
         <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
             <div style="color:#94a3b8; font-size:0.8rem;">BALANCE</div>
-            <div style="color:{col_s}; font-size:1.8rem; font-weight:bold">${act:,.2f}</div>
+            <div style="color:{'#10b981' if act>=ini else '#ef4444'}; font-size:1.8rem; font-weight:bold">${act:,.2f}</div>
         </div>
         """, unsafe_allow_html=True)
         
@@ -630,35 +607,18 @@ def main_app():
 
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
-    # --- TAB 1: OPERATIVA MANUAL ---
+    # --- TAB 1: OPERATIVA ---
     with tabs[0]:
-        # Guía Visual
-        with st.expander("📘 GUÍA VISUAL PATRONES"):
-            c1, c2 = st.columns(2)
-            with c1:
-                st.info("🐂 ALCISTAS")
-                ca, cb = st.columns(2)
-                with ca: mostrar_imagen("bullish_engulfing.png", "B. Engulfing")
-                with cb: mostrar_imagen("morning_star.png", "Morning Star")
-            with c2:
-                st.info("🐻 BAJISTAS")
-                cc, cd = st.columns(2)
-                with cc: mostrar_imagen("bearish_engulfing.png", "B. Engulfing")
-                with cd: mostrar_imagen("shooting_star.png", "Shooting Star")
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        # Sincronización Global
         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
         c_mod = st.columns([1,2,1])
         with c_mod[1]: 
             st.session_state.global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
         
         st.markdown("---")
-        st.session_state.global_pair = st.text_input("ACTIVO A OPERAR (Sincronizado)", st.session_state.global_pair).upper()
+        st.session_state.global_pair = st.text_input("ACTIVO GLOBAL (Ej: XAUUSD)", st.session_state.global_pair).upper()
         st.markdown('</div><br>', unsafe_allow_html=True)
-        
-        # --- CHECKLIST DETALLADO (ESTRATEGIA PDF) ---
+
+        # --- ESTRATEGIA DETALLADA (FULL PDF) ---
         r1_c1, r1_c2 = st.columns(2)
         r2_c1, r2_c2 = st.columns(2)
         total = 0; sos, eng, rr = False, False, False
@@ -667,45 +627,49 @@ def main_app():
         def header(t): return f"<div class='strategy-header'>{t}</div>"
 
         if "Swing" in modo:
+            # W
             with r1_c1:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
                 tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
                 w_sc = sum([
-                    st.checkbox("Rechazo en AOI (+10%)", key="w1")*10,
+                    st.checkbox("En/Rechazo AOI (+10%)", key="w1")*10,
                     st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10,
-                    st.checkbox("Patrón de Vela (Rechazo) (+10%)", key="w3")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10,
                     st.checkbox("Patrón Mercado (H&S, Doble) (+10%)", key="w4")*10,
-                    st.checkbox("Rechazo EMA 50 (+5%)", key="w5")*5,
+                    st.checkbox("EMA 50 (+5%)", key="w5")*5,
                     st.checkbox("Nivel Psicológico (+5%)", key="w6")*5
                 ])
                 st.markdown('</div>', unsafe_allow_html=True)
             
+            # D
             with r1_c2:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
                 st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
                 td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
                 d_sc = sum([
-                    st.checkbox("Rechazo en AOI (+10%)", key="d1")*10,
+                    st.checkbox("En/Rechazo AOI (+10%)", key="d1")*10,
                     st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10,
-                    st.checkbox("Patrón de Vela (Rechazo) (+10%)", key="d3")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10,
                     st.checkbox("Patrón Mercado (+10%)", key="d4")*10,
-                    st.checkbox("Rechazo EMA 50 (+5%)", key="d5")*5
+                    st.checkbox("EMA 50 (+5%)", key="d5")*5
                 ])
                 st.markdown('</div>', unsafe_allow_html=True)
 
+            # 4H
             with r2_c1:
                 st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
                 st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
                 h4_sc = sum([
                     st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
-                    st.checkbox("Patrón Mercado (+10%)", key="h2")*10,
+                    st.checkbox("Patrones Mercado (+10%)", key="h2")*10,
                     st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5,
                     st.checkbox("EMA 50 (+5%)", key="h4")*5
                 ])
                 st.markdown('</div>', unsafe_allow_html=True)
             
+            # GATILLO
             with r2_c2:
                 st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
                 st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
@@ -720,74 +684,88 @@ def main_app():
                 entry_score = sum([sos*10, eng*10, pat_ent*5])
                 total = w_sc + d_sc + h4_sc + entry_score
 
-        else: # Scalping
-            # Lógica de Scalping (Simplificada para no alargar, pero funcional)
+        else: # SCALPING
             with r1_c1:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
                 t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
-                w_sc = sum([st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Estructura (+5%)", key="sc2")*5, st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5, st.checkbox("Psicológico (+5%)", key="sc5")*5])
+                w_sc = sum([
+                    st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Rechazo Estructura (+5%)", key="sc2")*5,
+                    st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5,
+                    st.checkbox("Psicológico (+5%)", key="sc5")*5
+                ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r1_c2:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
                 st.markdown(header("2. CONTEXTO (2H)"), unsafe_allow_html=True)
                 t2 = st.selectbox("Trend 2H", ["Alcista", "Bajista"], key="s2t")
-                d_sc = sum([st.checkbox("AOI (+5%)", key="s21")*5, st.checkbox("Estructura (+5%)", key="s22")*5, st.checkbox("Vela (+5%)", key="s23")*5, st.checkbox("Patrón (+5%)", key="s24")*5, st.checkbox("EMA 50 (+5%)", key="s25")*5])
+                d_sc = sum([
+                    st.checkbox("AOI (+5%)", key="s21")*5, st.checkbox("Rechazo Estructura (+5%)", key="s22")*5,
+                    st.checkbox("Vela (+5%)", key="s23")*5, st.checkbox("Patrón (+5%)", key="s24")*5,
+                    st.checkbox("EMA 50 (+5%)", key="s25")*5
+                ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c1:
                 st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
                 st.markdown(header("3. EJECUCIÓN (1H)"), unsafe_allow_html=True)
                 t1 = st.selectbox("Trend 1H", ["Alcista", "Bajista"], key="s1t")
-                h4_sc = sum([st.checkbox("Vela (+5%)", key="s31")*5, st.checkbox("Patrón (+5%)", key="s32")*5, st.checkbox("Estructura (+5%)", key="s33")*5, st.checkbox("EMA 50 (+5%)", key="s34")*5])
+                h4_sc = sum([
+                    st.checkbox("Vela (+5%)", key="s31")*5, st.checkbox("Patrón (+5%)", key="s32")*5,
+                    st.checkbox("Rechazo Estructura (+5%)", key="s33")*5, st.checkbox("EMA 50 (+5%)", key="s34")*5
+                ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c2:
                 st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("4. GATILLO (M15)"), unsafe_allow_html=True)
+                st.markdown(header("4. GATILLO (M15/M30)"), unsafe_allow_html=True)
                 if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
-                sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Entrada"); pat_ent = st.checkbox("Patrón (+5%)"); rr = st.checkbox("💰 Ratio")
+                sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Vela Entrada")
+                pat_ent = st.checkbox("Patrón Entrada (+5%)"); rr = st.checkbox("💰 Ratio Min 1:2.5")
                 entry_score = sum([sos*10, eng*10, pat_ent*5])
                 total = w_sc + d_sc + h4_sc + entry_score + 15
+                st.markdown('</div>', unsafe_allow_html=True)
 
-        # HUD DE PUNTUACIÓN
         st.markdown("<br>", unsafe_allow_html=True)
         valid = sos and eng and rr
-        
         msg, css_cl = "💤 ESPERAR", "status-warning"
         if not sos: msg, css_cl = "⛔ FALTA SOS", "status-stop"
-        elif not eng: msg, css_cl = "⚠️ FALTA VELA DE ENTRADA", "status-warning"
-        elif not rr: msg, css_cl = "💸 RATIO BAJO", "status-warning"
-        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY (A+)", "status-sniper"
-        elif total >= 60 and valid: msg, css_cl = "✅ TRADE VÁLIDO", "status-sniper"
+        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
+        elif total >= 90: msg, css_cl = "💎 SNIPER (A+)", "status-sniper"
+        elif total >= 60 and valid: msg, css_cl = "✅ VÁLIDO", "status-sniper"
         
-        st.markdown(f"""
-        <div class="hud-container">
-            <div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div>
-            <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div>
-            <div class="hud-stat"><div class="hud-label">ESTADO</div><div style="font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if valid else 'var(--accent-red)'}">{'LISTO' if valid else 'PENDIENTE'}</div></div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div class="hud-container"><div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div><div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div></div>""", unsafe_allow_html=True)
         st.progress(min(total, 100))
 
-    # --- TAB 2: IA VISION ---
+    # --- TAB 2: IA VISION (MULTI-FRAME) ---
     with tabs[1]:
-        st.markdown(f"<h3 style='color:var(--accent)'>🧠 Mentor IA</h3>", unsafe_allow_html=True)
+        st.markdown(f"<h3 style='color:var(--accent)'>🧠 Análisis Multi-Timeframe</h3>", unsafe_allow_html=True)
         if not init_ai():
             st.error("⚠️ API KEY NO DETECTADA.")
         else:
-            c_img, c_res = st.columns([1, 1.5])
+            c_img, c_res = st.columns([1.2, 1])
             with c_img:
-                uploaded_file = st.file_uploader("Sube tu captura", type=["jpg", "png", "jpeg"])
-                if uploaded_file:
-                    image = Image.open(uploaded_file)
-                    st.image(image, caption="Gráfico", use_container_width=True)
-                    st.markdown("---")
-                    ai_pair = st.text_input("Par", st.session_state.global_pair, disabled=True)
-                    ai_tf = st.selectbox("Temporalidad", ["M15", "H1", "H4", "Daily"])
+                st.caption(f"Analizando: **{st.session_state.global_pair}** | Modo: **{st.session_state.global_mode}**")
+                col_up1, col_up2, col_up3 = st.columns(3)
+                with col_up1: img1 = st.file_uploader("1. MACRO", type=["jpg","png"], key="u1")
+                with col_up2: img2 = st.file_uploader("2. INTERMEDIO", type=["jpg","png"], key="u2")
+                with col_up3: img3 = st.file_uploader("3. GATILLO", type=["jpg","png"], key="u3")
+                
+                # Selectores de TF
+                c_tf1, c_tf2, c_tf3 = st.columns(3)
+                with c_tf1: tf1 = st.selectbox("TF Macro", ["Weekly", "Daily"], key="tf1")
+                with c_tf2: tf2 = st.selectbox("TF Inter", ["Daily", "4H", "1H"], key="tf2")
+                with c_tf3: tf3 = st.selectbox("TF Gatillo", ["4H", "1H", "15M", "5M"], key="tf3")
+
+                if st.button("🦁 ANALIZAR SINCRONÍA CON IA", type="primary", use_container_width=True):
+                    images_data = []
+                    if img1: images_data.append({'img': Image.open(img1), 'tf': tf1})
+                    if img2: images_data.append({'img': Image.open(img2), 'tf': tf2})
+                    if img3: images_data.append({'img': Image.open(img3), 'tf': tf3})
                     
-                    if st.button("🦁 ANALIZAR CON IA", type="primary", use_container_width=True):
-                        with st.spinner("Analizando Estructura, AOI y Velas..."):
-                            res_text = analyze_chart(image, st.session_state.global_mode, ai_pair, ai_tf)
-                            st.session_state.ai_temp_result = res_text
+                    if not images_data: st.warning("Sube al menos 1 imagen.")
+                    else:
+                        with st.spinner("IA Analizando Triple Sync..."):
+                            res = analyze_multiframe(images_data, st.session_state.global_mode, st.session_state.global_pair)
+                            st.session_state.ai_temp_result = res
             
             with c_res:
                 if st.session_state.ai_temp_result:
@@ -795,38 +773,31 @@ def main_app():
                     st.markdown("### 🤖 Veredicto del Mentor")
                     st.markdown(st.session_state.ai_temp_result)
                     st.markdown('</div>', unsafe_allow_html=True)
-                    st.info("Este análisis se guardará en el cerebro automáticamente si registras el trade.")
+                    st.info("ℹ️ Si registras este trade como WIN, la IA aprenderá de este análisis.")
 
     # --- TAB 3: BITÁCORA ---
     with tabs[2]:
         c_form, c_hist = st.columns([1, 1.5])
         
         with c_form:
-            st.markdown(f"<h3 style='color:var(--accent)'>📝 Registrar Trade</h3>", unsafe_allow_html=True)
+            st.markdown(f"<h3 style='color:var(--accent)'>📝 Guardar Trade</h3>", unsafe_allow_html=True)
             st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
             with st.form("reg_trade"):
                 dt = st.date_input("Fecha", datetime.now())
                 pr = st.text_input("Par", st.session_state.global_pair)
-                tp = st.selectbox("Tipo", ["BUY","SELL"])
-                rs = st.selectbox("Resultado", ["WIN", "LOSS", "BE"])
-                mn = st.number_input("Monto PnL ($)", min_value=0.0, step=10.0, help="Pon valor positivo")
-                rt = st.number_input("Ratio", value=2.5)
+                tp = st.selectbox("Tipo", ["BUY","SELL"]); rs = st.selectbox("Resultado", ["WIN", "LOSS", "BE"])
+                mn = st.number_input("Monto PnL ($)", step=10.0); rt = st.number_input("Ratio", 2.5)
                 nt = st.text_area("Notas")
-                
-                if st.form_submit_button("GUARDAR TRADE", use_container_width=True):
-                    # Lógica de guardado
-                    real_mn = mn if rs=="WIN" else -mn if rs=="LOSS" else 0
-                    save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":real_mn,"Ratio":rt,"Notas":nt})
-                    
-                    # Guardar en Cerebro IA (Cualquier resultado)
-                    if st.session_state.ai_temp_result:
-                        save_to_brain(st.session_state.global_pair, "Auto", rs, st.session_state.global_mode, st.session_state.ai_temp_result, nt)
-                        st.toast("🧠 ¡Cerebro actualizado!", icon="🦁")
+                if st.form_submit_button("GUARDAR"):
+                    rm = mn if rs=="WIN" else -abs(mn) if rs=="LOSS" else 0
+                    save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":rm,"Ratio":rt,"Notas":nt})
+                    if rs == "WIN" and st.session_state.ai_temp_result:
+                        save_to_brain(st.session_state.ai_temp_result, pr, rs, st.session_state.global_mode)
+                        st.toast("🧠 ¡Cerebro IA actualizado!", icon="🦁")
                         st.session_state.ai_temp_result = None
-                        
-                    st.success("Guardado!"); st.rerun()
+                    st.success("Guardado"); st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
-
+        
         with c_hist:
             st.markdown(f"<h3 style='color:var(--accent)'>📜 Historial</h3>", unsafe_allow_html=True)
             df_h = load_trades(user, sel_acc)
@@ -835,36 +806,30 @@ def main_app():
                 df_h = df_h.sort_values("Fecha", ascending=False)
                 for d in df_h['Fecha'].dt.date.unique():
                     dd = df_h[df_h['Fecha'].dt.date == d]
-                    pnl = dd['Dinero'].sum()
-                    icon = "🟢" if pnl >= 0 else "🔴"
+                    pnl = dd['Dinero'].sum(); icon = "🟢" if pnl >= 0 else "🔴"
                     with st.expander(f"{icon} {d} | PnL: ${pnl:,.2f}"): st.dataframe(dd)
             else: st.info("Sin trades.")
 
     # --- TAB 4: ANALYTICS ---
     with tabs[3]:
-        st.markdown(f"<h3 style='color:var(--accent)'>📊 Rendimiento</h3>", unsafe_allow_html=True)
         _, _, df = get_balance_data(user, sel_acc)
         if not df.empty:
-            st.markdown("#### 📈 Curva de Crecimiento")
+            st.markdown("#### 📈 Equity Curve")
             df = df.sort_values("Fecha")
             fechas = [df["Fecha"].iloc[0]] if not df.empty else [datetime.now().date()]
             valores = [ini]; acum = ini
-            for _, r in df.iterrows():
-                fechas.append(r["Fecha"]); acum += r["Dinero"]; valores.append(acum)
+            for _, r in df.iterrows(): fechas.append(r["Fecha"]); acum += r["Dinero"]; valores.append(acum)
             
-            line_col = "#3b82f6" if is_dark else "#2563eb"
-            text_col = "#94a3b8" if is_dark else "#0f172a"
-            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color=line_col, width=3), fill='tozeroy'))
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=text_col), xaxis=dict(showgrid=False))
+            line_hex = "#3b82f6" if is_dark else "#2563eb"
+            text_hex = "#94a3b8" if is_dark else "#0f172a"
+            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color=line_hex, width=3)))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=text_hex), xaxis=dict(showgrid=False))
             st.plotly_chart(fig, use_container_width=True)
             
             st.markdown("---")
-            st.markdown(f"<h3 style='color:var(--accent)'>🕵️ Auditor IA</h3>", unsafe_allow_html=True)
-            if st.button("AUDITAR MI RENDIMIENTO", type="primary"):
-                if not init_ai(): st.error("Falta API Key")
-                else:
-                    with st.spinner("Auditando..."):
-                        st.info(generate_performance_audit(df))
+            if st.button("AUDITAR RENDIMIENTO CON IA"):
+                if init_ai():
+                    with st.spinner("Auditando..."): st.info(generate_performance_audit(df))
         else: st.info("Sin datos")
 
     # --- TAB 5: CALENDARIO ---
@@ -872,9 +837,9 @@ def main_app():
         st.subheader(f"📅 Visual P&L")
         c_p, c_t, c_n = st.columns([1,5,1])
         with c_p: 
-            if st.button("⬅️", use_container_width=True): change_month(-1); st.rerun()
+            if st.button("⬅️"): change_month(-1); st.rerun()
         with c_n: 
-            if st.button("➡️", use_container_width=True): change_month(1); st.rerun()
+            if st.button("➡️"): change_month(1); st.rerun()
         _, _, df = get_balance_data(user, sel_acc)
         html, y, m = render_cal_html(df, is_dark)
         with c_t: st.markdown(f"<h3 style='text-align:center; color:var(--text-main); margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
