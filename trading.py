@@ -26,19 +26,14 @@ st.markdown("""
         --border-color: #334155;  
     }
 
-    /* === 1. FORZADO AGRESIVO DE MODO OSCURO (Solución al Modo Claro) === */
-    /* Esto obliga a que el fondo sea oscuro y el texto blanco SIEMPRE */
+    /* === 1. FORZADO AGRESIVO DE MODO OSCURO === */
     .stApp {
         background-color: var(--bg-main) !important;
         color: var(--text-main) !important;
     }
-    
-    /* Forzar color de texto blanco en todos los encabezados y párrafos */
     h1, h2, h3, h4, h5, h6, p, li, span, div, label, .stMarkdown {
         color: var(--text-main) !important;
     }
-    
-    /* Forzar Sidebar */
     [data-testid="stSidebar"] {
         background-color: var(--bg-sidebar) !important;
         border-right: 1px solid var(--border-color);
@@ -47,83 +42,55 @@ st.markdown("""
         color: var(--text-muted) !important;
     }
 
-    /* === 2. ESTILO DE TABS (PESTAÑAS) GRANDES Y REDONDAS === */
+    /* === 2. ESTILO DE TABS (PESTAÑAS) GRANDES === */
     .stTabs [data-baseweb="tab-list"] {
-        gap: 15px; /* Espacio entre pestañas */
-        background-color: transparent;
-        padding-bottom: 10px;
+        gap: 15px; background-color: transparent; padding-bottom: 10px;
     }
-    
     .stTabs [data-baseweb="tab"] {
-        height: 60px; /* Más altas */
-        min-width: 120px; /* Más anchas */
+        height: 60px; min-width: 120px;
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border-color);
-        border-radius: 30px !important; /* Bordes totalmente redondos (Cápsula) */
+        border-radius: 30px !important;
         color: var(--text-muted) !important;
-        font-weight: 600;
-        font-size: 1rem; /* Texto más grande */
-        padding: 0 25px !important; /* Relleno lateral */
+        font-weight: 600; font-size: 1rem; padding: 0 25px !important;
         transition: all 0.3s ease;
     }
-    
-    /* Efecto Hover */
     .stTabs [data-baseweb="tab"]:hover {
-        border-color: var(--accent-blue);
-        color: white !important;
-        transform: translateY(-2px);
+        border-color: var(--accent-blue); color: white !important; transform: translateY(-2px);
     }
-
-    /* Pestaña Activa */
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
         background-color: var(--accent-blue) !important;
-        color: white !important;
-        border: none !important;
-        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); /* Brillo azul */
+        color: white !important; border: none !important;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
     }
+    .stTabs [data-baseweb="tab-highlight"] { display: none; }
 
-    /* Eliminar la línea roja/azul por defecto de Streamlit arriba de los tabs */
-    .stTabs [data-baseweb="tab-highlight"] {
-        display: none;
-    }
-
-    /* === 3. INPUTS Y FORMULARIOS (FIX MODO CLARO) === */
+    /* === 3. INPUTS Y FORMULARIOS === */
     .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTextArea textarea {
         background-color: var(--bg-card) !important; 
         color: white !important; 
-        border: 1px solid var(--border-color) !important;
-        border-radius: 10px;
+        border: 1px solid var(--border-color) !important; border-radius: 10px;
     }
-    /* Iconos de cerrar/flechas en inputs */
     .stSelectbox svg, .stDateInput svg { fill: white !important; }
 
     /* === 4. COMPONENTES VISUALES === */
     .strategy-box {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 20px;
-        height: 100%;
+        background-color: var(--bg-card); border: 1px solid var(--border-color);
+        border-radius: 12px; padding: 20px; height: 100%;
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
     .strategy-header {
-        color: var(--accent-blue) !important;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 8px;
+        color: var(--accent-blue) !important; font-weight: 800;
+        text-transform: uppercase; letter-spacing: 1px;
+        margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px;
     }
     
     /* HUD SCORE */
     .hud-container {
         display: flex; justify-content: space-between; align-items: center;
         background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid var(--accent-blue);
-        border-radius: 15px;
-        padding: 25px;
-        margin-top: 25px;
+        border: 1px solid var(--accent-blue); border-radius: 15px;
+        padding: 25px; margin-top: 25px;
         box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
     }
     .hud-value-large { font-size: 3rem; font-weight: 900; color: white !important; line-height: 1; }
@@ -136,7 +103,6 @@ st.markdown("""
     /* CALENDARIO */
     .win-text { color: var(--accent-green) !important; font-weight: bold; }
     .loss-text { color: var(--accent-red) !important; font-weight: bold; }
-    
     </style>
     """, unsafe_allow_html=True)
 
@@ -153,29 +119,47 @@ def verify_user(u, p): d = load_json(USERS_FILE); return u in d and d[u] == p
 def register_user(u, p): d = load_json(USERS_FILE); d[u] = p; save_json(USERS_FILE, d)
 
 def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {}).keys()) if u in d else ["Principal"]
+
 def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
     if u not in d: d[u] = {}
-    if name not in d[u]: d[u][name] = bal; save_json(ACCOUNTS_FILE, d)
+    if name not in d[u]: 
+        d[u][name] = bal # Guardamos el saldo inicial
+        save_json(ACCOUNTS_FILE, d)
+        # Crear CSV vacío
+        save_trade(u, name, None, init=True)
 
-def get_balance(u, acc):
+def get_initial_balance(u, acc):
     d = load_json(ACCOUNTS_FILE)
-    ini = d.get(u, {}).get(acc, 0)
-    fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    pnl = pd.read_csv(fp)["Dinero"].sum() if os.path.exists(fp) else 0
-    return ini, ini + pnl
+    return d.get(u, {}).get(acc, 0.0)
 
-def save_trade(u, acc, data):
+def get_balance_data(u, acc):
+    ini = get_initial_balance(u, acc)
+    fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
+    
+    if os.path.exists(fp):
+        df = pd.read_csv(fp)
+        pnl = df["Dinero"].sum()
+    else:
+        df = pd.DataFrame()
+        pnl = 0
+        
+    total = ini + pnl
+    return ini, total, df
+
+def save_trade(u, acc, data, init=False):
     folder = os.path.join(DATA_DIR, u)
     if not os.path.exists(folder): os.makedirs(folder)
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
+    
+    if init: # Solo crear archivo si no existe
+        if not os.path.exists(fp):
+            pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]).to_csv(fp, index=False)
+        return
+
     df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
     df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
     df.to_csv(fp, index=False)
-
-def load_trades(u, acc):
-    fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    return pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
 
 # --- 4. FUNCIONES VISUALES ---
 def mostrar_imagen(nombre, caption):
@@ -208,7 +192,6 @@ def render_cal_html(df):
         data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
 
     cal = calendar.Calendar(firstweekday=0)
-    # Estilo Grid CSS Inline
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
         html += f'<div style="text-align:center; color:#94a3b8; font-size:0.8rem; font-weight:bold; padding:5px; background:#1e293b; border-radius:4px;">{h}</div>'
@@ -220,8 +203,8 @@ def render_cal_html(df):
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
                 
-                border = "#334155" # Default border
-                bg = "#1e293b" # Default bg
+                border = "#334155" 
+                bg = "#1e293b" 
                 color = "white"
                 
                 if val > 0:
@@ -272,7 +255,9 @@ def main_app():
         
         accs = get_user_accounts(user)
         sel_acc = st.selectbox("📂 CUENTA ACTIVA", accs)
-        ini, act = get_balance(user, sel_acc)
+        
+        # Obtener datos de saldo
+        ini, act, _ = get_balance_data(user, sel_acc)
         
         col_s = "#10b981" if act >= ini else "#ef4444"
         st.markdown(f"""
@@ -286,7 +271,7 @@ def main_app():
         st.markdown("---")
         with st.expander("➕ NUEVA CUENTA"):
             na = st.text_input("Nombre de Cuenta")
-            nb = st.number_input("Capital Inicial ($)", value=10000.0, step=1000.0)
+            nb = st.number_input("Capital Inicial ($)", value=100.0, step=100.0, help="Ej: 100, 10000")
             if st.button("CREAR", use_container_width=True):
                 if na: create_account(user, na, nb); st.rerun()
 
@@ -435,7 +420,7 @@ def main_app():
         </div>
         """, unsafe_allow_html=True)
         
-        # Barra de progreso visual (tope visual 100)
+        # Barra de progreso visual
         st.progress(min(total, 100))
 
         if valid and total >= 60:
@@ -461,25 +446,79 @@ def main_app():
                 save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":real_mn,"Ratio":rt,"Notas":nt})
                 st.success("Guardado!"); st.rerun()
 
-    # === 3. DASHBOARD ===
+    # === 3. DASHBOARD (EQUITY REAL) ===
     with t_dash:
-        st.markdown("<h3 style='color:#3b82f6'>📊 Rendimiento</h3>", unsafe_allow_html=True)
-        df = load_trades(user, sel_acc)
+        st.markdown(f"<h3 style='color:#3b82f6'>📊 Rendimiento de: {sel_acc}</h3>", unsafe_allow_html=True)
+        
+        # Obtenemos datos desde la función helper
+        ini, act, df = get_balance_data(user, sel_acc)
+        
+        k1,k2,k3,k4 = st.columns(4)
+        
         if not df.empty:
-            k1,k2,k3,k4 = st.columns(4)
             wins = len(df[df["Resultado"]=="WIN"])
-            net = df['Dinero'].sum()
+            total_trades = len(df)
+            win_rate = (wins/total_trades*100) if total_trades > 0 else 0
+            net_pl = df['Dinero'].sum()
             
-            k1.markdown(f"<div style='background:#1e293b; padding:15px; border-radius:10px; text-align:center'><div style='color:#94a3b8; font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
-            k2.metric("WIN RATE", f"{(wins/len(df)*100):.1f}%")
-            k3.metric("TRADES", len(df))
+            k1.markdown(f"<div style='background:#1e293b; padding:15px; border-radius:10px; text-align:center'><div style='color:#94a3b8; font-size:0.8rem'>BENEFICIO NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net_pl>=0 else '#ef4444'}'>${net_pl:,.2f}</div></div>", unsafe_allow_html=True)
+            k2.metric("WIN RATE", f"{win_rate:.1f}%")
+            k3.metric("TRADES", total_trades)
             k4.metric("SALDO FINAL", f"${act:,.2f}")
             
-            df["Eq"] = ini + df["Dinero"].cumsum()
-            fig = go.Figure(go.Scatter(x=df["Fecha"], y=df["Eq"], line=dict(color='#3b82f6', width=3), fill='tozeroy', fillcolor='rgba(59, 130, 246, 0.1)'))
-            fig.update_layout(title="Curva de Equity", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#94a3b8'), xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#334155'))
+            st.markdown("### Curva de Crecimiento (Equity)")
+            
+            # --- LÓGICA DE EQUITY CORRECTA ---
+            # 1. Creamos punto inicial: Fecha del primer trade (o hoy), Saldo Inicial
+            df = df.sort_values("Fecha")
+            
+            # Lista de fechas y valores para la gráfica
+            fechas = [df["Fecha"].iloc[0]] if not df.empty else [datetime.now().date()]
+            valores = [ini] # Empezamos con el capital inicial
+            
+            acumulado = ini
+            for index, row in df.iterrows():
+                fechas.append(row["Fecha"])
+                acumulado += row["Dinero"]
+                valores.append(acumulado)
+            
+            # Graficar
+            fig = go.Figure()
+            
+            # Línea de Balance
+            fig.add_trace(go.Scatter(
+                x=fechas, 
+                y=valores, 
+                mode='lines+markers',
+                line=dict(color='#3b82f6', width=3),
+                fill='tozeroy',
+                fillcolor='rgba(59, 130, 246, 0.1)',
+                name='Balance'
+            ))
+            
+            # Línea de Saldo Inicial (Referencia)
+            fig.add_hline(y=ini, line_dash="dash", line_color="gray", annotation_text="Capital Inicial")
+
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)', 
+                plot_bgcolor='rgba(0,0,0,0)', 
+                font=dict(color='#94a3b8'),
+                xaxis=dict(showgrid=False, title="Tiempo"),
+                yaxis=dict(gridcolor='#334155', title="Capital ($)"),
+                hovermode="x unified"
+            )
             st.plotly_chart(fig, use_container_width=True)
-        else: st.info("No hay datos")
+            
+        else: 
+            # Mostrar solo saldo inicial si no hay trades
+            st.info(f"Cuenta nueva. Capital Inicial: ${ini:,.2f}")
+            fig = go.Figure()
+            fig.add_hline(y=ini, line_color="#10b981", annotation_text="Capital Inicial")
+            fig.update_layout(
+                title="Esperando primer trade...",
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#94a3b8')
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
     # === 4. CALENDARIO ===
     with t_cal:
@@ -489,19 +528,12 @@ def main_app():
         with c_n: 
             if st.button("➡️", use_container_width=True): change_month(1); st.rerun()
             
-        df = load_trades(user, sel_acc)
+        _, _, df = get_balance_data(user, sel_acc)
         html, y, m = render_cal_html(df)
         with c_t: st.markdown(f"<h3 style='text-align:center; color:#f8fafc; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
-# --- EJECUCIÓN PRINCIPAL ---
-if 'user' not in st.session_state:
-    st.session_state.user = None
-
-if st.session_state.user:
-    main_app()
-else:
-    login_screen()
-
-
-
+# --- EXEC ---
+if 'user' not in st.session_state: st.session_state.user = None
+if st.session_state.user: main_app()
+else: login_screen()
