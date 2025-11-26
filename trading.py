@@ -7,32 +7,23 @@ from datetime import datetime
 import plotly.graph_objects as go
 import pytz
 
-# --- 1. CONFIGURACIÓN INICIAL ---
+# --- 1. CONFIGURACIÓN ---
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 
-# --- 2. ESTILOS CSS (BLOOMBERG DARK) ---
+# --- 2. ESTILOS CSS ---
 st.markdown("""
     <style>
-    /* MODO OSCURO GLOBAL */
     .stApp { background-color: #050505; color: #e0e0e0; }
-    
-    /* INPUTS */
     .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input, .stTextArea>div>div>textarea {
         background-color: #111 !important; color: #fff !important; border: 1px solid #333 !important;
     }
-    
-    /* CALENDARIO */
     .calendar-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin-top: 10px; }
     .calendar-header { background: #222; color: #ff9900; text-align: center; padding: 5px; font-weight: bold; border-radius: 4px; }
     .calendar-day { min-height: 90px; background: #0a0a0a; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; border: 1px solid #222; border-radius: 4px; }
     .day-num { color: #666; font-size: 0.8em; font-weight: bold; }
     .day-val { text-align: right; font-weight: bold; font-size: 1.0em; }
     .win-text { color: #00ff00; } .loss-text { color: #ff3333; }
-    
-    /* PLAN BOX */
     .plan-box {border-left: 5px solid #4CAF50; padding: 15px; background-color: rgba(76, 175, 80, 0.1); border-radius: 5px; margin-top: 10px;}
-    
-    /* TABS */
     .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
         background-color: #333 !important; color: #00ff00 !important; border-top: 2px solid #00ff00 !important;
     }
@@ -46,15 +37,11 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# Funciones de carga/guardado
 def load_json(fp): return json.load(open(fp)) if os.path.exists(fp) else {}
 def save_json(fp, data): json.dump(data, open(fp, "w"))
-
-# Usuarios
 def verify_user(u, p): d = load_json(USERS_FILE); return u in d and d[u] == p
 def register_user(u, p): d = load_json(USERS_FILE); d[u] = p; save_json(USERS_FILE, d)
 
-# Cuentas
 def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {}).keys()) if u in d else ["Principal"]
 def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
@@ -75,7 +62,6 @@ def save_trade(u, acc, data):
     df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
     df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
     df.to_csv(fp, index=False)
-    return df
 
 def load_trades(u, acc):
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
@@ -86,7 +72,6 @@ def mostrar_imagen(nombre, caption):
     local = os.path.join(IMG_DIR, nombre)
     if os.path.exists(local): st.image(local, caption=caption, use_container_width=True)
     else:
-        # Fallback web
         urls = {
             "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
             "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
@@ -152,18 +137,14 @@ def main_app():
     user = st.session_state.user
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
 
-    # SIDEBAR
     with st.sidebar:
         st.title(f"👤 {user}")
         if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
         st.divider()
-        
-        # Selector Cuentas
         accs = get_user_accounts(user)
         sel_acc = st.selectbox("📂 Cuenta Activa", accs)
         ini, act = get_balance(user, sel_acc)
         
-        # Info Saldo
         col_s = "#00ff00" if act >= ini else "#ff3333"
         st.markdown(f"""
         <div style="background:#111; padding:15px; border-radius:10px; border:1px solid #333; text-align:center">
@@ -179,10 +160,9 @@ def main_app():
             nb = st.number_input("Saldo", value=10000.0)
             if st.button("Crear") and na: create_account(user, na, nb); st.rerun()
 
-    # PESTAÑAS (ORDEN SOLICITADO: OPERATIVA -> REGISTRO -> DASH -> CAL)
     t_op, t_reg, t_dash, t_cal = st.tabs(["🦁 OPERATIVA", "📝 REGISTRO", "📊 DASHBOARD", "📅 CALENDARIO"])
 
-    # === 1. OPERATIVA (TU LÓGICA ORIGINAL) ===
+    # === 1. OPERATIVA ===
     with t_op:
         st.subheader("🦁 Análisis de Estrategia")
         col_guia, col_check, col_res = st.columns([1, 2, 1.2], gap="medium")
@@ -201,12 +181,11 @@ def main_app():
             modo = st.radio("Modo", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True)
             
             if "Swing" in modo:
-                # --- SWING LOGIC ---
                 st.markdown("#### 🔗 Tendencias")
                 c1,c2,c3 = st.columns(3)
                 tw = c1.selectbox("Semanal (W)", ["Alcista", "Bajista"], key="tw")
                 td = c2.selectbox("Diario (D)", ["Alcista", "Bajista"], key="td")
-                t4 = c3.selectbox("4 Horas (4H)", ["Alcista", "Bajista"], key="t4")
+                t4 = c3.selectbox("4H", ["Alcista", "Bajista"], key="t4")
                 
                 if tw==td==t4: st.success("💎 TRIPLE SYNC")
                 elif tw==td: st.info("✅ SWING SYNC")
@@ -217,45 +196,25 @@ def main_app():
                 c_a, c_b = st.columns(2)
                 with c_a:
                     st.markdown("**1. Semanal (W)**")
-                    w_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+10%)", key="w1")*10,
-                        st.checkbox("Rechazo Estruc. Previa (+10%)", key="w2")*10,
-                        st.checkbox("Patrones (+10%)", key="w3")*10,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="w4")*5,
-                        st.checkbox("Nivel Psicológico (+5%)", key="w5")*5
-                    ])
+                    w_sc = sum([st.checkbox("En/Rechazo AOI (+10%)", key="w1")*10, st.checkbox("Rechazo Estruc. Previa (+10%)", key="w2")*10, st.checkbox("Patrones (+10%)", key="w3")*10, st.checkbox("Rechazo EMA 50 (+5%)", key="w4")*5, st.checkbox("Nivel Psicológico (+5%)", key="w5")*5])
                 with c_b:
                     st.markdown("**2. Diario (D)**")
-                    d_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+10%)", key="d1")*10,
-                        st.checkbox("Rechazo Estruc. Previa (+10%)", key="d2")*10,
-                        st.checkbox("Rechazo Vela (+10%)", key="d3")*10,
-                        st.checkbox("Patrones (+10%)", key="d4")*10,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="d5")*5
-                    ])
+                    d_sc = sum([st.checkbox("En/Rechazo AOI (+10%)", key="d1")*10, st.checkbox("Rechazo Estruc. Previa (+10%)", key="d2")*10, st.checkbox("Rechazo Vela (+10%)", key="d3")*10, st.checkbox("Patrones (+10%)", key="d4")*10, st.checkbox("Rechazo EMA 50 (+5%)", key="d5")*5])
                 
                 st.divider()
                 c_c, c_d = st.columns(2)
                 with c_c:
                     st.markdown("**3. Ejecución (4H)**")
-                    h4_sc = sum([
-                        st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
-                        st.checkbox("Patrones (+10%)", key="h2")*10,
-                        st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5,
-                        st.checkbox("Rechazo Estructura (+5%)", key="h4")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="h5")*5
-                    ])
+                    h4_sc = sum([st.checkbox("Rechazo Vela (+10%)", key="h1")*10, st.checkbox("Patrones (+10%)", key="h2")*10, st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5, st.checkbox("Rechazo Estructura (+5%)", key="h4")*5, st.checkbox("Rechazo EMA 50 (+5%)", key="h5")*5])
                 with c_d:
                     st.markdown("**4. GATILLO**")
                     sos = st.checkbox("⚡ Shift of Structure", key="e1")
                     eng = st.checkbox("🕯️ Vela Envolvente", key="e2")
                     rr = st.checkbox("💰 Ratio 1:2.5", key="e3")
                     entry_score = sum([sos*10, eng*10])
-                
                 total = w_sc + d_sc + h4_sc + entry_score
 
             else:
-                # --- SCALPING LOGIC ---
                 st.markdown("#### 🔗 Tendencias")
                 c1,c2,c3 = st.columns(3)
                 t4 = c1.selectbox("4H", ["Alcista", "Bajista"], key="st4")
@@ -271,40 +230,22 @@ def main_app():
                 c_a, c_b = st.columns(2)
                 with c_a:
                     st.markdown("**1. Contexto 4H**")
-                    w_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+5%)", key="sc1")*5,
-                        st.checkbox("Rechazo Estruc. Previa (+5%)", key="sc2")*5,
-                        st.checkbox("Patrones (+5%)", key="sc3")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc4")*5,
-                        st.checkbox("Nivel Psicológico (+5%)", key="sc5")*5
-                    ])
+                    w_sc = sum([st.checkbox("En/Rechazo AOI (+5%)", key="sc1")*5, st.checkbox("Rechazo Estruc. Previa (+5%)", key="sc2")*5, st.checkbox("Patrones (+5%)", key="sc3")*5, st.checkbox("Rechazo EMA 50 (+5%)", key="sc4")*5, st.checkbox("Nivel Psicológico (+5%)", key="sc5")*5])
                 with c_b:
                     st.markdown("**2. Contexto 2H**")
-                    d_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+5%)", key="sc6")*5,
-                        st.checkbox("Rechazo Estruc. Previa (+5%)", key="sc7")*5,
-                        st.checkbox("Rechazo Vela (+5%)", key="sc8")*5,
-                        st.checkbox("Patrones (+5%)", key="sc9")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc10")*5
-                    ])
+                    d_sc = sum([st.checkbox("En/Rechazo AOI (+5%)", key="sc6")*5, st.checkbox("Rechazo Estruc. Previa (+5%)", key="sc7")*5, st.checkbox("Rechazo Vela (+5%)", key="sc8")*5, st.checkbox("Patrones (+5%)", key="sc9")*5, st.checkbox("Rechazo EMA 50 (+5%)", key="sc10")*5])
                 
                 st.divider()
                 c_c, c_d = st.columns(2)
                 with c_c:
                     st.markdown("**3. Ejecución (1H)**")
-                    h4_sc = sum([
-                        st.checkbox("Rechazo Vela (+5%)", key="sc11")*5,
-                        st.checkbox("Patrones (+5%)", key="sc12")*5,
-                        st.checkbox("Rechazo Estruc. Previa (+5%)", key="sc13")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc14")*5
-                    ])
+                    h4_sc = sum([st.checkbox("Rechazo Vela (+5%)", key="sc11")*5, st.checkbox("Patrones (+5%)", key="sc12")*5, st.checkbox("Rechazo Estruc. Previa (+5%)", key="sc13")*5, st.checkbox("Rechazo EMA 50 (+5%)", key="sc14")*5])
                 with c_d:
                     st.markdown("**4. GATILLO (M15/M30)**")
                     sos = st.checkbox("⚡ SOS", key="se1")
                     eng = st.checkbox("🕯️ Vela Envolvente", key="se2")
                     rr = st.checkbox("💰 Ratio 1:2.5", key="se3")
                     entry_score = sum([sos*10, eng*10])
-                
                 total = w_sc + d_sc + h4_sc + entry_score + 10
 
         with col_res:
@@ -327,10 +268,9 @@ def main_app():
                 st.success("✅ EJECUTAR")
                 sl = "5-7 pips" if "Swing" in modo else "3-5 pips"
                 st.markdown(f'<div class="plan-box">Stop: {sl}<br>TP: Estructura</div>', unsafe_allow_html=True)
-            else:
-                st.error("NO OPERAR")
+            else: st.error("NO OPERAR")
 
-    # === 2. REGISTRO ===
+    # === 2. REGISTRO (CORREGIDO PARA AUTOMATIZAR SIGNOS) ===
     with t_reg:
         st.subheader("📝 Registrar Trade")
         with st.form("reg"):
@@ -338,12 +278,22 @@ def main_app():
             dt = c1.date_input("Fecha", datetime.now())
             pr = c1.text_input("Par", "XAUUSD").upper()
             tp = c1.selectbox("Tipo", ["BUY", "SELL"])
+            
+            # --- CORRECCIÓN AQUÍ: INPUT POSITIVO SOLAMENTE ---
             rs = c2.selectbox("Resultado", ["WIN", "LOSS", "BE"])
-            mn = c2.number_input("P/L ($)", step=10.0, help="Negativo si pierdes")
+            mn = c2.number_input("Monto ($)", min_value=0.0, step=10.0, help="Escribe siempre el monto positivo. El sistema pondrá el negativo si es LOSS.")
             rt = c2.number_input("Ratio", value=2.5)
             nt = st.text_area("Notas")
+            
             if st.form_submit_button("Guardar"):
-                save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":mn,"Ratio":rt,"Notas":nt})
+                # --- LÓGICA AUTOMÁTICA DE SIGNOS ---
+                dinero_final = mn
+                if rs == "LOSS":
+                    dinero_final = -abs(mn) # Fuerza negativo
+                elif rs == "WIN":
+                    dinero_final = abs(mn)  # Fuerza positivo
+                
+                save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":dinero_final,"Ratio":rt,"Notas":nt})
                 st.success("Guardado!"); st.rerun()
 
     # === 3. DASHBOARD ===
@@ -358,7 +308,9 @@ def main_app():
             k3.metric("Trades", len(df))
             k4.metric("Saldo", f"${act:,.2f}")
             
+            # CORRECCIÓN EQUITY: Se suma al saldo inicial
             df["Eq"] = ini + df["Dinero"].cumsum()
+            
             fig = go.Figure(go.Scatter(x=df["Fecha"], y=df["Eq"], line=dict(color='#00ff00', width=3)))
             fig.update_layout(title="Equity Curve", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
             st.plotly_chart(fig, use_container_width=True)
@@ -378,7 +330,6 @@ def main_app():
         with c_t: st.markdown(f"<h3 style='text-align:center; color:#ff9900'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
-# --- EXEC ---
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
 else: login_screen()
