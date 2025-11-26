@@ -302,4 +302,198 @@ def main_app():
             # --- BLOQUE 3: EJECUCIÓN (4H) ---
             with r2_c1:
                 with st.container(border=True):
-                    st.markdown("<div class='strategy-header'>3. Ejecución (4H)</div>", unsafe_allow_html=
+                    st.markdown("<div class='strategy-header'>3. Ejecución (4H)</div>", unsafe_allow_html=True)
+                    t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
+                    st.divider()
+                    h4_sc = sum([
+                        st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
+                        st.checkbox("Patrón (+10%)", key="h2")*10,
+                        st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5,
+                        st.checkbox("Estructura (+5%)", key="h4")*5,
+                        st.checkbox("EMA 50 (+5%)", key="h5")*5
+                    ])
+
+            # --- BLOQUE 4: GATILLO ---
+            with r2_c2:
+                with st.container(border=True):
+                    st.markdown("<div class='strategy-header'>4. Gatillo Final</div>", unsafe_allow_html=True)
+                    
+                    # Logica de Sincronia
+                    if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
+                    elif tw==td: st.info("✅ SWING ALINEADO")
+                    else: st.warning("⚠️ TENDENCIA MIXTA")
+                    
+                    st.divider()
+                    st.markdown("**Requisitos Obligatorios:**")
+                    sos = st.checkbox("⚡ Shift of Structure")
+                    eng = st.checkbox("🕯️ Vela Envolvente")
+                    rr = st.checkbox("💰 Ratio > 1:2.5")
+                    
+                    entry_score = sum([sos*10, eng*10])
+                    total = w_sc + d_sc + h4_sc + entry_score
+
+        else: # SCALPING
+            # --- BLOQUE 1: MACRO (4H) ---
+            with r1_c1:
+                with st.container(border=True):
+                    st.markdown("<div class='strategy-header'>1. Contexto (4H)</div>", unsafe_allow_html=True)
+                    t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="st4")
+                    st.divider()
+                    w_sc = sum([st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Estructura (+5%)", key="sc2")*5, st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5, st.checkbox("Psicológico (+5%)", key="sc5")*5])
+
+            # --- BLOQUE 2: INTERMEDIO (2H) ---
+            with r1_c2:
+                with st.container(border=True):
+                    st.markdown("<div class='strategy-header'>2. Contexto (2H)</div>", unsafe_allow_html=True)
+                    t2 = st.selectbox("Tendencia 2H", ["Alcista", "Bajista"], key="st2")
+                    st.divider()
+                    d_sc = sum([st.checkbox("AOI (+5%)", key="sc6")*5, st.checkbox("Estructura (+5%)", key="sc7")*5, st.checkbox("Vela (+5%)", key="sc8")*5, st.checkbox("Patrón (+5%)", key="sc9")*5, st.checkbox("EMA 50 (+5%)", key="sc10")*5])
+
+            # --- BLOQUE 3: EJECUCIÓN (1H) ---
+            with r2_c1:
+                with st.container(border=True):
+                    st.markdown("<div class='strategy-header'>3. Ejecución (1H)</div>", unsafe_allow_html=True)
+                    t1 = st.selectbox("Tendencia 1H", ["Alcista", "Bajista"], key="st1")
+                    st.divider()
+                    h4_sc = sum([st.checkbox("Vela (+5%)", key="sc11")*5, st.checkbox("Patrón (+5%)", key="sc12")*5, st.checkbox("Estructura (+5%)", key="sc13")*5, st.checkbox("EMA 50 (+5%)", key="sc14")*5])
+
+            # --- BLOQUE 4: GATILLO ---
+            with r2_c2:
+                with st.container(border=True):
+                    st.markdown("<div class='strategy-header'>4. Gatillo (M15)</div>", unsafe_allow_html=True)
+                    if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
+                    else: st.warning("⚠️ TENDENCIA MIXTA")
+                    
+                    st.divider()
+                    sos = st.checkbox("⚡ SOS M15")
+                    eng = st.checkbox("🕯️ Entrada M15")
+                    rr = st.checkbox("💰 Ratio > 1:2.5")
+                    entry_score = sum([sos*10, eng*10])
+                    total = w_sc + d_sc + h4_sc + entry_score + 15
+
+        # SECCION 3: SCORE DASHBOARD (HUD)
+        st.markdown("<br>", unsafe_allow_html=True)
+        
+        # Logica del Mensaje
+        valid = sos and eng and rr
+        
+        msg_header = ""
+        msg_body = ""
+        css_class = ""
+        
+        if not sos:
+            msg_header = "⛔ STOP"
+            msg_body = "Falta Shift of Structure (SOS)"
+            css_class = "status-stop"
+        elif not eng:
+            msg_header = "⚠️ CUIDADO"
+            msg_body = "Falta Vela de Entrada"
+            css_class = "status-warning"
+        elif not rr:
+            msg_header = "💸 RIESGO"
+            msg_body = "El Ratio R:B no es suficiente"
+            css_class = "status-warning"
+        elif total >= 90:
+            msg_header = "💎 SNIPER ENTRY"
+            msg_body = "Setup de Alta Probabilidad. Ejecuta."
+            css_class = "status-sniper"
+        elif total >= 60 and valid:
+            msg_header = "✅ EJECUTAR"
+            msg_body = "Setup Válido."
+            css_class = "status-sniper"
+        else:
+            msg_header = "💤 ESPERAR"
+            msg_body = "Puntaje bajo. Paciencia."
+            css_class = "status-warning"
+
+        # Renderizar HUD
+        st.markdown(f"""
+        <div class="hud-container">
+            <div class="hud-stat">
+                <div class="hud-label">Score Total</div>
+                <div class="hud-value" style="color:white">{min(total, 100)}%</div>
+            </div>
+            <div style="flex-grow:1; margin:0 20px;">
+                <div class="{css_class}">
+                    <div>{msg_header}</div>
+                    <div style="font-size:0.9rem; font-weight:normal; margin-top:5px;">{msg_body}</div>
+                </div>
+            </div>
+            <div class="hud-stat">
+                <div class="hud-label">Estado</div>
+                <div class="hud-value" style="color:{'#00E676' if valid else '#FF1744'}">{'VÁLIDO' if valid else 'INVÁLIDO'}</div>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        # Plan de Trading Box
+        if valid and total >= 60:
+            sl = "5-7 pips" if "Swing" in modo else "3-5 pips"
+            st.markdown(f"""
+            <div style="margin-top:20px; padding:15px; border:1px solid #444; border-radius:8px; background:#0a0a0a;">
+                <div style="color:#00E676; font-weight:bold; margin-bottom:5px;">📝 PLAN DE EJECUCIÓN:</div>
+                <div style="display:flex; justify-content:space-around;">
+                    <span>🛡️ <b>SL:</b> {sl} (Bajo Zona)</span>
+                    <span>🎯 <b>TP:</b> Liquidez / Estructura Opuesta</span>
+                    <span>🧠 <b>Riesgo:</b> 1% (Estándar)</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+
+    # === 2. REGISTRO ===
+    with t_reg:
+        st.markdown("<h3 style='border-bottom:1px solid #333; padding-bottom:10px;'>📝 Bitácora de Trading</h3>", unsafe_allow_html=True)
+        with st.form("reg"):
+            c1,c2 = st.columns(2)
+            dt = c1.date_input("Fecha", datetime.now())
+            pr = c1.text_input("Par", "XAUUSD").upper()
+            tp = c1.selectbox("Tipo", ["BUY", "SELL"])
+            
+            rs = c2.selectbox("Resultado", ["WIN", "LOSS", "BE"])
+            mn = c2.number_input("Monto ($)", min_value=0.0, step=10.0, help="Usa valor positivo")
+            rt = c2.number_input("Ratio", value=2.5)
+            nt = st.text_area("Notas")
+            
+            if st.form_submit_button("💾 Guardar Trade"):
+                real_mn = mn if rs=="WIN" else -mn if rs=="LOSS" else 0
+                save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":real_mn,"Ratio":rt,"Notas":nt})
+                st.success("Guardado!"); st.rerun()
+
+    # === 3. DASHBOARD ===
+    with t_dash:
+        st.markdown("<h3 style='border-bottom:1px solid #333; padding-bottom:10px;'>📊 Analytics</h3>", unsafe_allow_html=True)
+        df = load_trades(user, sel_acc)
+        if not df.empty:
+            k1,k2,k3,k4 = st.columns(4)
+            wins = len(df[df["Resultado"]=="WIN"])
+            net = df['Dinero'].sum()
+            
+            k1.metric("Neto", f"${net:,.2f}", delta_color="normal")
+            k2.metric("Win Rate", f"{(wins/len(df)*100):.1f}%")
+            k3.metric("Trades", len(df))
+            k4.metric("Saldo", f"${act:,.2f}")
+            
+            df["Eq"] = ini + df["Dinero"].cumsum()
+            fig = go.Figure(go.Scatter(x=df["Fecha"], y=df["Eq"], line=dict(color='#00E676', width=3), fill='tozeroy', fillcolor='rgba(0,230,118,0.1)'))
+            fig.update_layout(title="Curva de Equity", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#888'), xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#222'))
+            st.plotly_chart(fig, use_container_width=True)
+        else: st.info("Sin trades registrados")
+
+    # === 4. CALENDARIO ===
+    with t_cal:
+        st.markdown("<h3 style='border-bottom:1px solid #333; padding-bottom:10px;'>📅 Calendario P&L</h3>", unsafe_allow_html=True)
+        c_p, c_t, c_n = st.columns([1,5,1])
+        with c_p: 
+            if st.button("⬅️"): change_month(-1); st.rerun()
+        with c_n: 
+            if st.button("➡️"): change_month(1); st.rerun()
+            
+        df = load_trades(user, sel_acc)
+        html, y, m = render_cal_html(df)
+        with c_t: st.markdown(f"<h3 style='text-align:center; color:#E0E0E0; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
+        st.markdown(html, unsafe_allow_html=True)
+
+if 'user' not in st.session_state: st.session_state.user = None
+if st.session_state.user: main_app()
+else: login_screen()
