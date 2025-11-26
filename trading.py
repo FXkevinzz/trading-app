@@ -22,7 +22,7 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# --- 3. INTELIGENCIA ARTIFICIAL (ADAPTADA A GEMINI 2.0) ---
+# --- 3. INTELIGENCIA ARTIFICIAL (VISION + AUDITOR) ---
 def init_ai():
     if "GEMINI_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_KEY"])
@@ -47,8 +47,42 @@ def save_to_brain(analysis_text, pair, timeframe):
         with open(BRAIN_FILE, "w") as f: json.dump(memory, f)
     except: pass
 
+# --- NUEVA FUNCIÓN: AUDITOR DE RENDIMIENTO ---
+def generate_performance_audit(df):
+    if df.empty: return "No hay suficientes datos para auditar."
+    
+    # Convertimos los datos a texto para que la IA los lea
+    data_str = df.to_string(index=False)
+    
+    prompt = f"""
+    Actúa como un Auditor de Riesgo Senior de un Fondo de Inversión (Prop Firm).
+    Tu trabajo es analizar los datos crudos de este trader y encontrar sus fallas y virtudes.
+    
+    DATOS DEL TRADER (CSV):
+    {data_str}
+    
+    TU MISIÓN:
+    Analiza patrones matemáticos y de comportamiento. No seas suave, sé objetivo.
+    
+    RESPONDE CON ESTE FORMATO:
+    1. 🚨 **FUGA DE CAPITAL:** (¿Dónde está perdiendo más dinero? ¿Qué par? ¿Qué tipo de operación?)
+    2. ✅ **ZONA DE PODER:** (¿Dónde es más rentable? ¿Compras o Ventas? ¿Qué par?)
+    3. ⚖️ **DISCIPLINA:** (¿Está respetando los Ratios? ¿Corta las ganancias antes de tiempo?)
+    4. 🧠 **CONSEJO DIRECTO:** (Una sola frase de lo que debe cambiar hoy mismo).
+    """
+    
+    # Usamos Flash porque es rápido y barato para mucho texto
+    modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+    
+    for m in modelos:
+        try:
+            model = genai.GenerativeModel(m)
+            response = model.generate_content(prompt)
+            return response.text
+        except: continue
+    return "Error de conexión con el Auditor IA."
+
 def analyze_chart(image, mode, pair, tf):
-    # Contexto RAG (Memoria)
     brain = load_brain()
     context = ""
     if brain:
@@ -56,44 +90,27 @@ def analyze_chart(image, mode, pair, tf):
         context = f"TUS MEJORES TRADES PREVIOS:\n{str(examples)}\n\n"
     
     prompt = f"""
-    Eres un Mentor de Trading Institucional experto en Smart Money Concepts (SMC).
-    Estrategia: {mode}. Activo: {pair} ({tf}).
-    
+    Eres un Mentor de Trading Institucional (SMC). Estrategia: {mode}. Activo: {pair} ({tf}).
     {context}
-    
     Analiza la imagen y valida:
     1. ESTRUCTURA (BOS/CHOCH).
     2. ZONA DE VALOR (Order Block/FVG).
     3. PATRÓN DE ENTRADA.
     
-    Responde breve y directo:
+    Responde breve:
     - 🎯 VEREDICTO: [APROBADO / DUDOSO / RECHAZADO]
     - 📊 PROBABILIDAD: 0-100%
-    - 📝 ANÁLISIS: (Máx 3 líneas)
-    - 💡 CONSEJO: (Recomendación de gestión)
+    - 📝 ANÁLISIS: (Breve)
+    - 💡 CONSEJO: (SL/TP)
     """
     
-    # --- LISTA DE MODELOS QUE TU TIENES DISPONIBLES ---
-    # Probamos en orden de preferencia (Del más rápido al más potente)
-    modelos_disponibles = [
-        'gemini-2.0-flash',          # Tu mejor opción actual
-        'gemini-2.0-flash-exp',      # Respaldo experimental
-        'gemini-2.5-flash',          # Versión futura
-        'gemini-1.5-pro'             # Clásico
-    ]
-    
-    last_error = ""
-    
-    for modelo_nombre in modelos_disponibles:
+    modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+    for m in modelos:
         try:
-            model = genai.GenerativeModel(modelo_nombre)
-            response = model.generate_content([prompt, image])
-            return response.text
-        except Exception as e:
-            last_error = str(e)
-            continue # Si falla, prueba el siguiente de la lista
-            
-    return f"Error de IA: No se pudo conectar con ningún modelo de tu lista. Detalle: {last_error}"
+            model = genai.GenerativeModel(m)
+            return model.generate_content([prompt, image]).text
+        except: continue
+    return "Error IA Vision."
 
 # --- 4. SISTEMA DE TEMAS ---
 def inject_theme(theme_mode):
@@ -120,17 +137,14 @@ def inject_theme(theme_mode):
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
 
-    /* GENERAL */
     .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
     h1, h2, h3, h4, h5, p, li, span, div, label {{ color: var(--text-main) !important; }}
     .stMarkdown p {{ color: var(--text-main) !important; }}
     
-    /* SIDEBAR */
     [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {{ color: #94a3b8 !important; }}
     [data-testid="stSidebar"] h1 {{ color: #f8fafc !important; }}
 
-    /* INPUTS */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
         color: var(--text-main) !important;
@@ -140,11 +154,9 @@ def inject_theme(theme_mode):
     }}
     .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
     
-    /* MENU & OPTIONS */
     ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
     li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
     
-    /* BOTONES */
     .stButton button {{
         background: var(--accent) !important;
         color: var(--button-text) !important;
@@ -156,8 +168,6 @@ def inject_theme(theme_mode):
     }}
     .stButton button:active {{ transform: translateY(1px); }}
     
-    /* TABS */
-    .stTabs [data-baseweb="tab-list"] {{ gap: 8px; padding-bottom: 15px; }}
     .stTabs [data-baseweb="tab"] {{
         background-color: var(--bg-card) !important;
         color: var(--text-muted) !important;
@@ -175,11 +185,9 @@ def inject_theme(theme_mode):
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
-    /* CARDS & BOXES */
     .strategy-box {{ background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); height: 100%; }}
     .strategy-header {{ color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }}
     
-    /* HUD SCORE */
     .hud-container {{
         background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%);
         border: 1px solid var(--accent);
@@ -190,14 +198,20 @@ def inject_theme(theme_mode):
         display: flex; justify-content: space-between; align-items: center;
     }}
     .hud-value-large {{ font-size: 3rem; font-weight: 900; color: var(--text-main); line-height: 1; }}
-    
-    /* CHECKBOXES */
     .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
-    
-    /* ALERTAS */
     .status-sniper {{ background-color: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); padding: 10px 20px; border-radius: 50px; font-weight: bold; }}
     .status-warning {{ background-color: rgba(250,204,21,0.15); color: #d97706; border: 1px solid #facc15; padding: 10px 20px; border-radius: 50px; font-weight: bold; }}
     .status-stop {{ background-color: rgba(239,68,68,0.15); color: var(--accent-red); border: 1px solid var(--accent-red); padding: 10px 20px; border-radius: 50px; font-weight: bold; }}
+    
+    /* AUDIT BOX STYLES */
+    .audit-box {{
+        background-color: var(--bg-card);
+        border-left: 4px solid var(--accent);
+        padding: 20px;
+        border-radius: 0 12px 12px 0;
+        margin-top: 20px;
+        box-shadow: var(--shadow);
+    }}
     
     </style>
     """, unsafe_allow_html=True)
@@ -443,14 +457,36 @@ def main_app():
                 save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":rm,"Ratio":rt,"Notas":""})
                 st.success("Guardado"); st.rerun()
 
-    # TAB 4: ANALYTICS
+    # TAB 4: ANALYTICS (CON AUDITOR IA)
     with tabs[3]:
         _, _, df = get_balance_data(user, sel_acc)
+        
         if not df.empty:
+            # === SECCIÓN DE GRÁFICOS ===
+            st.markdown(f"<h3 style='color:var(--accent)'>📊 Rendimiento Visual</h3>", unsafe_allow_html=True)
             fig = go.Figure(go.Scatter(x=df["Fecha"], y=df["Dinero"].cumsum(), mode='lines+markers'))
             fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='gray'))
             st.plotly_chart(fig, use_container_width=True)
-        else: st.info("Sin datos")
+            
+            # === SECCIÓN DE AUDITOR IA (NUEVO) ===
+            st.markdown("---")
+            st.markdown(f"<h3 style='color:var(--accent)'>🕵️ Auditor de Riesgo IA</h3>", unsafe_allow_html=True)
+            st.info("La IA analizará todo tu historial para encontrar patrones ocultos.")
+            
+            if st.button("🦁 AUDITAR MI RENDIMIENTO CON IA", type="primary", use_container_width=True):
+                if not init_ai():
+                    st.error("⚠️ Falta API KEY")
+                else:
+                    with st.spinner("🔍 La IA está leyendo tu historial y buscando fugas de capital..."):
+                        report = generate_performance_audit(df)
+                        st.markdown(f"""
+                        <div class="audit-box">
+                            <h4 style="color:var(--accent)">📋 REPORTE DE AUDITORÍA</h4>
+                            {report}
+                        </div>
+                        """, unsafe_allow_html=True)
+        else: 
+            st.info("Registra trades para activar el análisis.")
 
     # TAB 5: NOTICIAS
     with tabs[4]:
