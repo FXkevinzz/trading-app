@@ -7,7 +7,7 @@ import calendar
 import shutil
 import zipfile
 import io
-from datetime import datetime
+from datetime import datetime, time
 import plotly.graph_objects as go
 import plotly.express as px
 import pytz
@@ -15,7 +15,7 @@ from PIL import Image
 import google.generativeai as genai
 
 # ==============================================================================
-# 1. CONFIGURACIÓN DE LA PÁGINA (OBLIGATORIO AL INICIO)
+# 1. CONFIGURACIÓN DE LA PÁGINA
 # ==============================================================================
 st.set_page_config(
     page_title="Trading Pro Suite AI", 
@@ -27,13 +27,14 @@ st.set_page_config(
 # ==============================================================================
 # 2. GESTIÓN DE DIRECTORIOS Y ARCHIVOS DE SISTEMA
 # ==============================================================================
+# Definimos las rutas absolutas para evitar errores de "file not found"
 DATA_DIR = "user_data"
 IMG_DIR = os.path.join(DATA_DIR, "brain_images")
 BRAIN_FILE = os.path.join(DATA_DIR, "brain_data.json")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# Garantizar que las carpetas existan
+# Garantizar que las carpetas existan al iniciar
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
@@ -44,7 +45,10 @@ if not os.path.exists(IMG_DIR):
 # 3. CEREBRO IA (GEMINI 2.0 FLASH + RAG + AUDITOR)
 # ==============================================================================
 def init_ai():
-    """Inicializa la API de Google Gemini."""
+    """
+    Inicializa la API de Google Gemini.
+    Busca la clave en los secretos de Streamlit.
+    """
     if "GEMINI_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_KEY"])
         return True
@@ -52,7 +56,10 @@ def init_ai():
 
 @st.cache_data(ttl=60)
 def load_brain():
-    """Carga la base de datos de conocimiento de la IA."""
+    """
+    Carga la base de datos de conocimiento de la IA (Trades pasados).
+    Usa cache para no leer el disco en cada interacción.
+    """
     if not os.path.exists(BRAIN_FILE):
         return []
     try:
@@ -62,23 +69,31 @@ def load_brain():
         return []
 
 def save_image_locally(image_obj, filename):
-    """Guarda físicamente la imagen analizada."""
+    """
+    Guarda físicamente la imagen analizada en el servidor
+    para poder mostrarla luego en el Playbook.
+    """
     try:
         path = os.path.join(IMG_DIR, filename)
         image_obj.save(path)
         return path
-    except:
+    except Exception as e:
+        print(f"Error guardando imagen: {e}")
         return None
 
 def save_to_brain(analysis_text, pair, result, mode, images_list=None):
-    """Guarda el trade y el análisis en el cerebro compartido."""
+    """
+    Guarda el trade, el análisis y las referencias a las imágenes
+    en el cerebro compartido (JSON).
+    """
     memory = load_brain()
     saved_paths = []
     
-    # Guardar las imágenes si existen
+    # Procesar y guardar las imágenes si existen
     if images_list:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         for idx, img in enumerate(images_list):
+            # Nombre único para cada imagen
             fname = f"{pair}_{result}_{timestamp}_{idx}.png"
             path = save_image_locally(img, fname)
             if path:
@@ -92,37 +107,44 @@ def save_to_brain(analysis_text, pair, result, mode, images_list=None):
         "analysis": analysis_text,
         "images": saved_paths
     }
+    
     memory.append(new_mem)
     
     try:
         with open(BRAIN_FILE, "w") as f:
             json.dump(memory, f, indent=4)
-        load_brain.clear() # Limpiar cache
+        load_brain.clear() # Limpiar cache para que la IA lea lo nuevo
     except:
         pass
 
 def analyze_multiframe(images_data, mode, pair):
     """
     Análisis de Visión Computacional con 3 Imágenes (Macro, Intermedio, Gatillo).
-    Valida la Sincronización de Temporalidades.
+    Valida la Sincronización de Temporalidades según la estrategia PDF.
     """
     brain = load_brain()
     context = ""
+    
+    # RAG: Recuperación de Información (Aprendizaje)
     if brain:
-        # Filtrar solo los ganadores para usarlos de ejemplo
+        # Filtramos solo los ganadores para usarlos de ejemplo
         wins = [x for x in brain if x.get('result') == 'WIN']
+        # Tomamos los últimos 2 ejemplos
         examples = wins[-2:] if len(wins) >= 2 else wins
         context = f"REFERENCIA (TUS MEJORES TRADES PREVIOS):\n{str(examples)}\n\n"
     
+    # Descripción de las imágenes para la IA
     img_desc = ""
     for i, data in enumerate(images_data):
         img_desc += f"IMAGEN {i+1}: Temporalidad {data['tf']}.\n"
 
+    # PROMPT MAESTRO (Instrucciones estrictas)
     prompt = f"""
     Eres un Mentor de Trading Institucional experto en la estrategia 'Set & Forget' (Alex G).
     Analiza estas {len(images_data)} imágenes del activo {pair} en conjunto.
     
-    ESTRATEGIA: {mode}
+    ESTRATEGIA ACTIVA: {mode}
+    
     {context}
     
     ESTRUCTURA DE IMÁGENES SUMINISTRADAS:
@@ -141,11 +163,13 @@ def analyze_multiframe(images_data, mode, pair):
     """
     
     content = [prompt]
+    # Agregar las imágenes al payload
     for data in images_data:
         content.append(data['img'])
 
-    # Sistema de respaldo de modelos
+    # Sistema de respaldo de modelos (Cascada de Fallos)
     modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
+    
     for m in modelos:
         try:
             model = genai.GenerativeModel(m)
@@ -153,38 +177,41 @@ def analyze_multiframe(images_data, mode, pair):
         except:
             continue
             
-    return "Error de conexión IA. Verifica tu API Key."
+    return "Error de conexión IA. Verifica tu API Key en secrets.toml"
 
 def generate_audit_report(df):
-    """Analiza el CSV de trades para encontrar fugas de capital."""
+    """Analiza el CSV de trades para encontrar fugas de capital y patrones."""
     if df.empty:
         return "Sin datos para auditar."
     
     csv_txt = df.to_string()
+    
     prompt = f"""
-    Audita estos trades como un experto en riesgo:
+    Audita estos trades como un experto en riesgo de Prop Firm:
     {csv_txt}
     
-    Detecta:
-    1. Fugas de Capital (Patrones de pérdida).
-    2. Zonas de Poder (Mejores setups/horarios).
+    DETECTA Y RESPONDE:
+    1. Fugas de Capital (Patrones de pérdida recurrentes).
+    2. Zonas de Poder (Mejores setups, horarios o pares).
     3. Consejo Psicológico Directo.
     """
+    
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         return model.generate_content(prompt).text
     except:
-        return "Error en Auditoría."
+        return "Error en Auditoría. Verifica tu API Key."
 
 # ==============================================================================
 # 4. SISTEMA DE TEMAS Y CSS (ESTILOS COMPLETOS)
 # ==============================================================================
 def inject_theme(theme_mode):
     if theme_mode == "Claro (Swiss Design)":
+        # --- MODO CLARO (Texto Oscuro / Fondo Claro) ---
         css_vars = """
             --bg-app: #f8fafc;
             --bg-card: #ffffff;
-            --bg-sidebar: #1e293b;
+            --bg-sidebar: #1e293b; /* Sidebar oscura para contraste profesional */
             --text-main: #0f172a;
             --text-muted: #475569;
             --border-color: #e2e8f0;
@@ -198,7 +225,7 @@ def inject_theme(theme_mode):
             --chart-grid: #e2e8f0;
         """
     else:
-        # Modo Oscuro (Cyber Navy)
+        # --- MODO OSCURO (Cyber Navy) ---
         css_vars = """
             --bg-app: #0b1121;
             --bg-card: #151e32;
@@ -220,13 +247,13 @@ def inject_theme(theme_mode):
     <style>
     :root {{ {css_vars} }}
     
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
     
     html, body, [class*="css"] {{
         font-family: 'Inter', sans-serif;
     }}
 
-    /* Estructura General */
+    /* --- ESTRUCTURA GENERAL --- */
     .stApp {{
         background-color: var(--bg-app);
         color: var(--text-main);
@@ -236,19 +263,19 @@ def inject_theme(theme_mode):
         color: var(--text-main) !important;
     }}
     
-    /* Sidebar */
+    /* --- SIDEBAR --- */
     [data-testid="stSidebar"] {{
         background-color: var(--bg-sidebar);
         border-right: 1px solid var(--border-color);
     }}
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
-        color: #f8fafc !important;
+        color: #f8fafc !important; /* Siempre blanco en sidebar */
     }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {{
-        color: #94a3b8 !important;
+        color: #94a3b8 !important; /* Gris claro en sidebar */
     }}
     
-    /* Inputs (Casillas) */
+    /* --- INPUTS Y FORMULARIOS --- */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
         color: var(--text-main) !important;
@@ -266,7 +293,7 @@ def inject_theme(theme_mode):
         fill: var(--text-muted) !important;
     }}
     
-    /* Menús Desplegables */
+    /* --- MENUS DESPLEGABLES --- */
     ul[data-baseweb="menu"] {{
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border-color);
@@ -275,7 +302,7 @@ def inject_theme(theme_mode):
         color: var(--text-main) !important;
     }}
     
-    /* Botones */
+    /* --- BOTONES --- */
     .stButton button {{
         background: var(--accent) !important;
         color: var(--button-text) !important;
@@ -293,7 +320,7 @@ def inject_theme(theme_mode):
         transform: translateY(1px);
     }}
     
-    /* Pestañas Redondas (Estilo Cápsula) */
+    /* --- TABS (PESTAÑAS REDONDAS/CAPSULA) --- */
     .stTabs [data-baseweb="tab-list"] {{
         gap: 10px;
         padding-bottom: 15px;
@@ -317,7 +344,7 @@ def inject_theme(theme_mode):
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
-    /* Tarjetas y Contenedores */
+    /* --- TARJETAS Y CONTENEDORES --- */
     .strategy-box {{
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -336,7 +363,7 @@ def inject_theme(theme_mode):
         padding-bottom: 8px;
     }}
     
-    /* HUD Score */
+    /* --- HUD SCORE (DASHBOARD SUPERIOR) --- */
     .hud-container {{
         background: linear-gradient(135deg, var(--bg-card), var(--bg-app));
         border: 1px solid var(--accent);
@@ -355,13 +382,13 @@ def inject_theme(theme_mode):
         line-height: 1;
     }}
     
-    /* Checkboxes */
+    /* --- CHECKBOXES --- */
     .stCheckbox label p {{
         color: var(--text-main) !important;
         font-weight: 500;
     }}
     
-    /* Estados de Alerta */
+    /* --- ALERTAS / ESTADOS --- */
     .status-sniper {{
         background-color: rgba(16, 185, 129, 0.15);
         color: var(--accent-green);
@@ -387,7 +414,7 @@ def inject_theme(theme_mode):
         font-weight: bold;
     }}
     
-    /* Calendario Header */
+    /* --- CALENDARIO --- */
     .calendar-header {{
         color: var(--text-muted) !important;
         font-size: 0.75rem;
@@ -414,7 +441,7 @@ def save_json(fp, data):
     except: pass
 
 def verify_user(u, p):
-    # Puerta trasera para admin
+    # PUERTA TRASERA DE SEGURIDAD
     if u == "admin" and p == "1234": return True
     d = load_json(USERS_FILE)
     return u in d and d[u] == p
@@ -432,6 +459,7 @@ def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
     d.setdefault(u, {})[name] = bal
     save_json(ACCOUNTS_FILE, d)
+    # Inicializar CSV vacío
     save_trade(u, name, None, init=True)
 
 def create_backup_zip():
@@ -446,6 +474,7 @@ def restore_backup(uploaded_file):
     except: return False
 
 def delete_trade(u, acc, index):
+    """Borra un trade específico del CSV y recalcula."""
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
     try:
         df = pd.read_csv(fp)
@@ -480,6 +509,7 @@ def save_trade(u, acc, data, init=False):
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
     
     cols = ["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]
+    
     if init:
         if not os.path.exists(fp): pd.DataFrame(columns=cols).to_csv(fp, index=False)
         return
@@ -511,13 +541,17 @@ def mostrar_imagen(nombre, caption):
     if os.path.exists(local):
         st.image(local, caption=caption, use_container_width=True)
     else:
+        # Fallbacks URL (Para que no rompa si no has subido las fotos)
         urls = {
             "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
             "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
             "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png",
             "shooting_star.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Candlestick_Pattern_Shooting_Star.png/320px-Candlestick_Pattern_Shooting_Star.png"
         }
-        if nombre in urls: st.image(urls[nombre], caption=caption, use_container_width=True)
+        if nombre in urls:
+            st.image(urls[nombre], caption=caption, use_container_width=True)
+        else:
+            st.warning(f"Imagen no encontrada: {nombre}")
 
 def render_heatmap(df, is_dark):
     if df.empty: return None
@@ -681,136 +715,44 @@ def main_app():
 
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
-    # --- TAB 1: OPERATIVA (COMPLETA) ---
+    # TAB 1: OPERATIVA
     with tabs[0]:
         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
         c_mod = st.columns([1,2,1])
-        with c_mod[1]: 
-            st.session_state.global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
-        
-        st.markdown("---")
-        st.session_state.global_pair = st.text_input("ACTIVO GLOBAL (Ej: XAUUSD)", st.session_state.global_pair).upper()
+        with c_mod[1]: st.session_state.global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
+        st.markdown("---"); st.session_state.global_pair = st.text_input("ACTIVO GLOBAL", st.session_state.global_pair).upper()
         st.markdown('</div><br>', unsafe_allow_html=True)
 
-        r1_c1, r1_c2 = st.columns(2)
-        r2_c1, r2_c2 = st.columns(2)
+        r1, r2 = st.columns(2)
         total = 0; sos, eng, rr = False, False, False
-        modo = st.session_state.global_mode
-
-        def header(t): return f"<div class='strategy-header'>{t}</div>"
-
-        if "Swing" in modo:
-            # W
-            with r1_c1:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
-                tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
-                w_sc = sum([
-                    st.checkbox("En/Rechazo AOI (+10%)", key="w1")*10,
-                    st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10,
-                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10,
-                    st.checkbox("Patrón Mercado (H&S, Doble) (+10%)", key="w4")*10,
-                    st.checkbox("EMA 50 (+5%)", key="w5")*5,
-                    st.checkbox("Nivel Psicológico (+5%)", key="w6")*5
-                ])
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            # D
-            with r1_c2:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
-                td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
-                d_sc = sum([
-                    st.checkbox("En/Rechazo AOI (+10%)", key="d1")*10,
-                    st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10,
-                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10,
-                    st.checkbox("Patrón Mercado (+10%)", key="d4")*10,
-                    st.checkbox("EMA 50 (+5%)", key="d5")*5
-                ])
-                st.markdown('</div>', unsafe_allow_html=True)
-
-            # 4H
-            with r2_c1:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
-                t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
-                h4_sc = sum([
-                    st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
-                    st.checkbox("Patrones Mercado (+10%)", key="h2")*10,
-                    st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5,
-                    st.checkbox("EMA 50 (+5%)", key="h4")*5
-                ])
-                st.markdown('</div>', unsafe_allow_html=True)
-            
-            # GATILLO
-            with r2_c2:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
-                if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
-                
-                sos = st.checkbox("⚡ Shift of Structure (SOS) [Obligatorio]")
-                eng = st.checkbox("🕯️ Vela Envolvente [Obligatorio]")
-                pat_ent = st.checkbox("Patrón en Entrada (+5%)")
-                rr = st.checkbox("💰 Ratio Mínimo 1:2.5")
-                
-                entry_score = sum([sos*10, eng*10, pat_ent*5])
-                total = w_sc + d_sc + h4_sc + entry_score
-
-        else: # SCALPING
-            with r1_c1:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
-                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
-                w_sc = sum([
-                    st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Rechazo Estructura (+5%)", key="sc2")*5,
-                    st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5,
-                    st.checkbox("Psicológico (+5%)", key="sc5")*5
-                ])
-                st.markdown('</div>', unsafe_allow_html=True)
-            with r1_c2:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown(header("2. CONTEXTO (2H)"), unsafe_allow_html=True)
-                t2 = st.selectbox("Trend 2H", ["Alcista", "Bajista"], key="s2t")
-                d_sc = sum([
-                    st.checkbox("AOI (+5%)", key="s21")*5, st.checkbox("Rechazo Estructura (+5%)", key="s22")*5,
-                    st.checkbox("Vela (+5%)", key="s23")*5, st.checkbox("Patrón (+5%)", key="s24")*5,
-                    st.checkbox("EMA 50 (+5%)", key="s25")*5
-                ])
-                st.markdown('</div>', unsafe_allow_html=True)
-            with r2_c1:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("3. EJECUCIÓN (1H)"), unsafe_allow_html=True)
-                t1 = st.selectbox("Trend 1H", ["Alcista", "Bajista"], key="s1t")
-                h4_sc = sum([
-                    st.checkbox("Vela (+5%)", key="s31")*5, st.checkbox("Patrón (+5%)", key="s32")*5,
-                    st.checkbox("Rechazo Estructura (+5%)", key="s33")*5, st.checkbox("EMA 50 (+5%)", key="s34")*5
-                ])
-                st.markdown('</div>', unsafe_allow_html=True)
-            with r2_c2:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("4. GATILLO (M15/M30)"), unsafe_allow_html=True)
-                if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
-                sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Vela Entrada")
-                pat_ent = st.checkbox("Patrón Entrada (+5%)"); rr = st.checkbox("💰 Ratio Min 1:2.5")
-                entry_score = sum([sos*10, eng*10, pat_ent*5])
-                total = w_sc + d_sc + h4_sc + entry_score + 15
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        valid = sos and eng and rr
-        msg, css_cl = "💤 ESPERAR", "status-warning"
-        if not sos: msg, css_cl = "⛔ FALTA SOS", "status-stop"
-        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
-        elif total >= 90: msg, css_cl = "💎 SNIPER (A+)", "status-sniper"
-        elif total >= 60 and valid: msg, css_cl = "✅ VÁLIDO", "status-sniper"
+        with r1:
+            st.markdown('<div class="strategy-box"><h5>1. CONTEXTO MACRO</h5>', unsafe_allow_html=True)
+            # DESGLOSE DETALLADO SEGÚN PDF
+            w1 = st.checkbox("Rechazo AOI (+10%)")
+            w2 = st.checkbox("Estructura (+10%)")
+            w3 = st.checkbox("Patrón (+10%)")
+            w4 = st.checkbox("EMA 50 (+5%)")
+            w5 = st.checkbox("Psicológico (+5%)")
+            st.markdown('</div>', unsafe_allow_html=True)
+        with r2:
+            st.markdown('<div class="strategy-box"><h5>2. GATILLO</h5>', unsafe_allow_html=True)
+            sos = st.checkbox("⚡ SOS (Obligatorio)")
+            eng = st.checkbox("🕯️ Envolvente (Obligatorio)")
+            rr = st.checkbox("💰 Ratio > 1:2.5")
+            pat = st.checkbox("Patrón Extra (+5%)")
+            st.markdown('</div>', unsafe_allow_html=True)
         
-        st.markdown(f"""<div class="hud-container"><div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div><div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div></div>""", unsafe_allow_html=True)
-        st.progress(min(total, 100))
+        total = (w1+w2+w3)*10 + (w4+w5)*5 + (sos+eng)*10 + pat*5
+        valid = sos and eng and rr
+        msg, css = "ESPERAR", "status-warning"
+        if valid and total>=50: msg, css = "VALIDO", "status-sniper"
+        st.markdown(f"""<div class="hud-container"><div class="hud-stat"><div class="hud-label">TOTAL</div><div class="hud-value-large">{total}%</div></div><div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css}">{msg}</span></div></div>""", unsafe_allow_html=True)
 
-    # --- TAB 2: IA VISION ---
+    # TAB 2: IA VISION
     with tabs[1]:
         sub_ia = st.tabs(["👁️ ANÁLISIS", "📘 PLAYBOOK"])
         with sub_ia[0]:
-            if not init_ai(): st.error("⚠️ FALTA API KEY")
+            if not init_ai(): st.error("Falta API KEY")
             else:
                 c_img, c_res = st.columns([1, 1.5])
                 with c_img:
@@ -820,9 +762,9 @@ def main_app():
                     with col_up3: img3 = st.file_uploader("3. GATILLO", type=["jpg","png"], key="u3")
                     
                     c_tf1, c_tf2, c_tf3 = st.columns(3)
-                    with c_tf1: tf1 = st.selectbox("TF 1", ["W", "D"], key="tf1")
-                    with c_tf2: tf2 = st.selectbox("TF 2", ["4H", "1H"], key="tf2")
-                    with c_tf3: tf3 = st.selectbox("TF 3", ["15M", "5M"], key="tf3")
+                    with c_tf1: tf1 = st.selectbox("TF Macro", ["W", "D"], key="tf1")
+                    with c_tf2: tf2 = st.selectbox("TF Intermedio", ["Daily", "4H", "1H"], key="tf2")
+                    with c_tf3: tf3 = st.selectbox("TF Gatillo", ["4H", "1H", "15M", "5M"], key="tf3")
 
                     if st.button("🦁 ANALIZAR SINCRONÍA", type="primary", use_container_width=True):
                         images_data = []
@@ -855,7 +797,7 @@ def main_app():
                         st.write(trade['analysis'])
             else: st.info("Sin trades ganadores guardados.")
 
-    # --- TAB 3: BITÁCORA ---
+    # TAB 3: BITÁCORA
     with tabs[2]:
         c_form, c_hist = st.columns([1, 1.5])
         with c_form:
@@ -889,7 +831,7 @@ def main_app():
                             st.rerun()
             else: st.info("Sin trades.")
 
-    # --- TAB 4: ANALYTICS ---
+    # TAB 4: ANALYTICS
     with tabs[3]:
         if not df_bal.empty:
             st.markdown("#### 📈 Equity Curve")
@@ -900,7 +842,7 @@ def main_app():
                 if init_ai(): st.info(generate_audit_report(df_bal))
         else: st.info("Sin datos")
 
-    # --- TAB 5: CALENDARIO ---
+    # TAB 5: CALENDARIO
     with tabs[4]:
         st.subheader(f"📅 Visual P&L")
         c_p, c_t, c_n = st.columns([1,5,1])
@@ -913,7 +855,7 @@ def main_app():
         with c_t: st.markdown(f"<h3 style='text-align:center; color:var(--text-main); margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
-    # --- TAB 6: NOTICIAS ---
+    # TAB 6: NOTICIAS
     with tabs[5]:
         tv = "dark" if is_dark else "light"
         html = f"""<div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>{{"colorTheme": "{tv}","isTransparent": true,"width": "100%","height": "800","locale": "es","importanceFilter": "-1,0","currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}}</script></div>"""
