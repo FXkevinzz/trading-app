@@ -352,7 +352,7 @@ def main_app():
                 st.markdown("<div class='strategy-header'>3. EJECUCIÓN (4H)</div>", unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
                 st.divider()
-                h4_sc = sum([st.checkbox("Vela (+10%)", key="h1")*10, st.checkbox("Patrón (+10%)", key="h2")*10, st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5, st.checkbox("Estructura (+5%)", key="h4")*5, st.checkbox("EMA 50 (+5%)", key="h5")*5])
+                h4_sc = sum([st.checkbox("Vela (+10%)", key="h1")*10, st.checkbox("Patrón (+10%)", key="h2")*10, st.checkbox("AOI (+5%)", key="h3")*5, st.checkbox("Estructura (+5%)", key="h4")*5, st.checkbox("EMA 50 (+5%)", key="h5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             # GATILLO
             with r2_c2:
@@ -494,9 +494,14 @@ def main_app():
         with c_t: st.markdown(f"<h3 style='text-align:center; color:#f8fafc; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
-if 'user' not in st.session_state: st.session_state.user = None
-if st.session_state.user: main_app()
-else: login_screen()
-else: login_screen()
+# --- EJECUCIÓN PRINCIPAL ---
+if 'user' not in st.session_state:
+    st.session_state.user = None
+
+if st.session_state.user:
+    main_app()
+else:
+    login_screen()
+
 
 
