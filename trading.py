@@ -10,156 +10,120 @@ import pytz
 # --- 1. CONFIGURACIÓN INICIAL ---
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 
-# --- 2. ESTILOS CSS (BLINDAJE CONTRA MODO CLARO) ---
+# --- 2. ESTILOS CSS (TEMA CLEAN FINTECH - LIGHT MODE PRO) ---
 st.markdown("""
     <style>
-    /* IMPORTAR FUENTE */
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
-    /* === 1. VARIABLES DE COLOR (PALETA AZUL NAVY) === */
+    /* VARIABLES DE COLOR (PALETA CLARA PROFESIONAL) */
     :root {
-        --bg-main: #0f172a;       
-        --bg-card: #1e293b;       
-        --bg-sidebar: #020617;    
-        --text-main: #f8fafc;     
-        --text-muted: #94a3b8;    
-        --accent-blue: #3b82f6;   
-        --accent-green: #10b981;  
-        --accent-red: #ef4444;    
-        --border-color: #334155;  
+        --bg-main: #f1f5f9;       /* Gris azulado muy suave */
+        --bg-card: #ffffff;       /* Blanco puro */
+        --text-main: #0f172a;     /* Azul muy oscuro (casi negro) */
+        --text-muted: #64748b;    /* Gris medio */
+        --accent-blue: #2563eb;   /* Azul Royal */
+        --accent-green: #10b981;  /* Verde Esmeralda */
+        --accent-red: #ef4444;    /* Rojo Intenso */
+        --border-color: #e2e8f0;  /* Gris claro */
+        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
     }
 
-    /* === 2. FORZADO AGRESIVO DE MODO OSCURO === */
-    /* Esto aplasta cualquier configuración de modo claro del navegador */
-    
-    /* Fondo Global */
+    /* ESTRUCTURA GLOBAL */
     .stApp {
-        background-color: var(--bg-main) !important;
-        color: var(--text-main) !important;
-    }
-    
-    /* Textos Globales (Forzar blanco/gris) */
-    h1, h2, h3, h4, h5, h6, p, li, span, div, label, .stMarkdown, .stMarkdown p {
-        color: var(--text-main) !important;
-    }
-    
-    /* Etiquetas pequeñas (Labels de inputs) */
-    .stTextInput label, .stSelectbox label, .stNumberInput label, .stDateInput label, .stTextArea label {
-        color: var(--text-muted) !important;
-        font-size: 0.85rem !important;
+        background-color: var(--bg-main);
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
     }
 
-    /* Sidebar */
+    /* SIDEBAR (Mantenemos oscuro para contraste profesional) */
     [data-testid="stSidebar"] {
-        background-color: var(--bg-sidebar) !important;
-        border-right: 1px solid var(--border-color);
+        background-color: #0f172a;
+        color: white;
     }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] p {
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
+        color: white !important;
+    }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
+        color: #cbd5e1 !important;
+    }
+
+    /* TARJETAS Y CONTENEDORES */
+    .strategy-box {
+        background-color: var(--bg-card);
+        border: 1px solid var(--border-color);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: var(--shadow);
+        height: 100%;
+    }
+    .section-title {
+        color: var(--accent-blue);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 15px;
+        border-bottom: 2px solid var(--bg-main);
+        padding-bottom: 10px;
+    }
+
+    /* INPUTS (Estilo limpio) */
+    .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] > div, .stDateInput input, .stTextArea textarea {
+        background-color: var(--bg-card) !important;
         color: var(--text-main) !important;
-    }
-
-    /* === 3. INPUTS Y WIDGETS (ELIMINAR FONDO BLANCO) === */
-    /* Cajas de texto, números, fechas y áreas de texto */
-    .stTextInput input, 
-    .stNumberInput input, 
-    .stDateInput input, 
-    .stTextArea textarea {
-        background-color: var(--bg-card) !important; 
-        color: white !important; 
-        border: 1px solid var(--border-color) !important;
-        border-radius: 8px !important;
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px;
     }
     
-    /* Selectbox (Menús desplegables) - Esta es la parte difícil */
-    .stSelectbox div[data-baseweb="select"] > div {
-        background-color: var(--bg-card) !important;
-        color: white !important;
-        border-color: var(--border-color) !important;
-        border-radius: 8px !important;
-    }
-    /* El texto dentro del selectbox */
-    .stSelectbox div[data-baseweb="select"] span {
-        color: white !important;
-    }
-    /* Iconos SVG (flechas) a blanco */
-    .stSelectbox svg, .stDateInput svg {
-        fill: white !important;
-    }
-    
-    /* Menú desplegable (el popup con las opciones) */
-    ul[data-baseweb="menu"] {
-        background-color: var(--bg-card) !important;
-        border: 1px solid var(--border-color) !important;
-    }
-    li[data-baseweb="option"] {
-        color: white !important;
-    }
-
-    /* === 4. TABS (PESTAÑAS) === */
+    /* PESTAÑAS (TABS) ESTILO CÁPSULA */
     .stTabs [data-baseweb="tab-list"] {
         gap: 10px;
         background-color: transparent;
+        padding-bottom: 10px;
     }
     .stTabs [data-baseweb="tab"] {
-        height: 55px;
-        background-color: var(--bg-card) !important;
+        height: 50px;
+        background-color: white !important;
         border: 1px solid var(--border-color);
-        border-radius: 8px !important;
+        border-radius: 25px !important;
         color: var(--text-muted) !important;
         font-weight: 600;
-        padding: 0 20px !important;
-    }
-    .stTabs [data-baseweb="tab"]:hover {
-        border-color: var(--accent-blue);
-        color: white !important;
+        padding: 0 25px !important;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
         background-color: var(--accent-blue) !important;
         color: white !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
     }
     .stTabs [data-baseweb="tab-highlight"] { display: none; }
 
-    /* === 5. COMPONENTES PERSONALIZADOS === */
-    /* Cajas de Estrategia */
-    .strategy-box {
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 10px;
-        padding: 20px;
-        height: 100%;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-    }
-    .strategy-header {
-        color: var(--accent-blue) !important;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 8px;
-    }
-    
-    /* HUD Score */
+    /* HUD DASHBOARD */
     .hud-container {
-        display: flex; justify-content: space-between; align-items: center;
-        background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
-        border: 1px solid var(--accent-blue);
-        border-radius: 15px;
+        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        border: 1px solid var(--border-color);
+        border-radius: 16px;
         padding: 25px;
-        margin-top: 25px;
-        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+        margin-top: 20px;
+        box-shadow: var(--shadow);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
     }
-    
-    /* Checkboxes */
-    .stCheckbox label span {
-        color: var(--text-main) !important;
-    }
+    .hud-label { color: var(--text-muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; }
+    .hud-value { color: var(--text-main); font-size: 2.5rem; font-weight: 800; line-height: 1; }
 
-    /* Calendario */
-    .win-text { color: var(--accent-green) !important; font-weight: bold; }
-    .loss-text { color: var(--accent-red) !important; font-weight: bold; }
+    /* ALERTAS */
+    .status-sniper { background-color: #ecfdf5; color: #047857; border: 1px solid #10b981; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
+    .status-warning { background-color: #fefce8; color: #b45309; border: 1px solid #facc15; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
+    .status-stop { background-color: #fef2f2; color: #b91c1c; border: 1px solid #ef4444; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
+
+    /* TEXTOS GLOBALES */
+    h1, h2, h3, h4, p, span, label { color: var(--text-main); }
+    
+    /* CALENDARIO */
+    .calendar-day { background-color: white; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px;}
+    .calendar-header { color: var(--text-muted); font-weight: bold; font-size: 0.8rem; text-align: center; }
     
     </style>
     """, unsafe_allow_html=True)
@@ -180,26 +144,27 @@ def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {})
 def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
     if u not in d: d[u] = {}
-    if name not in d[u]: d[u][name] = bal; save_json(ACCOUNTS_FILE, d)
+    if name not in d[u]: d[u][name] = bal; save_json(ACCOUNTS_FILE, d); save_trade(u, name, None, init=True)
 
-def get_balance(u, acc):
+def get_balance_data(u, acc):
     d = load_json(ACCOUNTS_FILE)
-    ini = d.get(u, {}).get(acc, 0)
+    ini = d.get(u, {}).get(acc, 0.0)
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    pnl = pd.read_csv(fp)["Dinero"].sum() if os.path.exists(fp) else 0
-    return ini, ini + pnl
+    df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame()
+    pnl = df["Dinero"].sum() if not df.empty else 0
+    return ini, ini + pnl, df
 
-def save_trade(u, acc, data):
+def save_trade(u, acc, data, init=False):
     folder = os.path.join(DATA_DIR, u)
     if not os.path.exists(folder): os.makedirs(folder)
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
-    df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
-    df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-    df.to_csv(fp, index=False)
-
-def load_trades(u, acc):
-    fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    return pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
+    if init and not os.path.exists(fp):
+        pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]).to_csv(fp, index=False)
+        return
+    if not init:
+        df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
+        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+        df.to_csv(fp, index=False)
 
 # --- 4. FUNCIONES VISUALES ---
 def mostrar_imagen(nombre, caption):
@@ -224,7 +189,6 @@ def change_month(delta):
 def render_cal_html(df):
     d = st.session_state.get('cal_date', datetime.now())
     y, m = d.year, d.month
-    
     data = {}
     if not df.empty:
         df['Fecha'] = pd.to_datetime(df['Fecha'])
@@ -234,7 +198,7 @@ def render_cal_html(df):
     cal = calendar.Calendar(firstweekday=0)
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
-        html += f'<div style="text-align:center; color:#94a3b8; font-size:0.8rem; font-weight:bold; padding:5px; background:#1e293b; border-radius:4px;">{h}</div>'
+        html += f'<div class="calendar-header">{h}</div>'
     
     for week in cal.monthdayscalendar(y, m):
         for day in week:
@@ -242,24 +206,19 @@ def render_cal_html(df):
             else:
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
-                
-                border = "#334155" 
-                bg = "#1e293b" 
-                color = "white"
+                bg = "#ffffff"
+                border = "#e2e8f0"
+                col = "#0f172a"
                 
                 if val > 0:
-                    border = "#10b981"
-                    bg = "rgba(16, 185, 129, 0.15)"
-                    color = "#10b981"
+                    bg = "#ecfdf5"; border = "#10b981"; col = "#047857"
                 elif val < 0:
-                    border = "#ef4444"
-                    bg = "rgba(239, 68, 68, 0.15)"
-                    color = "#ef4444"
+                    bg = "#fef2f2"; border = "#ef4444"; col = "#b91c1c"
 
                 html += f'''
-                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s;">
-                    <div style="color:#64748b; font-size:0.9rem; font-weight:bold;">{day}</div>
-                    <div style="color:{color}; font-weight:bold; text-align:right;">{txt}</div>
+                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="color:#94a3b8; font-size:0.8rem; font-weight:bold;">{day}</div>
+                    <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
                 </div>'''
     html += '</div>'
     return html, y, m
@@ -268,14 +227,14 @@ def render_cal_html(df):
 def login_screen():
     c1,c2,c3 = st.columns([1,1,1])
     with c2:
-        st.markdown("<h1 style='text-align:center; color:#3b82f6;'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center; color:#2563eb;'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
         t1, t2 = st.tabs(["INGRESAR", "REGISTRARSE"])
         with t1:
             u = st.text_input("Usuario")
             p = st.text_input("Password", type="password")
             if st.button("ACCEDER", type="primary", use_container_width=True):
                 if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Credenciales incorrectas")
+                else: st.error("Datos incorrectos")
         with t2:
             nu = st.text_input("Nuevo Usuario")
             np = st.text_input("Nueva Password", type="password")
@@ -287,7 +246,7 @@ def main_app():
     user = st.session_state.user
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
 
-    # --- SIDEBAR AZUL ---
+    # --- SIDEBAR (NAVY BLUE) ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
         if st.button("CERRAR SESIÓN", use_container_width=True): st.session_state.user = None; st.rerun()
@@ -295,11 +254,11 @@ def main_app():
         
         accs = get_user_accounts(user)
         sel_acc = st.selectbox("📂 CUENTA ACTIVA", accs)
-        ini, act = get_balance(user, sel_acc)
+        ini, act, _ = get_balance_data(user, sel_acc)
         
         col_s = "#10b981" if act >= ini else "#ef4444"
         st.markdown(f"""
-        <div style="background:#0f172a; padding:20px; border-radius:12px; border:1px solid #334155; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
+        <div style="background:rgba(255,255,255,0.05); padding:20px; border-radius:12px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
             <div style="color:#94a3b8; font-size:0.8rem; letter-spacing:1px; margin-bottom:5px;">BALANCE TOTAL</div>
             <div style="color:{col_s}; font-size:2rem; font-weight:900;">${act:,.2f}</div>
             <div style="color:#64748b; font-size:0.8rem; margin-top:5px">Inicial: ${ini:,.2f}</div>
@@ -309,14 +268,14 @@ def main_app():
         st.markdown("---")
         with st.expander("➕ NUEVA CUENTA"):
             na = st.text_input("Nombre de Cuenta")
-            nb = st.number_input("Capital Inicial ($)", value=10000.0, step=1000.0)
+            nb = st.number_input("Capital Inicial ($)", value=100.0, step=100.0)
             if st.button("CREAR", use_container_width=True):
                 if na: create_account(user, na, nb); st.rerun()
 
     # --- PESTAÑAS PRINCIPALES ---
     t_op, t_reg, t_dash, t_cal = st.tabs(["🦁 OPERATIVA", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO"])
 
-    # === 1. OPERATIVA (AZUL & ORGANIZADA) ===
+    # === 1. OPERATIVA ===
     with t_op:
         with st.expander("📘 GUÍA VISUAL DE PATRONES"):
             c1, c2 = st.columns(2)
@@ -333,10 +292,10 @@ def main_app():
 
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # Selector de Modo Estilizado (Fixed Color)
+        # Selector de Modo
         st.markdown("""
-        <div style="background:#1e293b; padding:15px; border-radius:10px; border:1px solid #334155; text-align:center; margin-bottom:20px;">
-            <h4 style="margin:0; color:#3b82f6 !important; text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN DE ESTRATEGIA</h4>
+        <div style="background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; margin-bottom:20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+            <h4 style="margin:0; color:#2563eb; text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN DE ESTRATEGIA</h4>
         </div>
         """, unsafe_allow_html=True)
         
@@ -348,39 +307,34 @@ def main_app():
         r1_c1, r1_c2 = st.columns(2)
         r2_c1, r2_c2 = st.columns(2)
 
-        # Variables de puntuación
         total = 0
         sos, eng, rr = False, False, False
 
         if "Swing" in modo:
-            # W
             with r1_c1:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>1. SEMANAL (W)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>1. SEMANAL (W)</div>", unsafe_allow_html=True)
                 tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
                 st.divider()
                 w_sc = sum([st.checkbox("AOI (+10%)", key="w1")*10, st.checkbox("Estructura (+10%)", key="w2")*10, st.checkbox("Patrón (+10%)", key="w3")*10, st.checkbox("EMA 50 (+5%)", key="w4")*5, st.checkbox("Psicológico (+5%)", key="w5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
-            # D
             with r1_c2:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>2. DIARIO (D)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>2. DIARIO (D)</div>", unsafe_allow_html=True)
                 td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
                 st.divider()
                 d_sc = sum([st.checkbox("AOI (+10%)", key="d1")*10, st.checkbox("Estructura (+10%)", key="d2")*10, st.checkbox("Vela (+10%)", key="d3")*10, st.checkbox("Patrón (+10%)", key="d4")*10, st.checkbox("EMA 50 (+5%)", key="d5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
-            # 4H
             with r2_c1:
                 st.markdown('<div class="strategy-box" style="margin-top:20px;">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>3. EJECUCIÓN (4H)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>3. EJECUCIÓN (4H)</div>", unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
                 st.divider()
                 h4_sc = sum([st.checkbox("Vela (+10%)", key="h1")*10, st.checkbox("Patrón (+10%)", key="h2")*10, st.checkbox("AOI (+5%)", key="h3")*5, st.checkbox("Estructura (+5%)", key="h4")*5, st.checkbox("EMA 50 (+5%)", key="h5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
-            # GATILLO
             with r2_c2:
                 st.markdown('<div class="strategy-box" style="margin-top:20px;">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>4. GATILLO FINAL</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>4. GATILLO FINAL</div>", unsafe_allow_html=True)
                 if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
                 elif tw==td: st.info("✅ SWING SYNC")
                 else: st.warning("⚠️ TENDENCIA MIXTA")
@@ -395,28 +349,28 @@ def main_app():
         else: # Scalping
             with r1_c1:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>1. CONTEXTO (4H)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>1. CONTEXTO (4H)</div>", unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="st4")
                 st.divider()
                 w_sc = sum([st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Estructura (+5%)", key="sc2")*5, st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5, st.checkbox("Psicológico (+5%)", key="sc5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r1_c2:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>2. CONTEXTO (2H)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>2. CONTEXTO (2H)</div>", unsafe_allow_html=True)
                 t2 = st.selectbox("Tendencia 2H", ["Alcista", "Bajista"], key="st2")
                 st.divider()
                 d_sc = sum([st.checkbox("AOI (+5%)", key="sc6")*5, st.checkbox("Estructura (+5%)", key="sc7")*5, st.checkbox("Vela (+5%)", key="sc8")*5, st.checkbox("Patrón (+5%)", key="sc9")*5, st.checkbox("EMA 50 (+5%)", key="sc10")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c1:
                 st.markdown('<div class="strategy-box" style="margin-top:20px;">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>3. EJECUCIÓN (1H)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>3. EJECUCIÓN (1H)</div>", unsafe_allow_html=True)
                 t1 = st.selectbox("Tendencia 1H", ["Alcista", "Bajista"], key="st1")
                 st.divider()
                 h4_sc = sum([st.checkbox("Vela (+5%)", key="sc11")*5, st.checkbox("Patrón (+5%)", key="sc12")*5, st.checkbox("Estructura (+5%)", key="sc13")*5, st.checkbox("EMA 50 (+5%)", key="sc14")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c2:
                 st.markdown('<div class="strategy-box" style="margin-top:20px;">', unsafe_allow_html=True)
-                st.markdown("<div class='strategy-header'>4. GATILLO (M15)</div>", unsafe_allow_html=True)
+                st.markdown("<div class='section-title'>4. GATILLO (M15)</div>", unsafe_allow_html=True)
                 if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
                 else: st.warning("⚠️ TENDENCIA MIXTA")
                 st.divider()
@@ -427,30 +381,32 @@ def main_app():
                 total = w_sc + d_sc + h4_sc + entry_score + 15
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- HUD DE RESULTADOS ---
+        # --- HUD ---
         st.markdown("<br>", unsafe_allow_html=True)
         valid = sos and eng and rr
         
-        # Determinar estado
-        if not sos: msg, css_cl = "FALTA ESTRUCTURA (SOS)", "status-stop"
-        elif not eng: msg, css_cl = "FALTA VELA DE ENTRADA", "status-warning"
-        elif not rr: msg, css_cl = "RATIO INSUFICIENTE", "status-warning"
-        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
-        elif total >= 60 and valid: msg, css_cl = "✅ TRADE VÁLIDO", "status-sniper"
-        else: msg, css_cl = "💤 ESPERAR", "status-warning"
+        msg_header, msg_body, css_class = "", "", ""
+        if not sos: msg_header, msg_body, css_class = "⛔ STOP", "Falta Estructura (SOS)", "status-stop"
+        elif not eng: msg_header, msg_body, css_class = "⚠️ CUIDADO", "Falta Vela Entrada", "status-warning"
+        elif not rr: msg_header, msg_body, css_class = "💸 RIESGO", "Ratio Insuficiente", "status-warning"
+        elif total >= 90: msg_header, msg_body, css_class = "💎 SNIPER ENTRY", "Alta Probabilidad", "status-sniper"
+        elif total >= 60 and valid: msg_header, msg_body, css_class = "✅ EJECUTAR", "Setup Válido", "status-sniper"
+        else: msg_header, msg_body, css_class = "💤 ESPERAR", "Puntaje Bajo", "status-warning"
 
-        # HTML del HUD
         st.markdown(f"""
         <div class="hud-container">
-            <div class="hud-stat">
-                <div class="hud-label" style="color:#94a3b8 !important">PUNTAJE ACUMULADO</div>
-                <div class="hud-value-large" style="color:white !important">{total}%</div>
+            <div>
+                <div class="hud-label">PUNTAJE TOTAL</div>
+                <div class="hud-value">{total}%</div>
             </div>
-            <div style="flex-grow:1; text-align:center; margin:0 20px;">
-                <span class="{css_cl}">{msg}</span>
+            <div style="flex-grow:1; margin:0 30px;">
+                <div class="{css_class}">
+                    <div style="font-size:1.1rem">{msg_header}</div>
+                    <div style="font-weight:400; font-size:0.9rem">{msg_body}</div>
+                </div>
             </div>
-            <div class="hud-stat">
-                <div class="hud-label" style="color:#94a3b8 !important">GATILLOS</div>
+            <div style="text-align:right">
+                <div class="hud-label">ESTADO</div>
                 <div style="font-size:1.5rem; font-weight:bold; color:{'#10b981' if valid else '#ef4444'}">
                     {'LISTO' if valid else 'PENDIENTE'}
                 </div>
@@ -458,51 +414,54 @@ def main_app():
         </div>
         """, unsafe_allow_html=True)
         
-        # Barra de progreso visual (tope visual 100)
         st.progress(min(total, 100))
-
-        if valid and total >= 60:
-            sl = "5-7 pips" if "Swing" in modo else "3-5 pips"
-            st.info(f"📝 PLAN: Stop Loss {sl} | TP: Liquidez Opuesta | Riesgo 1%")
 
     # === 2. REGISTRO ===
     with t_reg:
-        st.markdown("<h3 style='color:#3b82f6 !important'>📝 Registrar Nueva Operación</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:#2563eb'>📝 Bitácora</h3>", unsafe_allow_html=True)
         with st.form("reg"):
             c1,c2 = st.columns(2)
             dt = c1.date_input("Fecha", datetime.now())
             pr = c1.text_input("Par", "XAUUSD").upper()
             tp = c1.selectbox("Tipo", ["BUY", "SELL"])
-            
             rs = c2.selectbox("Resultado", ["WIN", "LOSS", "BE"])
-            mn = c2.number_input("Monto ($)", min_value=0.0, step=10.0, help="Introduce valor positivo")
+            mn = c2.number_input("Monto ($)", min_value=0.0, step=10.0)
             rt = c2.number_input("Ratio", value=2.5)
             nt = st.text_area("Notas")
-            
-            if st.form_submit_button("GUARDAR EN BITÁCORA", use_container_width=True):
+            if st.form_submit_button("GUARDAR TRADE", use_container_width=True):
                 real_mn = mn if rs=="WIN" else -mn if rs=="LOSS" else 0
                 save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":real_mn,"Ratio":rt,"Notas":nt})
                 st.success("Guardado!"); st.rerun()
 
     # === 3. DASHBOARD ===
     with t_dash:
-        st.markdown("<h3 style='color:#3b82f6 !important'>📊 Rendimiento</h3>", unsafe_allow_html=True)
-        df = load_trades(user, sel_acc)
+        ini, act, df = get_balance_data(user, sel_acc)
         if not df.empty:
+            st.markdown(f"<h3 style='color:#2563eb'>📊 Rendimiento: {sel_acc}</h3>", unsafe_allow_html=True)
             k1,k2,k3,k4 = st.columns(4)
             wins = len(df[df["Resultado"]=="WIN"])
             net = df['Dinero'].sum()
             
-            k1.markdown(f"<div style='background:#1e293b; padding:15px; border-radius:10px; text-align:center'><div style='color:#94a3b8; font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
+            k1.markdown(f"<div style='background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0; text-align:center'><div style='color:#64748b; font-size:0.8rem; font-weight:bold'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
             k2.metric("WIN RATE", f"{(wins/len(df)*100):.1f}%")
             k3.metric("TRADES", len(df))
             k4.metric("SALDO FINAL", f"${act:,.2f}")
             
-            df["Eq"] = ini + df["Dinero"].cumsum()
-            fig = go.Figure(go.Scatter(x=df["Fecha"], y=df["Eq"], line=dict(color='#3b82f6', width=3), fill='tozeroy', fillcolor='rgba(59, 130, 246, 0.1)'))
-            fig.update_layout(title="Curva de Equity", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#94a3b8'), xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#334155'))
+            st.markdown("#### Curva de Crecimiento")
+            df = df.sort_values("Fecha")
+            # Crear datos para gráfico desde saldo inicial
+            fechas = [df["Fecha"].iloc[0]] if not df.empty else [datetime.now().date()]
+            valores = [ini]
+            acumulado = ini
+            for _, row in df.iterrows():
+                fechas.append(row["Fecha"])
+                acumulado += row["Dinero"]
+                valores.append(acumulado)
+
+            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#2563eb', width=3), fill='tozeroy'))
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#0f172a'), xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#e2e8f0'))
             st.plotly_chart(fig, use_container_width=True)
-        else: st.info("No hay datos")
+        else: st.info("Sin datos")
 
     # === 4. CALENDARIO ===
     with t_cal:
@@ -512,9 +471,9 @@ def main_app():
         with c_n: 
             if st.button("➡️", use_container_width=True): change_month(1); st.rerun()
             
-        df = load_trades(user, sel_acc)
+        _, _, df = get_balance_data(user, sel_acc)
         html, y, m = render_cal_html(df)
-        with c_t: st.markdown(f"<h3 style='text-align:center; color:#f8fafc !important; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
+        with c_t: st.markdown(f"<h3 style='text-align:center; color:#0f172a; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
 if 'user' not in st.session_state: st.session_state.user = None
