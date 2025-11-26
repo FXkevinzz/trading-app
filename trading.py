@@ -54,19 +54,21 @@ def guardar_trade(username, account_name, data):
     df = pd.concat([df, new], ignore_index=True)
     df.to_csv(get_account_file(username, account_name), index=False)
 
-# --- FUNCIÓN IMÁGENES (RESTAURADA ORIGINAL) ---
+# --- FUNCIÓN IMÁGENES (ENLACES ESTABLES) ---
 def mostrar_imagen(nombre_archivo, caption):
+    # Usamos enlaces de Wikimedia Commons que son estables y públicos
     links = {
-        "bullish_engulfing.png": "https://forexbee.co/wp-content/uploads/2019/10/Bullish-Engulfing-Pattern-1.png",
-        "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png",
-        "hammer.png": "https://a.c-dn.net/b/2fPj5H/Hammer-Candlestick-Pattern_body_Hammer.png.full.png",
-        "bearish_engulfing.png": "https://forexbee.co/wp-content/uploads/2019/10/Bearish-Engulfing-Pattern.png",
-        "shooting_star.png": "https://a.c-dn.net/b/4hQ18X/Shooting-Star-Candlestick_body_ShootingStar.png.full.png"
+        "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
+        "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
+        "hammer.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Candlestick_Pattern_Hammer.png/320px-Candlestick_Pattern_Hammer.png",
+        "shooting_star.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Candlestick_Pattern_Shooting_Star.png/320px-Candlestick_Pattern_Shooting_Star.png",
+        "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png" # Este suele funcionar bien
     }
+    
     if nombre_archivo in links: 
-        st.image(links[nombre_archivo], caption=caption, use_container_width=True)
+        st.image(links[nombre_archivo], caption=caption, width=200)
     else: 
-        st.warning(f"⚠️ Imagen no encontrada: {nombre_archivo}")
+        st.warning(f"⚠️ Imagen no disponible: {nombre_archivo}")
 
 # --- ESTILOS CSS ---
 st.markdown("""
@@ -160,20 +162,21 @@ def app():
             if st.button("Crear") and n_acc: guardar_trade(user, n_acc, {"Fecha":datetime.now(),"Dinero":0}); st.rerun()
         
         st.divider()
-        # SELECTOR DE MODO ORIGINAL
+        # SELECTOR DE MODO
         modo = st.radio("Modo Operativa", ["Swing / Day (W-D-4H)", "Scalping (4H-2H-1H)"])
         
         tz = pytz.timezone('America/Guayaquil')
         h = datetime.now(tz).hour
         st.markdown(f"**Mercado:** {'❌ CERRADO' if 15<=h<19 else '✅ ABIERTO'}")
 
-    t1, t2, t3, t4 = st.tabs(["🦁 OPERATIVA", "📅 CALENDARIO", "📊 DASHBOARD", "📝 REGISTRO"])
+    # --- DEFINICIÓN DE PESTAÑAS (NOMBRES CORREGIDOS) ---
+    tab_op, tab_cal, tab_dash, tab_reg = st.tabs(["🦁 OPERATIVA", "📅 CALENDARIO", "📊 DASHBOARD", "📝 REGISTRO"])
 
-    # === TAB 1: OPERATIVA (LÓGICA ORIGINAL RESTAURADA) ===
-    with t1:
+    # === TAB 1: OPERATIVA ===
+    with tab_op:
         c_guia, c_check, c_res = st.columns([1, 2, 1.2], gap="medium")
 
-        # 1. IMÁGENES (RESTAURADO)
+        # 1. IMÁGENES
         with c_guia:
             st.header("📖 Chuleta")
             with st.expander("🐂 Alcistas", expanded=True):
@@ -184,18 +187,19 @@ def app():
                 st.markdown("### Bearish Engulfing"); mostrar_imagen("bearish_engulfing.png", "Roja envuelve verde")
                 st.markdown("### Shooting Star"); mostrar_imagen("shooting_star.png", "Rechazo arriba")
 
-        # 2. CHECKLIST DETALLADO (RESTAURADO)
+        # 2. CHECKLIST DETALLADO
         with c_check:
             if "Swing" in modo:
                 st.subheader("🔗 Tendencias (W / D / 4H)")
                 c1, c2, c3 = st.columns(3)
-                tw = c1.selectbox("Semanal", ["Alcista", "Bajista"], key="tw")
-                td = c2.selectbox("Diario", ["Alcista", "Bajista"], key="td")
-                t4 = c3.selectbox("4 Horas", ["Alcista", "Bajista"], key="t4")
+                # USAMOS NOMBRES DE VARIABLE ÚNICOS PARA NO CHOCAR
+                trend_w = c1.selectbox("Semanal", ["Alcista", "Bajista"], key="tw")
+                trend_d = c2.selectbox("Diario", ["Alcista", "Bajista"], key="td")
+                trend_4h = c3.selectbox("4 Horas", ["Alcista", "Bajista"], key="t4")
                 
-                if tw == td == t4: st.success("💎 TRIPLE SYNC")
-                elif tw == td: st.info("✅ SWING SYNC")
-                elif td == t4: st.info("✅ DAY SYNC")
+                if trend_w == trend_d == trend_4h: st.success("💎 TRIPLE SYNC")
+                elif trend_w == trend_d: st.info("✅ SWING SYNC")
+                elif trend_d == trend_4h: st.info("✅ DAY SYNC")
                 else: st.warning("⚠️ MIXTO")
                 
                 st.divider()
@@ -240,16 +244,16 @@ def app():
                 total = w_sc + d_sc + h4_sc + entry_score
 
             else:
-                # LÓGICA SCALPING RESTAURADA
+                # LÓGICA SCALPING
                 st.subheader("🔗 Tendencias (4H / 2H / 1H)")
                 c1, c2, c3 = st.columns(3)
-                t4 = c1.selectbox("4H", ["Alcista", "Bajista"], key="st4")
-                t2 = c2.selectbox("2H", ["Alcista", "Bajista"], key="st2")
-                t1 = c3.selectbox("1H", ["Alcista", "Bajista"], key="st1")
+                trend_4h = c1.selectbox("4H", ["Alcista", "Bajista"], key="st4")
+                trend_2h = c2.selectbox("2H", ["Alcista", "Bajista"], key="st2")
+                trend_1h = c3.selectbox("1H", ["Alcista", "Bajista"], key="st1")
                 
-                if t4 == t2 == t1: st.success("💎 TRIPLE SYNC")
-                elif t4 == t2: st.info("✅ 4H-2H SYNC")
-                elif t2 == t1: st.info("✅ 2H-1H SYNC")
+                if trend_4h == trend_2h == trend_1h: st.success("💎 TRIPLE SYNC")
+                elif trend_4h == trend_2h: st.info("✅ 4H-2H SYNC")
+                elif trend_2h == trend_1h: st.info("✅ 2H-1H SYNC")
                 else: st.warning("⚠️ MIXTO")
 
                 st.divider()
@@ -291,7 +295,7 @@ def app():
                 
                 total = w_sc + d_sc + h4_sc + entry_score + 10
 
-        # 3. RESULTADOS (RESTAURADO)
+        # 3. RESULTADOS
         with c_res:
             is_valid = entry_sos and entry_eng and entry_rr
             
@@ -321,7 +325,7 @@ def app():
                 st.error("### ❌ NO OPERAR")
 
     # === TAB 2: CALENDARIO ===
-    with t2:
+    with tab_cal:
         st.subheader(f"📅 Calendario: {sel_acc}")
         df = cargar_trades(user, sel_acc)
         df_real = df[df['Dinero'] != 0]
@@ -330,7 +334,7 @@ def app():
         st.markdown(render_calendar(y, m, df_real), unsafe_allow_html=True)
 
     # === TAB 3: DASHBOARD ===
-    with t3:
+    with tab_dash:
         st.subheader(f"📊 Métricas: {sel_acc}")
         df = cargar_trades(user, sel_acc)
         df_res = df[df['Resultado'].notna()]
@@ -345,7 +349,7 @@ def app():
         else: st.info("Sin datos")
 
     # === TAB 4: REGISTRO ===
-    with t4:
+    with tab_reg:
         st.subheader("📝 Registrar")
         with st.form("reg"):
             c1,c2 = st.columns(2)
