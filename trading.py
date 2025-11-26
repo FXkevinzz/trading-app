@@ -62,120 +62,90 @@ def inject_theme(theme_mode):
     :root {{ {css_vars} }}
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
+
     .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
     h1, h2, h3, h4, h5, p, li, span, div {{ color: var(--text-main) !important; }}
     .stMarkdown p {{ color: var(--text-main) !important; }}
     .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
     label, .stTextInput label, .stNumberInput label, .stSelectbox label {{ color: var(--text-muted) !important; font-weight: 600 !important; }}
+    
     [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: var(--text-muted) !important; }}
-    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{ background-color: var(--input-bg) !important; color: var(--text-main) !important; border: 1px solid var(--border-color) !important; border-radius: 8px; }}
+    
+    .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
+        background-color: var(--input-bg) !important;
+        color: var(--text-main) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 8px;
+    }}
     .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
+    
     ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
     li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
-    .stButton button {{ background-color: var(--button-bg) !important; color: var(--button-text) !important; border: none !important; border-radius: 8px; font-weight: bold; transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }}
+    
+    .stButton button {{
+        background-color: var(--button-bg) !important;
+        color: var(--button-text) !important;
+        border: none !important;
+        border-radius: 8px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }}
     .stButton button:hover {{ opacity: 0.9; transform: translateY(-1px); }}
-    .stTabs [data-baseweb="tab"] {{ background-color: var(--bg-card) !important; color: var(--text-muted) !important; border: 1px solid var(--border-color); border-radius: 30px !important; padding: 0 25px !important; height: 50px; box-shadow: var(--shadow); }}
-    .stTabs [data-baseweb="tab"][aria-selected="true"] {{ background-color: var(--accent) !important; color: white !important; border: none !important; }}
+    
+    .stTabs [data-baseweb="tab"] {{
+        background-color: var(--bg-card) !important;
+        color: var(--text-muted) !important;
+        border: 1px solid var(--border-color);
+        border-radius: 30px !important;
+        padding: 0 25px !important;
+        height: 50px;
+        box-shadow: var(--shadow);
+    }}
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {{
+        background-color: var(--accent) !important;
+        color: white !important;
+        border: none !important;
+    }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
+    
     .strategy-box {{ background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }}
     .hud-container {{ background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%); border: 2px solid var(--accent); border-radius: 15px; padding: 20px; margin-top: 20px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; }}
     .calendar-header {{ color: var(--text-muted) !important; }}
+    
     </style>
     """, unsafe_allow_html=True)
 
-# --- 4. FUNCIONES BACKEND (A PRUEBA DE FALLOS) ---
-def load_json(fp):
-    # Si el archivo no existe, devolvemos vacio
-    if not os.path.exists(fp): return {}
-    try:
-        with open(fp, "r") as f: return json.load(f)
-    except:
-        # SI EL ARCHIVO ESTÁ CORRUPTO, LO IGNORAMOS Y DEVOLVEMOS VACÍO
-        return {}
-
-def save_json(fp, data):
-    try:
-        with open(fp, "w") as f: json.dump(data, f)
-    except:
-        pass
-
-# --- USUARIO DE RESCATE ---
-# Esto garantiza que siempre puedas entrar, aunque se borre todo
-users_db = load_json(USERS_FILE)
-if not users_db:
-    users_db = {"admin": "1234"}
-    save_json(USERS_FILE, users_db)
-
-def verify_user(u, p): 
-    d = load_json(USERS_FILE)
-    # Respaldo por si load_json falla
-    if not d: d = {"admin": "1234"} 
-    return u in d and d[u] == p
-
-def register_user(u, p): 
-    d = load_json(USERS_FILE)
-    d[u] = p
-    save_json(USERS_FILE, d)
-
-def get_user_accounts(u): 
-    d = load_json(ACCOUNTS_FILE)
-    return list(d.get(u, {}).keys()) if u in d else ["Principal"]
-
+# --- 4. FUNCIONES BACKEND ---
+def load_json(fp): return json.load(open(fp)) if os.path.exists(fp) else {}
+def save_json(fp, data): json.dump(data, open(fp, "w"))
+def verify_user(u, p): d = load_json(USERS_FILE); return u in d and d[u] == p
+def register_user(u, p): d = load_json(USERS_FILE); d[u] = p; save_json(USERS_FILE, d)
+def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {}).keys()) if u in d else ["Principal"]
 def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
     if u not in d: d[u] = {}
-    if name not in d[u]: 
-        d[u][name] = bal
-        save_json(ACCOUNTS_FILE, d)
-        save_trade(u, name, None, init=True)
-
+    if name not in d[u]: d[u][name] = bal; save_json(ACCOUNTS_FILE, d); save_trade(u, name, None, init=True)
 def get_balance_data(u, acc):
     d = load_json(ACCOUNTS_FILE)
     ini = d.get(u, {}).get(acc, 0.0)
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    
-    if os.path.exists(fp):
-        try:
-            df = pd.read_csv(fp)
-            pnl = df["Dinero"].sum() if not df.empty else 0
-        except:
-            df = pd.DataFrame()
-            pnl = 0
-    else:
-        df = pd.DataFrame()
-        pnl = 0
-        
+    df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame()
+    pnl = df["Dinero"].sum() if not df.empty else 0
     return ini, ini + pnl, df
-
 def save_trade(u, acc, data, init=False):
     folder = os.path.join(DATA_DIR, u)
     if not os.path.exists(folder): os.makedirs(folder)
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
-    
-    cols = ["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]
-    
-    if init:
-        if not os.path.exists(fp): pd.DataFrame(columns=cols).to_csv(fp, index=False)
-        return
-
-    try:
-        df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=cols)
-    except:
-        df = pd.DataFrame(columns=cols)
-        
-    df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
-    df.to_csv(fp, index=False)
-
+    if init and not os.path.exists(fp): pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]).to_csv(fp, index=False); return
+    if not init:
+        df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
+        df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
+        df.to_csv(fp, index=False)
 def load_trades(u, acc):
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    cols = ["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]
-    if os.path.exists(fp):
-        try:
-            return pd.read_csv(fp)
-        except:
-            return pd.DataFrame(columns=cols)
-    return pd.DataFrame(columns=cols)
+    return pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
 
 # --- 5. FUNCIONES VISUALES ---
 def mostrar_imagen(nombre, caption):
@@ -202,15 +172,15 @@ def render_cal_html(df, is_dark):
     y, m = d.year, d.month
     data = {}
     if not df.empty:
-        try:
-            df['Fecha'] = pd.to_datetime(df['Fecha'])
-            df_m = df[(df['Fecha'].dt.year==y) & (df['Fecha'].dt.month==m)]
-            data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
-        except: pass
+        df['Fecha'] = pd.to_datetime(df['Fecha'])
+        df_m = df[(df['Fecha'].dt.year==y) & (df['Fecha'].dt.month==m)]
+        data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
 
     cal = calendar.Calendar(firstweekday=0)
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
+    
     day_col = "#94a3b8" if is_dark else "#64748b"
+    
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
         html += f'<div style="text-align:center; color:{day_col}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
     
@@ -220,30 +190,44 @@ def render_cal_html(df, is_dark):
             else:
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
-                bg = "var(--bg-card)"; border = "var(--border-color)"; col = "var(--text-main)"
-                if val > 0: bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
-                elif val < 0: bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
-                html += f'<div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;"><div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div><div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div></div>'
+                
+                bg = "var(--bg-card)"
+                border = "var(--border-color)"
+                col = "var(--text-main)"
+                
+                if val > 0:
+                    bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
+                elif val < 0:
+                    bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
+
+                html += f'''
+                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div>
+                    <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
+                </div>'''
     html += '</div>'
     return html, y, m
 
-# --- 6. LOGIN ---
+# --- 6. LOGIN (CORREGIDO CON KEYS UNICAS) ---
 def login_screen():
     inject_theme("Oscuro (Navy)")
     c1,c2,c3 = st.columns([1,1,1])
     with c2:
         st.markdown("<h1 style='text-align:center; color:var(--accent);'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
         t1, t2 = st.tabs(["INGRESAR", "REGISTRARSE"])
+        
+        # AQUI ESTA EL ARREGLO: key="login_user" y key="reg_user"
         with t1:
-            u = st.text_input("Usuario")
-            p = st.text_input("Password", type="password")
-            if st.button("ACCEDER", type="primary", use_container_width=True):
+            u = st.text_input("Usuario", key="login_user")
+            p = st.text_input("Password", type="password", key="login_pass")
+            if st.button("ACCEDER", type="primary", use_container_width=True, key="btn_login"):
                 if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Error. Intenta: admin / 1234")
+                else: st.error("Credenciales incorrectas")
+        
         with t2:
-            nu = st.text_input("Nuevo Usuario")
-            np = st.text_input("Nueva Password", type="password")
-            if st.button("CREAR CUENTA", use_container_width=True):
+            nu = st.text_input("Nuevo Usuario", key="reg_user")
+            np = st.text_input("Nueva Password", type="password", key="reg_pass")
+            if st.button("CREAR CUENTA", use_container_width=True, key="btn_reg"):
                 if nu and np: register_user(nu, np); st.success("Creado!"); st.rerun()
 
 # --- 7. APP PRINCIPAL ---
@@ -403,7 +387,6 @@ def main_app():
         </div>
         """, unsafe_allow_html=True)
         st.progress(min(total, 100))
-        if valid and total >= 60: st.info(f"📝 PLAN: SL {'5-7 pips' if 'Swing' in modo else '3-5 pips'} | TP: Liquidez | Riesgo 1%")
 
     # === 2. REGISTRO ===
     with t_reg:
@@ -477,6 +460,5 @@ def main_app():
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
 else: login_screen()
-if st.session_state.user: main_app()
-else: login_screen()
+
 
