@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components # NECESARIO PARA EL WIDGET
 import pandas as pd
 import os
 import json
@@ -17,23 +18,23 @@ if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# --- 3. SISTEMA DE TEMAS (CSS DINÁMICO CORREGIDO) ---
+# --- 3. SISTEMA DE TEMAS (CSS DINÁMICO) ---
 def inject_theme(theme_mode):
     if theme_mode == "Claro (High Contrast)":
-        # === MODO CLARO CORREGIDO ===
+        # === MODO CLARO ===
         css_vars = """
             --bg-app: #ffffff;
-            --bg-card: #f8f9fa;       /* Gris muy claro para tarjetas */
-            --bg-sidebar: #f1f5f9;    /* Sidebar clara */
-            --text-main: #000000;     /* TEXTO NEGRO PURO */
-            --text-muted: #333333;    /* Gris oscuro */
-            --border-color: #cbd5e1;  /* Borde visible */
+            --bg-card: #f8f9fa;
+            --bg-sidebar: #f1f5f9;
+            --text-main: #000000;
+            --text-muted: #333333;
+            --border-color: #cbd5e1;
             --input-bg: #ffffff;
-            --accent: #2563eb;        /* Azul Royal */
-            --accent-green: #16a34a;  /* Verde oscuro legible */
-            --accent-red: #dc2626;    /* Rojo oscuro legible */
-            --button-bg: #2563eb;     /* Botón Azul Sólido */
-            --button-text: #ffffff;   /* Texto botón Blanco */
+            --accent: #2563eb;
+            --accent-green: #16a34a;
+            --accent-red: #dc2626;
+            --button-bg: #2563eb;
+            --button-text: #ffffff;
             --shadow: 0 2px 5px rgba(0,0,0,0.1);
             --chart-text: #000000;
             --chart-grid: #e2e8f0;
@@ -61,49 +62,37 @@ def inject_theme(theme_mode):
     st.markdown(f"""
     <style>
     :root {{ {css_vars} }}
-
-    /* FUENTE */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     html, body, [class*="css"] {{ font-family: 'Inter', sans-serif; }}
 
-    /* APLICACIÓN GLOBAL */
     .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
-    
-    /* TEXTOS GENERALES (Forzar color según tema) */
     h1, h2, h3, h4, h5, p, li, span, div {{ color: var(--text-main) !important; }}
     .stMarkdown p {{ color: var(--text-main) !important; }}
     
-    /* CHECKBOXES (Corrección específica para Operativa) */
-    .stCheckbox label p {{
-        color: var(--text-main) !important;
-        font-weight: 500;
-    }}
+    /* Checkboxes */
+    .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
     
-    /* ETIQUETAS DE INPUTS */
-    label, .stTextInput label, .stNumberInput label, .stSelectbox label {{
-        color: var(--text-muted) !important;
-        font-weight: 600 !important;
-    }}
+    /* Labels */
+    label, .stTextInput label, .stNumberInput label, .stSelectbox label {{ color: var(--text-muted) !important; font-weight: 600 !important; }}
     
-    /* SIDEBAR */
+    /* Sidebar */
     [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar) !important; border-right: 1px solid var(--border-color); }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: var(--text-muted) !important; }}
     
-    /* INPUTS */
+    /* Inputs */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important;
         color: var(--text-main) !important;
         border: 1px solid var(--border-color) !important;
         border-radius: 8px;
     }}
-    /* Iconos inputs */
     .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
     
-    /* MENUS DESPLEGABLES */
+    /* Menus */
     ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
     li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
     
-    /* BOTONES (Corrección: Sólidos y Legibles) */
+    /* Buttons */
     .stButton button {{
         background-color: var(--button-bg) !important;
         color: var(--button-text) !important;
@@ -113,12 +102,9 @@ def inject_theme(theme_mode):
         transition: all 0.3s ease;
         box-shadow: 0 2px 5px rgba(0,0,0,0.2);
     }}
-    .stButton button:hover {{
-        opacity: 0.9;
-        transform: translateY(-1px);
-    }}
+    .stButton button:hover {{ opacity: 0.9; transform: translateY(-1px); }}
     
-    /* TABS */
+    /* Tabs */
     .stTabs [data-baseweb="tab"] {{
         background-color: var(--bg-card) !important;
         color: var(--text-muted) !important;
@@ -135,27 +121,9 @@ def inject_theme(theme_mode):
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
-    /* TARJETAS */
-    .strategy-box {{
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        border-radius: 12px;
-        padding: 20px;
-        box-shadow: var(--shadow);
-    }}
-    
-    /* HUD SCORE */
-    .hud-container {{
-        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%);
-        border: 2px solid var(--accent);
-        border-radius: 15px;
-        padding: 20px;
-        margin-top: 20px;
-        box-shadow: var(--shadow);
-        display: flex; justify-content: space-between; align-items: center;
-    }}
-    
-    /* CALENDARIO */
+    /* Components */
+    .strategy-box {{ background-color: var(--bg-card); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; box-shadow: var(--shadow); }}
+    .hud-container {{ background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-app) 100%); border: 2px solid var(--accent); border-radius: 15px; padding: 20px; margin-top: 20px; box-shadow: var(--shadow); display: flex; justify-content: space-between; align-items: center; }}
     .calendar-header {{ color: var(--text-muted) !important; }}
     
     </style>
@@ -295,7 +263,7 @@ def main_app():
         ini, act, _ = get_balance_data(user, sel_acc)
         
         col_s = "#10b981" if act >= ini else "#ef4444"
-        bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#ffffff"
+        bg_bal = "rgba(255,255,255,0.05)" if is_dark else "#f3f4f6"
         
         st.markdown(f"""
         <div style="background:{bg_bal}; padding:20px; border-radius:12px; border:1px solid var(--border-color); text-align:center; box-shadow: var(--shadow);">
@@ -313,7 +281,7 @@ def main_app():
                 if na: create_account(user, na, nb); st.rerun()
 
     # --- CUERPO ---
-    t_op, t_reg, t_dash, t_cal = st.tabs(["🦁 OPERATIVA", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO"])
+    t_op, t_reg, t_dash, t_cal, t_news = st.tabs(["🦁 OPERATIVA", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
     # === 1. OPERATIVA ===
     with t_op:
@@ -488,14 +456,10 @@ def main_app():
                 acum += r["Dinero"]
                 valores.append(acum)
 
-            # Colores gráfico dinámicos
             line_col = "var(--accent)"
             bg_chart = "rgba(0,0,0,0)"
             text_chart = "var(--chart-text)"
             grid_chart = "var(--chart-grid)"
-            
-            # Plotly necesita valores hexadecimales exactos a veces, pero intentaremos heredar
-            # Truco: Leeremos la variable de tema
             line_hex = "#3b82f6" if is_dark else "#2563eb"
             text_hex = "#94a3b8" if is_dark else "#000000"
             grid_hex = "#334155" if is_dark else "#e2e8f0"
@@ -517,6 +481,31 @@ def main_app():
         html, y, m = render_cal_html(df, is_dark)
         with c_t: st.markdown(f"<h3 style='text-align:center; color:var(--text-main); margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
+
+    # === 5. NOTICIAS (FOREX FACTORY ALTERNATIVE - TRADINGVIEW) ===
+    with t_news:
+        st.markdown(f"<h3 style='color:var(--accent)'>📰 Calendario Económico</h3>", unsafe_allow_html=True)
+        
+        # Widget Configurado
+        tv_theme = "dark" if is_dark else "light"
+        
+        html_code = f"""
+        <div class="tradingview-widget-container">
+          <div class="tradingview-widget-container__widget"></div>
+          <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+          {{
+          "colorTheme": "{tv_theme}",
+          "isTransparent": true,
+          "width": "100%",
+          "height": "600",
+          "locale": "es",
+          "importanceFilter": "-1,0,1",
+          "currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"
+        }}
+          </script>
+        </div>
+        """
+        components.html(html_code, height=600, scrolling=True)
 
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
