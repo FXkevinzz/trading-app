@@ -80,7 +80,6 @@ def save_to_brain(analysis_text, pair, result, mode, images_list=None):
         "images": saved_paths
     }
     memory.append(new_mem)
-    
     try:
         with open(BRAIN_FILE, "w") as f: json.dump(memory, f, indent=4)
         load_brain.clear()
@@ -123,19 +122,16 @@ def analyze_multiframe(images_data, mode, pair):
     content = [prompt]
     for data in images_data: content.append(data['img'])
 
-    # PRIORIDAD: PRO 2.0 (Mejor razonamiento)
     modelos = ['gemini-2.0-pro-exp', 'gemini-2.0-flash', 'gemini-1.5-pro']
-    
     for m in modelos:
         try:
             model = genai.GenerativeModel(m)
             return model.generate_content(content).text
         except: continue
-            
-    return "Error conexión IA. Verifica tu API Key."
+    return "Error conexión IA."
 
 def generate_audit_report(df):
-    if df.empty: return "Sin datos."
+    if df.empty: return "Sin datos para auditar."
     csv_txt = df.to_string()
     prompt = f"""Audita estos trades como un experto en riesgo:\n{csv_txt}\nDetecta: Fugas, Zonas de Poder y da un consejo."""
     try:
@@ -144,8 +140,35 @@ def generate_audit_report(df):
     except: return "Error Auditoría."
 
 # ==============================================================================
-# 4. SISTEMA DE TEMAS Y CSS
+# 4. LÓGICA DE HORARIO Y TEMAS
 # ==============================================================================
+def get_market_status():
+    try:
+        tz_ny = pytz.timezone('America/New_York')
+        now_ny = datetime.now(tz_ny)
+        weekday = now_ny.weekday() 
+        current_time = now_ny.time()
+        start_time = time(23, 0); end_time = time(11, 0)
+        
+        session_name = "ASIA (TOKIO)"
+        if time(3, 0) <= current_time < time(8, 0): session_name = "LONDRES 🇬🇧"
+        elif time(8, 0) <= current_time < time(12, 0): session_name = "NY / LONDRES (OVERLAP) 🇺🇸🇬🇧"
+        elif time(12, 0) <= current_time < time(17, 0): session_name = "NUEVA YORK 🇺🇸"
+        
+        status = "🔴 CERRADO / RIESGO"; color = "#ff4444"
+        is_time_ok = current_time >= start_time or current_time <= end_time
+        
+        if weekday in [0, 1, 2, 3]: 
+            if is_time_ok: status = "🟢 ZONA PRIME (GO)"; color = "#00e676"
+            else: status = "💤 BAJO VOLUMEN"; color = "#ffca28"
+        elif weekday == 4: 
+            if current_time <= time(11, 30): status = "⚠️ VIERNES (CUIDADO)"; color = "#ffca28"
+            else: status = "❌ MERCADO CERRADO"; color = "#ff4444"
+        elif weekday == 6: status = "❌ DOMINGO (NO OPERAR)"; color = "#ff4444"
+
+        return now_ny.strftime("%I:%M %p"), session_name, status, color
+    except: return "--:--", "--", "--", "#333"
+
 def inject_theme(theme_mode):
     if theme_mode == "Claro (Swiss Design)":
         css_vars = """
@@ -178,15 +201,10 @@ def inject_theme(theme_mode):
     [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{ color: #f8fafc !important; }}
     [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {{ color: #94a3b8 !important; }}
     
-    /* Inputs */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
         background-color: var(--input-bg) !important; color: var(--text-main) !important; border: 1px solid var(--border-color) !important; border-radius: 8px; padding: 10px;
     }}
-    
-    /* Botones */
-    .stButton button {{
-        background: var(--accent) !important; color: var(--button-text) !important; border: none !important; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-    }}
+    .stButton button {{ background: var(--accent) !important; color: var(--button-text) !important; border: none !important; border-radius: 8px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }}
     
     /* Tabs Redondas */
     .stTabs [data-baseweb="tab-list"] {{ gap: 10px; padding-bottom: 15px; }}
@@ -220,27 +238,22 @@ def inject_theme(theme_mode):
 # ==============================================================================
 def load_json(fp):
     if not os.path.exists(fp): return {}
-    try:
-        with open(fp, "r") as f: return json.load(f)
+    try: with open(fp, "r") as f: return json.load(f)
     except: return {}
 
 def save_json(fp, data):
-    try:
-        with open(fp, "w") as f: json.dump(data, f)
+    try: with open(fp, "w") as f: json.dump(data, f)
     except: pass
 
 def verify_user(u, p):
     if u == "admin" and p == "1234": return True
-    d = load_json(USERS_FILE)
-    return u in d and d[u] == p
+    d = load_json(USERS_FILE); return u in d and d[u] == p
 
 def register_user(u, p): d = load_json(USERS_FILE); d[u] = p; save_json(USERS_FILE, d)
 def get_user_accounts(u): d = load_json(ACCOUNTS_FILE); return list(d.get(u, {}).keys()) if u in d else ["Principal"]
 
 def create_account(u, name, bal):
-    d = load_json(ACCOUNTS_FILE)
-    d.setdefault(u, {})[name] = bal
-    save_json(ACCOUNTS_FILE, d)
+    d = load_json(ACCOUNTS_FILE); d.setdefault(u, {})[name] = bal; save_json(ACCOUNTS_FILE, d)
     save_trade(u, name, None, init=True)
 
 def create_backup_zip():
@@ -298,18 +311,13 @@ def load_trades(u, acc):
     return pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
 
 # ==============================================================================
-# 6. FUNCIONES VISUALES
+# 7. FUNCIONES VISUALES
 # ==============================================================================
 def mostrar_imagen(nombre, caption):
     local = os.path.join(IMG_DIR, nombre)
     if os.path.exists(local): st.image(local, caption=caption, use_container_width=True)
     else:
-        urls = {
-            "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
-            "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
-            "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png",
-            "shooting_star.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Candlestick_Pattern_Shooting_Star.png/320px-Candlestick_Pattern_Shooting_Star.png"
-        }
+        urls = {"bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png"}
         if nombre in urls: st.image(urls[nombre], caption=caption, use_container_width=True)
 
 def render_heatmap(df, is_dark):
@@ -358,37 +366,6 @@ def change_month(delta):
     st.session_state['cal_date'] = d.replace(year=y, month=m, day=1)
 
 # ==============================================================================
-# 7. LÓGICA DE HORARIO DE MERCADO (PDF)
-# ==============================================================================
-def get_market_status():
-    try:
-        tz_ny = pytz.timezone('America/New_York')
-        now_ny = datetime.now(tz_ny)
-        weekday = now_ny.weekday() 
-        current_time = now_ny.time()
-        
-        start_time = time(23, 0); end_time = time(11, 0)
-        
-        session_name = "ASIA (TOKIO)"
-        if time(3, 0) <= current_time < time(8, 0): session_name = "LONDRES 🇬🇧"
-        elif time(8, 0) <= current_time < time(12, 0): session_name = "NY / LONDRES (OVERLAP) 🇺🇸🇬🇧"
-        elif time(12, 0) <= current_time < time(17, 0): session_name = "NUEVA YORK 🇺🇸"
-        
-        status = "🔴 CERRADO / RIESGO"; color = "#ff4444"
-        is_time_ok = current_time >= start_time or current_time <= end_time
-        
-        if weekday in [0, 1, 2, 3]: 
-            if is_time_ok: status = "🟢 ZONA PRIME (GO)"; color = "#00e676"
-            else: status = "💤 BAJO VOLUMEN"; color = "#ffca28"
-        elif weekday == 4: 
-            if current_time <= time(11, 30): status = "⚠️ VIERNES (CUIDADO)"; color = "#ffca28"
-            else: status = "❌ MERCADO CERRADO"; color = "#ff4444"
-        elif weekday == 6: status = "❌ DOMINGO (NO OPERAR)"; color = "#ff4444"
-
-        return now_ny.strftime("%I:%M %p"), session_name, status, color
-    except: return "--:--", "--", "--", "#333"
-
-# ==============================================================================
 # 8. LOGIN
 # ==============================================================================
 def login_screen():
@@ -434,19 +411,7 @@ def main_app():
         
         st.markdown("---")
         
-        # CALCULADORA
-        with st.expander("🧮 CALCULADORA"):
-            c_risk = st.number_input("Riesgo %", 1.0, 10.0, 1.0)
-            c_sl = st.number_input("SL (Pips)", 5.0)
-            accs = get_user_accounts(user)
-            sel_acc = st.selectbox("Cuenta", accs)
-            _, act_bal, _ = get_balance_data(user, sel_acc)
-            if c_sl > 0:
-                risk_usd = act_bal * (c_risk/100); lots = risk_usd / (c_sl * 10)
-                st.success(f"Lotes: **{lots:.2f}** (${risk_usd:.0f})")
-
-        st.markdown("---")
-        # RELOJ DE MERCADO
+        # RELOJ DE MERCADO EN SIDEBAR
         st.markdown(f"""
         <div style="background:var(--bg-card); border:1px solid {status_color}; border-radius:10px; padding:15px; text-align:center; margin-bottom:15px;">
             <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">HORA NY (EST)</div>
@@ -456,6 +421,15 @@ def main_app():
         </div>
         """, unsafe_allow_html=True)
 
+        with st.expander("🧮 CALCULADORA"):
+            c_risk = st.number_input("Riesgo %", 1.0); c_sl = st.number_input("SL (Pips)", 5.0)
+            accs = get_user_accounts(user); sel_acc = st.selectbox("Cuenta", accs)
+            _, act_bal, _ = get_balance_data(user, sel_acc)
+            if c_sl > 0:
+                risk_usd = act_bal * (c_risk/100); lots = risk_usd / (c_sl * 10)
+                st.success(f"Lotes: **{lots:.2f}** (${risk_usd:.0f})")
+
+        st.markdown("---")
         if st.button("CERRAR SESIÓN", use_container_width=True): st.session_state.user = None; st.rerun()
         
         ini, act, df_bal = get_balance_data(user, sel_acc)
@@ -486,13 +460,12 @@ def main_app():
         
         def header(t): return f"<div class='strategy-header'>{t}</div>"
 
-        if "Swing" in modo:
+        if st.session_state.global_mode == "Swing (W-D-4H)":
             with r1_c1:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
                 tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
-                w1 = st.checkbox("Rechazo AOI (+10%)", key="w1"); w2 = st.checkbox("Rechazo Estructura Previa (+10%)", key="w2"); w3 = st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3"); w4 = st.checkbox("Patrón Mercado (+10%)", key="w4"); w5 = st.checkbox("EMA 50 (+5%)", key="w5"); w6 = st.checkbox("Nivel Psicológico (+5%)", key="w6")
-                w_sc = (w1+w2+w3+w4)*10 + (w5+w6)*5
+                w_sc = sum([st.checkbox("Rechazo AOI (+10%)", key="w1")*10, st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10, st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10, st.checkbox("Patrón Mercado (+10%)", key="w4")*10, st.checkbox("EMA 50 (+5%)", key="w5")*5, st.checkbox("Nivel Psicológico (+5%)", key="w6")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r1_c2:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
@@ -513,7 +486,6 @@ def main_app():
                 sos = st.checkbox("⚡ Shift of Structure (SOS)"); eng = st.checkbox("🕯️ Vela Envolvente"); pat_ent = st.checkbox("Patrón Entrada (+5%)"); rr = st.checkbox("💰 Ratio Min 1:2.5")
                 entry_score = sum([sos*10, eng*10, pat_ent*5]); total = w_sc + d_sc + h4_sc + entry_score
                 st.markdown('</div>', unsafe_allow_html=True)
-
         else: # SCALPING
             with r1_c1:
                 st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
@@ -538,9 +510,7 @@ def main_app():
                 st.markdown(header("4. GATILLO (M15/M30)"), unsafe_allow_html=True)
                 if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
                 sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Vela"); pat_ent = st.checkbox("Patrón Entrada (+5%)"); rr = st.checkbox("💰 Ratio")
-                entry_score = sum([sos*10, eng*10, pat_ent*5])
-                total = w_sc + d_sc + h4_sc + entry_score + 15
-                st.markdown('</div>', unsafe_allow_html=True)
+                entry_score = sum([sos*10, eng*10, pat_ent*5]); total = w_sc + d_sc + h4_sc + entry_score + 15
 
         st.markdown("<br>", unsafe_allow_html=True)
         valid = sos and eng and rr
@@ -549,8 +519,7 @@ def main_app():
         elif total >= 90: msg, css_cl = "💎 SNIPER", "status-sniper"
         elif total >= 60 and valid: msg, css_cl = "✅ VÁLIDO", "status-sniper"
         
-        st.markdown(f"""<div class="hud-container"><div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div><div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div></div>""", unsafe_allow_html=True)
-        st.progress(min(total, 100))
+        st.markdown(f"""<div class="hud-container"><div class="hud-stat"><div class="hud-label">PUNTAJE TOTAL</div><div class="hud-value-large">{total}%</div></div><div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div></div>""", unsafe_allow_html=True)
 
     # TAB 2: IA VISION
     with tabs[1]:
@@ -585,6 +554,7 @@ def main_app():
                 with c_res:
                     if st.session_state.ai_temp_result:
                         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                        st.markdown("### 🤖 Veredicto")
                         st.markdown(st.session_state.ai_temp_result)
                         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -661,6 +631,7 @@ def main_app():
 
     # TAB 6: NOTICIAS
     with tabs[5]:
+        st.markdown(f"<h3 style='color:var(--accent)'>📰 Calendario Económico</h3>", unsafe_allow_html=True)
         tv = "dark" if is_dark else "light"
         html = f"""<div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>{{"colorTheme": "{tv}","isTransparent": true,"width": "100%","height": "800","locale": "es","importanceFilter": "-1,0","currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}}</script></div>"""
         components.html(html, height=800)
