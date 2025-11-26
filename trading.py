@@ -10,129 +10,132 @@ import pytz
 # --- 1. CONFIGURACIÓN INICIAL ---
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 
-# --- 2. ESTILOS CSS (TEMA AZUL NAVY PROFESIONAL - FORZADO) ---
+# --- 2. ESTILOS CSS (SOLUCIÓN TOTAL MODO CLARO + TABS GRANDES) ---
 st.markdown("""
     <style>
-    /* IMPORTAR FUENTE PROFESIONAL */
-    @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap');
-
-    /* === 1. VARIABLES DE COLOR (PALETA AZUL) === */
+    /* === VARIABLES DE COLOR (PALETA AZUL NAVY) === */
     :root {
-        --bg-main: #0f172a;       /* Fondo Principal (Azul muy oscuro) */
-        --bg-card: #1e293b;       /* Fondo Tarjetas (Azul acero oscuro) */
-        --bg-sidebar: #020617;    /* Fondo Sidebar (Casi negro) */
-        --text-main: #f8fafc;     /* Texto Blanco Hielo */
-        --text-muted: #94a3b8;    /* Texto Gris Azulado */
-        --accent-blue: #3b82f6;   /* Azul Brillante (Botones/Tabs) */
-        --accent-green: #10b981;  /* Verde Profit */
-        --accent-red: #ef4444;    /* Rojo Loss */
-        --border-color: #334155;  /* Bordes sutiles */
+        --bg-main: #0f172a;       
+        --bg-card: #1e293b;       
+        --bg-sidebar: #020617;    
+        --text-main: #f8fafc;     
+        --text-muted: #94a3b8;    
+        --accent-blue: #3b82f6;   
+        --accent-green: #10b981;  
+        --accent-red: #ef4444;    
+        --border-color: #334155;  
     }
 
-    /* === 2. RESET GLOBAL PARA EVITAR MODO CLARO === */
-    html, body, [class*="css"] {
-        font-family: 'Roboto', sans-serif;
-        color: var(--text-main);
-    }
-    
-    /* FORZAR FONDO PRINCIPAL */
+    /* === 1. FORZADO AGRESIVO DE MODO OSCURO (Solución al Modo Claro) === */
+    /* Esto obliga a que el fondo sea oscuro y el texto blanco SIEMPRE */
     .stApp {
         background-color: var(--bg-main) !important;
+        color: var(--text-main) !important;
     }
-
-    /* FORZAR SIDEBAR OSCURO */
+    
+    /* Forzar color de texto blanco en todos los encabezados y párrafos */
+    h1, h2, h3, h4, h5, h6, p, li, span, div, label, .stMarkdown {
+        color: var(--text-main) !important;
+    }
+    
+    /* Forzar Sidebar */
     [data-testid="stSidebar"] {
         background-color: var(--bg-sidebar) !important;
         border-right: 1px solid var(--border-color);
     }
-
-    /* === 3. INPUTS Y WIDGETS (UNIFICADOS) === */
-    .stTextInput>div>div>input, 
-    .stNumberInput>div>div>input, 
-    .stSelectbox>div>div>div, 
-    .stDateInput>div>div>input, 
-    .stTextArea>div>div>textarea {
-        background-color: var(--bg-card) !important; 
-        color: white !important; 
-        border: 1px solid var(--border-color) !important;
-        border-radius: 6px;
-    }
-    
-    /* Texto de los labels de inputs */
-    .stMarkdown label, .stTextInput label, .stSelectbox label, .stNumberInput label {
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span {
         color: var(--text-muted) !important;
     }
 
-    /* === 4. BOTONES Y TABS === */
-    /* Botones Primarios */
-    .stButton button {
-        background-color: var(--bg-card) !important;
-        color: var(--accent-blue) !important;
-        border: 1px solid var(--accent-blue) !important;
-        font-weight: bold;
-        transition: all 0.3s ease;
+    /* === 2. ESTILO DE TABS (PESTAÑAS) GRANDES Y REDONDAS === */
+    .stTabs [data-baseweb="tab-list"] {
+        gap: 15px; /* Espacio entre pestañas */
+        background-color: transparent;
+        padding-bottom: 10px;
     }
-    .stButton button:hover {
-        background-color: var(--accent-blue) !important;
-        color: white !important;
-    }
-
-    /* Tabs Seleccionados */
-    .stTabs [data-baseweb="tab-list"] { gap: 8px; }
+    
     .stTabs [data-baseweb="tab"] {
+        height: 60px; /* Más altas */
+        min-width: 120px; /* Más anchas */
         background-color: var(--bg-card) !important;
         border: 1px solid var(--border-color);
-        color: var(--text-muted);
+        border-radius: 30px !important; /* Bordes totalmente redondos (Cápsula) */
+        color: var(--text-muted) !important;
+        font-weight: 600;
+        font-size: 1rem; /* Texto más grande */
+        padding: 0 25px !important; /* Relleno lateral */
+        transition: all 0.3s ease;
     }
-    .stTabs [data-baseweb="tab-list"] button[aria-selected="true"] {
+    
+    /* Efecto Hover */
+    .stTabs [data-baseweb="tab"]:hover {
+        border-color: var(--accent-blue);
+        color: white !important;
+        transform: translateY(-2px);
+    }
+
+    /* Pestaña Activa */
+    .stTabs [data-baseweb="tab"][aria-selected="true"] {
         background-color: var(--accent-blue) !important;
         color: white !important;
         border: none !important;
+        box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); /* Brillo azul */
     }
 
-    /* === 5. COMPONENTES PERSONALIZADOS === */
-    
-    /* Cajas de Estrategia (Grid) */
+    /* Eliminar la línea roja/azul por defecto de Streamlit arriba de los tabs */
+    .stTabs [data-baseweb="tab-highlight"] {
+        display: none;
+    }
+
+    /* === 3. INPUTS Y FORMULARIOS (FIX MODO CLARO) === */
+    .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"], .stDateInput input, .stTextArea textarea {
+        background-color: var(--bg-card) !important; 
+        color: white !important; 
+        border: 1px solid var(--border-color) !important;
+        border-radius: 10px;
+    }
+    /* Iconos de cerrar/flechas en inputs */
+    .stSelectbox svg, .stDateInput svg { fill: white !important; }
+
+    /* === 4. COMPONENTES VISUALES === */
     .strategy-box {
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
-        border-radius: 8px;
+        border-radius: 12px;
         padding: 20px;
         height: 100%;
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
     }
     .strategy-header {
-        color: var(--accent-blue);
-        font-weight: 700;
+        color: var(--accent-blue) !important;
+        font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 1px;
         margin-bottom: 15px;
         border-bottom: 1px solid var(--border-color);
         padding-bottom: 8px;
     }
-
-    /* HUD SCORE (El puntaje grande) */
+    
+    /* HUD SCORE */
     .hud-container {
         display: flex; justify-content: space-between; align-items: center;
         background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%);
         border: 1px solid var(--accent-blue);
-        border-radius: 12px;
+        border-radius: 15px;
         padding: 25px;
         margin-top: 25px;
-        box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
     }
-    .hud-label { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
-    .hud-value-large { font-size: 3rem; font-weight: 900; color: white; line-height: 1; }
+    .hud-value-large { font-size: 3rem; font-weight: 900; color: white !important; line-height: 1; }
     
-    /* Estados del Mensaje */
-    .status-sniper { color: var(--accent-green); border: 1px solid var(--accent-green); background: rgba(16, 185, 129, 0.1); padding: 10px 20px; border-radius: 50px; font-weight: bold;}
-    .status-warning { color: #facc15; border: 1px solid #facc15; background: rgba(250, 204, 21, 0.1); padding: 10px 20px; border-radius: 50px; font-weight: bold;}
-    .status-stop { color: var(--accent-red); border: 1px solid var(--accent-red); background: rgba(239, 68, 68, 0.1); padding: 10px 20px; border-radius: 50px; font-weight: bold;}
+    /* ALERTAS */
+    .status-sniper { color: var(--accent-green) !important; border: 1px solid var(--accent-green); background: rgba(16, 185, 129, 0.1); padding: 10px 20px; border-radius: 50px; font-weight: bold;}
+    .status-warning { color: #facc15 !important; border: 1px solid #facc15; background: rgba(250, 204, 21, 0.1); padding: 10px 20px; border-radius: 50px; font-weight: bold;}
+    .status-stop { color: var(--accent-red) !important; border: 1px solid var(--accent-red); background: rgba(239, 68, 68, 0.1); padding: 10px 20px; border-radius: 50px; font-weight: bold;}
 
-    /* Calendario */
-    .calendar-day { background-color: var(--bg-card); border: 1px solid var(--border-color); color: white; }
-    .win-text { color: var(--accent-green); font-weight: bold; }
-    .loss-text { color: var(--accent-red); font-weight: bold; }
+    /* CALENDARIO */
+    .win-text { color: var(--accent-green) !important; font-weight: bold; }
+    .loss-text { color: var(--accent-red) !important; font-weight: bold; }
     
     </style>
     """, unsafe_allow_html=True)
@@ -205,10 +208,10 @@ def render_cal_html(df):
         data = df_m.groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
 
     cal = calendar.Calendar(firstweekday=0)
-    # Estilo Grid CSS Inline para asegurar que funcione
-    html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:10px;">'
+    # Estilo Grid CSS Inline
+    html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
-        html += f'<div style="text-align:center; color:#94a3b8; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
+        html += f'<div style="text-align:center; color:#94a3b8; font-size:0.8rem; font-weight:bold; padding:5px; background:#1e293b; border-radius:4px;">{h}</div>'
     
     for week in cal.monthdayscalendar(y, m):
         for day in week:
@@ -217,23 +220,22 @@ def render_cal_html(df):
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
                 
-                # Colores directos
                 border = "#334155" # Default border
                 bg = "#1e293b" # Default bg
                 color = "white"
                 
                 if val > 0:
                     border = "#10b981"
-                    bg = "rgba(16, 185, 129, 0.1)"
+                    bg = "rgba(16, 185, 129, 0.15)"
                     color = "#10b981"
                 elif val < 0:
                     border = "#ef4444"
-                    bg = "rgba(239, 68, 68, 0.1)"
+                    bg = "rgba(239, 68, 68, 0.15)"
                     color = "#ef4444"
 
                 html += f'''
-                <div style="background:{bg}; border:1px solid {border}; border-radius:6px; min-height:80px; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
-                    <div style="color:#64748b; font-size:0.8rem; font-weight:bold;">{day}</div>
+                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between; transition:transform 0.2s;">
+                    <div style="color:#64748b; font-size:0.9rem; font-weight:bold;">{day}</div>
                     <div style="color:{color}; font-weight:bold; text-align:right;">{txt}</div>
                 </div>'''
     html += '</div>'
@@ -244,14 +246,13 @@ def login_screen():
     c1,c2,c3 = st.columns([1,1,1])
     with c2:
         st.markdown("<h1 style='text-align:center; color:#3b82f6;'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center; color:#94a3b8;'>Acceso Profesional</p>", unsafe_allow_html=True)
         t1, t2 = st.tabs(["INGRESAR", "REGISTRARSE"])
         with t1:
             u = st.text_input("Usuario")
             p = st.text_input("Password", type="password")
             if st.button("ACCEDER", type="primary", use_container_width=True):
                 if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Error de credenciales")
+                else: st.error("Credenciales incorrectas")
         with t2:
             nu = st.text_input("Nuevo Usuario")
             np = st.text_input("Nueva Password", type="password")
@@ -275,7 +276,7 @@ def main_app():
         
         col_s = "#10b981" if act >= ini else "#ef4444"
         st.markdown(f"""
-        <div style="background:#0f172a; padding:20px; border-radius:10px; border:1px solid #334155; text-align:center; box-shadow: 0 4px 10px rgba(0,0,0,0.3);">
+        <div style="background:#0f172a; padding:20px; border-radius:12px; border:1px solid #334155; text-align:center; box-shadow: 0 4px 15px rgba(0,0,0,0.3);">
             <div style="color:#94a3b8; font-size:0.8rem; letter-spacing:1px; margin-bottom:5px;">BALANCE TOTAL</div>
             <div style="color:{col_s}; font-size:2rem; font-weight:900;">${act:,.2f}</div>
             <div style="color:#64748b; font-size:0.8rem; margin-top:5px">Inicial: ${ini:,.2f}</div>
@@ -351,7 +352,7 @@ def main_app():
                 st.markdown("<div class='strategy-header'>3. EJECUCIÓN (4H)</div>", unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
                 st.divider()
-                h4_sc = sum([st.checkbox("Vela (+10%)", key="h1")*10, st.checkbox("Patrón (+10%)", key="h2")*10, st.checkbox("AOI (+5%)", key="h3")*5, st.checkbox("Estructura (+5%)", key="h4")*5, st.checkbox("EMA 50 (+5%)", key="h5")*5])
+                h4_sc = sum([st.checkbox("Vela (+10%)", key="h1")*10, st.checkbox("Patrón (+10%)", key="h2")*10, st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5, st.checkbox("Estructura (+5%)", key="h4")*5, st.checkbox("EMA 50 (+5%)", key="h5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             # GATILLO
             with r2_c2:
@@ -496,4 +497,6 @@ def main_app():
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
 else: login_screen()
+else: login_screen()
+
 
