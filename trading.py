@@ -7,7 +7,7 @@ import calendar
 import shutil
 import zipfile
 import io
-from datetime import datetime, time
+from datetime import datetime, time, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
 import pytz
@@ -27,28 +27,22 @@ st.set_page_config(
 # ==============================================================================
 # 2. GESTIÓN DE DIRECTORIOS Y ARCHIVOS DE SISTEMA
 # ==============================================================================
-# Definimos las rutas absolutas para evitar errores de "file not found"
 DATA_DIR = "user_data"
 IMG_DIR = os.path.join(DATA_DIR, "brain_images")
 BRAIN_FILE = os.path.join(DATA_DIR, "brain_data.json")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# Garantizar que las carpetas existan al iniciar
-if not os.path.exists(DATA_DIR):
-    os.makedirs(DATA_DIR)
-
-if not os.path.exists(IMG_DIR):
-    os.makedirs(IMG_DIR)
+# Garantizar que las carpetas existan
+for d in [DATA_DIR, IMG_DIR]:
+    if not os.path.exists(d):
+        os.makedirs(d)
 
 # ==============================================================================
 # 3. CEREBRO IA (GEMINI 2.0 FLASH + RAG + AUDITOR)
 # ==============================================================================
 def init_ai():
-    """
-    Inicializa la API de Google Gemini.
-    Busca la clave en los secretos de Streamlit.
-    """
+    """Inicializa la API de Google Gemini."""
     if "GEMINI_KEY" in st.secrets:
         genai.configure(api_key=st.secrets["GEMINI_KEY"])
         return True
@@ -56,10 +50,7 @@ def init_ai():
 
 @st.cache_data(ttl=60)
 def load_brain():
-    """
-    Carga la base de datos de conocimiento de la IA (Trades pasados).
-    Usa cache para no leer el disco en cada interacción.
-    """
+    """Carga la base de datos de conocimiento de la IA."""
     if not os.path.exists(BRAIN_FILE):
         return []
     try:
@@ -69,31 +60,22 @@ def load_brain():
         return []
 
 def save_image_locally(image_obj, filename):
-    """
-    Guarda físicamente la imagen analizada en el servidor
-    para poder mostrarla luego en el Playbook.
-    """
+    """Guarda físicamente la imagen analizada."""
     try:
         path = os.path.join(IMG_DIR, filename)
         image_obj.save(path)
         return path
-    except Exception as e:
-        print(f"Error guardando imagen: {e}")
+    except:
         return None
 
 def save_to_brain(analysis_text, pair, result, mode, images_list=None):
-    """
-    Guarda el trade, el análisis y las referencias a las imágenes
-    en el cerebro compartido (JSON).
-    """
+    """Guarda el trade y el análisis en el cerebro compartido."""
     memory = load_brain()
     saved_paths = []
     
-    # Procesar y guardar las imágenes si existen
     if images_list:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         for idx, img in enumerate(images_list):
-            # Nombre único para cada imagen
             fname = f"{pair}_{result}_{timestamp}_{idx}.png"
             path = save_image_locally(img, fname)
             if path:
@@ -107,44 +89,33 @@ def save_to_brain(analysis_text, pair, result, mode, images_list=None):
         "analysis": analysis_text,
         "images": saved_paths
     }
-    
     memory.append(new_mem)
     
     try:
         with open(BRAIN_FILE, "w") as f:
             json.dump(memory, f, indent=4)
-        load_brain.clear() # Limpiar cache para que la IA lea lo nuevo
+        load_brain.clear() 
     except:
         pass
 
 def analyze_multiframe(images_data, mode, pair):
-    """
-    Análisis de Visión Computacional con 3 Imágenes (Macro, Intermedio, Gatillo).
-    Valida la Sincronización de Temporalidades según la estrategia PDF.
-    """
+    """Análisis de Visión Computacional con 3 Imágenes."""
     brain = load_brain()
     context = ""
-    
-    # RAG: Recuperación de Información (Aprendizaje)
     if brain:
-        # Filtramos solo los ganadores para usarlos de ejemplo
         wins = [x for x in brain if x.get('result') == 'WIN']
-        # Tomamos los últimos 2 ejemplos
         examples = wins[-2:] if len(wins) >= 2 else wins
         context = f"REFERENCIA (TUS MEJORES TRADES PREVIOS):\n{str(examples)}\n\n"
     
-    # Descripción de las imágenes para la IA
     img_desc = ""
     for i, data in enumerate(images_data):
         img_desc += f"IMAGEN {i+1}: Temporalidad {data['tf']}.\n"
 
-    # PROMPT MAESTRO (Instrucciones estrictas)
     prompt = f"""
     Eres un Mentor de Trading Institucional experto en la estrategia 'Set & Forget' (Alex G).
     Analiza estas {len(images_data)} imágenes del activo {pair} en conjunto.
     
-    ESTRATEGIA ACTIVA: {mode}
-    
+    ESTRATEGIA: {mode}
     {context}
     
     ESTRUCTURA DE IMÁGENES SUMINISTRADAS:
@@ -152,7 +123,7 @@ def analyze_multiframe(images_data, mode, pair):
     
     TU MISIÓN ES VALIDAR LA "SINCRONIZACIÓN" (TRIPLE SYNC):
     1. ¿La tendencia Macro (Img 1) apoya a la Intermedia (Img 2)?
-    2. ¿El precio está reaccionando en una Zona AOI válida en la temporalidad mayor?
+    2. ¿El precio está reaccionando en una Zona AOI válida?
     3. ¿La imagen de Gatillo (Img 3) muestra un patrón de entrada claro (SOS + Vela Envolvente)?
     
     Responde con este formato exacto:
@@ -163,13 +134,10 @@ def analyze_multiframe(images_data, mode, pair):
     """
     
     content = [prompt]
-    # Agregar las imágenes al payload
     for data in images_data:
         content.append(data['img'])
 
-    # Sistema de respaldo de modelos (Cascada de Fallos)
     modelos = ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro']
-    
     for m in modelos:
         try:
             model = genai.GenerativeModel(m)
@@ -177,41 +145,92 @@ def analyze_multiframe(images_data, mode, pair):
         except:
             continue
             
-    return "Error de conexión IA. Verifica tu API Key en secrets.toml"
+    return "Error de conexión IA. Verifica tu API Key."
 
 def generate_audit_report(df):
-    """Analiza el CSV de trades para encontrar fugas de capital y patrones."""
+    """Auditor de Riesgo IA."""
     if df.empty:
         return "Sin datos para auditar."
     
     csv_txt = df.to_string()
-    
     prompt = f"""
-    Audita estos trades como un experto en riesgo de Prop Firm:
+    Audita estos trades como un experto en riesgo:
     {csv_txt}
     
-    DETECTA Y RESPONDE:
-    1. Fugas de Capital (Patrones de pérdida recurrentes).
-    2. Zonas de Poder (Mejores setups, horarios o pares).
+    Detecta:
+    1. Fugas de Capital (Patrones de pérdida).
+    2. Zonas de Poder (Mejores setups/horarios).
     3. Consejo Psicológico Directo.
     """
-    
     try:
         model = genai.GenerativeModel('gemini-1.5-flash')
         return model.generate_content(prompt).text
     except:
-        return "Error en Auditoría. Verifica tu API Key."
+        return "Error en Auditoría."
 
 # ==============================================================================
-# 4. SISTEMA DE TEMAS Y CSS (ESTILOS COMPLETOS)
+# 4. LÓGICA DE HORARIO DE MERCADO (PDF EXACTO)
+# ==============================================================================
+def get_market_status():
+    """
+    Verifica si es buen momento para operar según el Cheat Sheet.
+    Horario Prime: 23:00 EST - 11:00 EST (Londres + NY Mañana).
+    Días: Lunes-Jueves (Verde), Viernes AM (Amarillo), Domingo (Rojo).
+    """
+    try:
+        tz_ny = pytz.timezone('America/New_York')
+        now_ny = datetime.now(tz_ny)
+        weekday = now_ny.weekday() # 0=Lunes, 6=Domingo
+        current_time = now_ny.time()
+        
+        # Ventana operativa: Desde las 11 PM (23:00) hasta las 11 AM (11:00)
+        # Esto cruza la medianoche, así que la lógica es: >= 23:00 O <= 11:00
+        is_prime_hours = current_time >= time(23, 0) or current_time <= time(11, 0)
+        
+        # Nombres de Sesión
+        session_name = "ASIA (TOKIO)"
+        if time(3, 0) <= current_time < time(8, 0):
+            session_name = "LONDRES 🇬🇧"
+        elif time(8, 0) <= current_time < time(12, 0):
+            session_name = "NY / LONDRES (OVERLAP) 🇺🇸🇬🇧"
+        elif time(12, 0) <= current_time < time(17, 0):
+            session_name = "NUEVA YORK 🇺🇸"
+        
+        # Lógica del PDF
+        status = "ESPERAR (BAJO VOLUMEN)"
+        color = "#888888" # Gris por defecto
+        
+        if weekday == 6: # Domingo
+            status = "❌ DOMINGO (NO OPERAR)"
+            color = "#ff4444"
+        elif weekday == 4: # Viernes
+            if current_time <= time(11, 30):
+                status = "⚠️ VIERNES (CUIDADO - CIERRE)"
+                color = "#ffca28"
+            else:
+                status = "❌ MERCADO CERRADO"
+                color = "#ff4444"
+        elif weekday in [0, 1, 2, 3]: # Lunes a Jueves
+            if is_prime_hours:
+                status = "🟢 ZONA PRIME (GO)"
+                color = "#00e676"
+            else:
+                status = "💤 FUERA DE HORARIO"
+                color = "#ffca28"
+
+        return now_ny.strftime("%I:%M %p"), session_name, status, color
+    except:
+        return "Error", "Error", "Error", "#333"
+
+# ==============================================================================
+# 5. SISTEMA DE TEMAS Y CSS (ESTILOS COMPLETOS)
 # ==============================================================================
 def inject_theme(theme_mode):
     if theme_mode == "Claro (Swiss Design)":
-        # --- MODO CLARO (Texto Oscuro / Fondo Claro) ---
         css_vars = """
             --bg-app: #f8fafc;
             --bg-card: #ffffff;
-            --bg-sidebar: #1e293b; /* Sidebar oscura para contraste profesional */
+            --bg-sidebar: #1e293b; /* Sidebar oscura siempre para contraste */
             --text-main: #0f172a;
             --text-muted: #475569;
             --border-color: #e2e8f0;
@@ -225,7 +244,7 @@ def inject_theme(theme_mode):
             --chart-grid: #e2e8f0;
         """
     else:
-        # --- MODO OSCURO (Cyber Navy) ---
+        # Modo Oscuro (Cyber Navy)
         css_vars = """
             --bg-app: #0b1121;
             --bg-card: #151e32;
@@ -247,201 +266,79 @@ def inject_theme(theme_mode):
     <style>
     :root {{ {css_vars} }}
     
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
     
     html, body, [class*="css"] {{
         font-family: 'Inter', sans-serif;
     }}
 
-    /* --- ESTRUCTURA GENERAL --- */
-    .stApp {{
-        background-color: var(--bg-app);
-        color: var(--text-main);
-    }}
+    /* Estructura */
+    .stApp {{ background-color: var(--bg-app); color: var(--text-main); }}
+    h1, h2, h3, p, label, span, div {{ color: var(--text-main) !important; }}
     
-    h1, h2, h3, h4, h5, p, label, span, div {{
-        color: var(--text-main) !important;
-    }}
+    /* Sidebar */
+    [data-testid="stSidebar"] {{ background-color: var(--bg-sidebar); border-right: 1px solid var(--border-color); }}
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{ color: #f8fafc !important; }}
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {{ color: #94a3b8 !important; }}
     
-    /* --- SIDEBAR --- */
-    [data-testid="stSidebar"] {{
-        background-color: var(--bg-sidebar);
-        border-right: 1px solid var(--border-color);
-    }}
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {{
-        color: #f8fafc !important; /* Siempre blanco en sidebar */
-    }}
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {{
-        color: #94a3b8 !important; /* Gris claro en sidebar */
-    }}
-    
-    /* --- INPUTS Y FORMULARIOS --- */
+    /* Inputs */
     .stTextInput input, .stNumberInput input, .stDateInput input, .stTextArea textarea, .stSelectbox div[data-baseweb="select"] > div {{
-        background-color: var(--input-bg) !important;
-        color: var(--text-main) !important;
-        border: 1px solid var(--border-color) !important;
-        border-radius: 8px;
-        padding: 10px;
-        transition: border 0.3s;
+        background-color: var(--input-bg) !important; color: var(--text-main) !important; border: 1px solid var(--border-color) !important; border-radius: 8px; padding: 10px;
     }}
+    .stSelectbox svg, .stDateInput svg {{ fill: var(--text-muted) !important; }}
     
-    .stTextInput input:focus, .stNumberInput input:focus {{
-        border-color: var(--accent) !important;
-    }}
+    /* Menus */
+    ul[data-baseweb="menu"] {{ background-color: var(--bg-card) !important; border: 1px solid var(--border-color); }}
+    li[data-baseweb="option"] {{ color: var(--text-main) !important; }}
     
-    .stSelectbox svg, .stDateInput svg {{
-        fill: var(--text-muted) !important;
-    }}
-    
-    /* --- MENUS DESPLEGABLES --- */
-    ul[data-baseweb="menu"] {{
-        background-color: var(--bg-card) !important;
-        border: 1px solid var(--border-color);
-    }}
-    li[data-baseweb="option"] {{
-        color: var(--text-main) !important;
-    }}
-    
-    /* --- BOTONES --- */
+    /* Botones */
     .stButton button {{
-        background: var(--accent) !important;
-        color: var(--button-text) !important;
-        border: none !important;
-        border-radius: 8px;
-        font-weight: 600;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        transition: transform 0.1s, opacity 0.2s;
-    }}
-    .stButton button:hover {{
-        opacity: 0.9;
-        transform: translateY(-1px);
-    }}
-    .stButton button:active {{
-        transform: translateY(1px);
+        background: var(--accent) !important; color: var(--button-text) !important; border: none !important; border-radius: 8px; font-weight: bold; box-shadow: var(--shadow);
     }}
     
-    /* --- TABS (PESTAÑAS REDONDAS/CAPSULA) --- */
-    .stTabs [data-baseweb="tab-list"] {{
-        gap: 10px;
-        padding-bottom: 15px;
-    }}
+    /* Tabs Redondas */
+    .stTabs [data-baseweb="tab-list"] {{ gap: 10px; padding-bottom: 15px; }}
     .stTabs [data-baseweb="tab"] {{
-        background-color: var(--bg-card) !important;
-        color: var(--text-muted) !important;
-        border: 1px solid var(--border-color);
-        border-radius: 50px !important; /* AQUÍ ESTÁ EL REDONDEO */
-        padding: 0 25px !important;
-        height: 45px;
-        box-shadow: var(--shadow);
-        font-weight: 600;
-        transition: all 0.3s;
+        background-color: var(--bg-card) !important; color: var(--text-muted) !important; border: 1px solid var(--border-color); border-radius: 50px !important; padding: 0 25px !important; height: 45px; box-shadow: var(--shadow); font-weight: 600;
     }}
     .stTabs [data-baseweb="tab"][aria-selected="true"] {{
-        background-color: var(--accent) !important;
-        color: white !important;
-        border: none !important;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        background-color: var(--accent) !important; color: white !important; border: none !important;
     }}
     .stTabs [data-baseweb="tab-highlight"] {{ display: none; }}
     
-    /* --- TARJETAS Y CONTENEDORES --- */
-    .strategy-box {{
-        background-color: var(--bg-card);
-        border: 1px solid var(--border-color);
-        padding: 20px;
-        border-radius: 12px;
-        box-shadow: var(--shadow);
-        height: 100%;
-    }}
-    .strategy-header {{
-        color: var(--accent);
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 1px;
-        margin-bottom: 15px;
-        border-bottom: 1px solid var(--border-color);
-        padding-bottom: 8px;
-    }}
+    /* Cards */
+    .strategy-box {{ background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); height: 100%; }}
+    .strategy-header {{ color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; }}
     
-    /* --- HUD SCORE (DASHBOARD SUPERIOR) --- */
-    .hud-container {{
-        background: linear-gradient(135deg, var(--bg-card), var(--bg-app));
-        border: 1px solid var(--accent);
-        border-radius: 12px;
-        padding: 20px;
-        margin-top: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        box-shadow: var(--shadow);
-    }}
-    .hud-value-large {{
-        font-size: 3rem;
-        font-weight: 900;
-        color: var(--text-main);
-        line-height: 1;
-    }}
+    /* HUD */
+    .hud-container {{ background: linear-gradient(135deg, var(--bg-card), var(--bg-app)); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; display: flex; align-items: center; justify-content: space-between; }}
+    .hud-value-large {{ font-size: 3rem; font-weight: 900; color: var(--text-main); }}
     
-    /* --- CHECKBOXES --- */
-    .stCheckbox label p {{
-        color: var(--text-main) !important;
-        font-weight: 500;
-    }}
+    /* Checkboxes */
+    .stCheckbox label p {{ color: var(--text-main) !important; font-weight: 500; }}
     
-    /* --- ALERTAS / ESTADOS --- */
-    .status-sniper {{
-        background-color: rgba(16, 185, 129, 0.15);
-        color: var(--accent-green);
-        border: 1px solid var(--accent-green);
-        padding: 10px 20px;
-        border-radius: 50px;
-        font-weight: bold;
-    }}
-    .status-warning {{
-        background-color: rgba(250, 204, 21, 0.15);
-        color: #d97706;
-        border: 1px solid #facc15;
-        padding: 10px 20px;
-        border-radius: 50px;
-        font-weight: bold;
-    }}
-    .status-stop {{
-        background-color: rgba(239, 68, 68, 0.15);
-        color: var(--accent-red);
-        border: 1px solid var(--accent-red);
-        padding: 10px 20px;
-        border-radius: 50px;
-        font-weight: bold;
-    }}
+    /* Estados */
+    .status-sniper {{ background: rgba(16,185,129,0.15); color: var(--accent-green); border: 1px solid var(--accent-green); padding: 10px 20px; border-radius: 50px; font-weight: bold; }}
+    .status-warning {{ background: rgba(250,204,21,0.15); color: #d97706; border: 1px solid #facc15; padding: 10px 20px; border-radius: 50px; font-weight: bold; }}
+    .status-stop {{ background: rgba(239,68,68,0.15); color: var(--accent-red); border: 1px solid var(--accent-red); padding: 10px 20px; border-radius: 50px; font-weight: bold; }}
     
-    /* --- CALENDARIO --- */
-    .calendar-header {{
-        color: var(--text-muted) !important;
-        font-size: 0.75rem;
-        text-transform: uppercase;
-    }}
-    
+    .calendar-header {{ color: var(--text-muted) !important; }}
     </style>
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 5. FUNCIONES DE BASE DE DATOS (PERSISTENCIA)
+# 6. FUNCIONES DE BASE DE DATOS
 # ==============================================================================
 def load_json(fp):
     if not os.path.exists(fp): return {}
-    try:
-        with open(fp, "r") as f:
-            return json.load(f)
+    try: with open(fp, "r") as f: return json.load(f)
     except: return {}
 
 def save_json(fp, data):
-    try:
-        with open(fp, "w") as f:
-            json.dump(data, f)
+    try: with open(fp, "w") as f: json.dump(data, f)
     except: pass
 
 def verify_user(u, p):
-    # PUERTA TRASERA DE SEGURIDAD
     if u == "admin" and p == "1234": return True
     d = load_json(USERS_FILE)
     return u in d and d[u] == p
@@ -459,7 +356,6 @@ def create_account(u, name, bal):
     d = load_json(ACCOUNTS_FILE)
     d.setdefault(u, {})[name] = bal
     save_json(ACCOUNTS_FILE, d)
-    # Inicializar CSV vacío
     save_trade(u, name, None, init=True)
 
 def create_backup_zip():
@@ -468,19 +364,17 @@ def create_backup_zip():
 
 def restore_backup(uploaded_file):
     try:
-        with zipfile.ZipFile(uploaded_file, 'r') as z:
-            z.extractall(DATA_DIR)
+        with zipfile.ZipFile(uploaded_file, 'r') as z: z.extractall(DATA_DIR)
         return True
     except: return False
 
 def delete_trade(u, acc, index):
-    """Borra un trade específico del CSV y recalcula."""
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
     try:
         df = pd.read_csv(fp)
         df = df.drop(index)
         df.to_csv(fp, index=False)
-        get_balance_data.clear() # Limpiar cache
+        get_balance_data.clear() 
         return True
     except: return False
 
@@ -489,36 +383,24 @@ def get_balance_data(u, acc):
     d = load_json(ACCOUNTS_FILE)
     ini = d.get(u, {}).get(acc, 0.0)
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
-    
     if os.path.exists(fp):
         try:
             df = pd.read_csv(fp)
             pnl = df["Dinero"].sum() if not df.empty else 0
-        except:
-            df = pd.DataFrame()
-            pnl = 0
-    else:
-        df = pd.DataFrame()
-        pnl = 0
-        
+        except: df = pd.DataFrame(); pnl = 0
+    else: df = pd.DataFrame(); pnl = 0
     return ini, ini + pnl, df
 
 def save_trade(u, acc, data, init=False):
     folder = os.path.join(DATA_DIR, u)
     if not os.path.exists(folder): os.makedirs(folder)
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
-    
     cols = ["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"]
-    
     if init:
         if not os.path.exists(fp): pd.DataFrame(columns=cols).to_csv(fp, index=False)
         return
-
-    try:
-        df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=cols)
-    except:
-        df = pd.DataFrame(columns=cols)
-        
+    try: df = pd.read_csv(fp) if os.path.exists(fp) else pd.DataFrame(columns=cols)
+    except: df = pd.DataFrame(columns=cols)
     if data:
         df = pd.concat([df, pd.DataFrame([data])], ignore_index=True)
         df.to_csv(fp, index=False)
@@ -527,41 +409,33 @@ def save_trade(u, acc, data, init=False):
 def load_trades(u, acc):
     fp = os.path.join(DATA_DIR, u, f"{acc}.csv".replace(" ", "_"))
     if os.path.exists(fp):
-        try:
-            return pd.read_csv(fp)
-        except:
-            return pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
+        try: return pd.read_csv(fp)
+        except: return pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
     return pd.DataFrame(columns=["Fecha","Par","Tipo","Resultado","Dinero","Ratio","Notas"])
 
 # ==============================================================================
-# 6. FUNCIONES VISUALES (CALENDARIO/IMAGENES)
+# 7. FUNCIONES VISUALES
 # ==============================================================================
 def mostrar_imagen(nombre, caption):
     local = os.path.join(IMG_DIR, nombre)
     if os.path.exists(local):
         st.image(local, caption=caption, use_container_width=True)
     else:
-        # Fallbacks URL (Para que no rompa si no has subido las fotos)
         urls = {
             "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
             "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
             "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png",
             "shooting_star.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Candlestick_Pattern_Shooting_Star.png/320px-Candlestick_Pattern_Shooting_Star.png"
         }
-        if nombre in urls:
-            st.image(urls[nombre], caption=caption, use_container_width=True)
-        else:
-            st.warning(f"Imagen no encontrada: {nombre}")
+        if nombre in urls: st.image(urls[nombre], caption=caption, use_container_width=True)
 
 def render_heatmap(df, is_dark):
     if df.empty: return None
     df['Fecha'] = pd.to_datetime(df['Fecha'])
     df['Dia'] = df['Fecha'].dt.day_name()
     grouped = df.groupby('Dia')['Dinero'].sum().reset_index()
-    
     fig = px.bar(grouped, x='Dia', y='Dinero', color='Dinero', color_continuous_scale=['red', 'green'])
-    bg = 'rgba(0,0,0,0)'
-    text_col = '#94a3b8' if is_dark else '#0f172a'
+    bg = 'rgba(0,0,0,0)'; text_col = '#94a3b8' if is_dark else '#0f172a'
     fig.update_layout(paper_bgcolor=bg, plot_bgcolor=bg, font=dict(color=text_col), title="PnL por Día")
     return fig
 
@@ -577,11 +451,8 @@ def render_cal_html(df, is_dark):
         except: pass
 
     cal = calendar.Calendar(firstweekday=0)
-    
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
-    
     day_col = "#94a3b8" if is_dark else "#64748b"
-    
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
         html += f'<div style="text-align:center; color:{day_col}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
     
@@ -589,39 +460,23 @@ def render_cal_html(df, is_dark):
         for day in week:
             if day == 0: html += '<div style="opacity:0;"></div>'
             else:
-                val = data.get(day, 0)
-                txt = f"${val:,.0f}" if val != 0 else ""
-                
-                bg = "var(--bg-card)"
-                border = "var(--border-color)"
-                col = "var(--text-main)"
-                
-                if val > 0:
-                    bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
-                elif val < 0:
-                    bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
-
-                html += f'''
-                <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
-                    <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div>
-                    <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
-                </div>'''
+                val = data.get(day, 0); txt = f"${val:,.0f}" if val != 0 else ""
+                bg = "var(--bg-card)"; border = "var(--border-color)"; col = "var(--text-main)"
+                if val > 0: bg="rgba(16,185,129,0.15)"; border="var(--accent-green)"; col="var(--accent-green)"
+                elif val < 0: bg="rgba(239,68,68,0.15)"; border="var(--accent-red)"; col="var(--accent-red)"
+                html += f'<div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:5px; display:flex; flex-direction:column; justify-content:space-between;"><div style="color:var(--text-muted); font-size:0.8rem;">{day}</div><div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div></div>'
     html += '</div>'
     return html, y, m
 
 def change_month(delta):
     d = st.session_state.get('cal_date', datetime.now())
     m, y = d.month + delta, d.year
-    if m > 12:
-        m = 1
-        y += 1
-    elif m < 1:
-        m = 12
-        y -= 1
+    if m > 12: m = 1; y += 1
+    elif m < 1: m = 12; y -= 1
     st.session_state['cal_date'] = d.replace(year=y, month=m, day=1)
 
 # ==============================================================================
-# 7. PANTALLA DE LOGIN
+# 8. LOGIN
 # ==============================================================================
 def login_screen():
     inject_theme("Oscuro (Cyber Navy)")
@@ -629,48 +484,37 @@ def login_screen():
     with c2:
         st.markdown("<h1 style='text-align:center; color:var(--accent);'>🦁 Trading Suite AI</h1>", unsafe_allow_html=True)
         t1, t2, t3 = st.tabs(["INGRESAR", "REGISTRARSE", "RESTAURAR"])
-        
         with t1:
-            u = st.text_input("Usuario", key="l_u")
-            p = st.text_input("Password", type="password", key="l_p")
+            u = st.text_input("Usuario", key="l_u"); p = st.text_input("Password", type="password", key="l_p")
             if st.button("ACCEDER", use_container_width=True, key="b_l"):
-                if verify_user(u, p): 
-                    st.session_state.user = u
-                    st.rerun()
-                else: 
-                    st.error("Error (Prueba: admin/1234)")
-        
+                if verify_user(u, p): st.session_state.user = u; st.rerun()
+                else: st.error("Error (Prueba: admin/1234)")
         with t2:
-            nu = st.text_input("Nuevo Usuario", key="r_u")
-            np = st.text_input("Nueva Password", type="password", key="r_p")
-            if st.button("CREAR CUENTA", use_container_width=True, key="b_r"):
-                if nu and np: 
-                    register_user(nu, np)
-                    st.success("Creado!")
-                    st.rerun()
-        
+            nu = st.text_input("Nuevo Usuario", key="r_u"); np = st.text_input("Nueva Password", type="password", key="r_p")
+            if st.button("CREAR CUENTA", use_container_width=True, key="b_r"): register_user(nu, np); st.success("Creado!"); st.rerun()
         with t3:
             uploaded_zip = st.file_uploader("Subir backup.zip", type="zip")
             if uploaded_zip and st.button("RESTAURAR DATOS"):
                 try:
-                    with zipfile.ZipFile(uploaded_zip, 'r') as z:
-                        z.extractall(DATA_DIR)
+                    with zipfile.ZipFile(uploaded_zip, 'r') as z: z.extractall(DATA_DIR)
                     st.success("Datos restaurados. Inicia sesión.")
                 except: st.error("Archivo inválido")
 
 # ==============================================================================
-# 8. APLICACIÓN PRINCIPAL
+# 9. APP PRINCIPAL
 # ==============================================================================
 def main_app():
     user = st.session_state.user
-    
-    # Estado Global
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
     if 'global_pair' not in st.session_state: st.session_state.global_pair = "XAUUSD"
     if 'global_mode' not in st.session_state: st.session_state.global_mode = "Swing (W-D-4H)"
     if 'ai_temp_result' not in st.session_state: st.session_state.ai_temp_result = None
     if 'ai_temp_images' not in st.session_state: st.session_state.ai_temp_images = None
 
+    # Reloj y Estado de Mercado
+    time_str, session, status_txt, status_color = get_market_status()
+
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
         tema = st.radio("🎨 TEMA", ["Oscuro (Cyber Navy)", "Claro (Swiss Design)"], index=0)
@@ -678,30 +522,30 @@ def main_app():
         is_dark = True if tema == "Oscuro (Cyber Navy)" else False
         
         st.markdown("---")
+        # RELOJ DE MERCADO (NUEVO EN BARRA LATERAL)
+        st.markdown(f"""
+        <div style="background:var(--bg-card); border:1px solid {status_color}; border-radius:10px; padding:15px; text-align:center; margin-bottom:15px;">
+            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">HORA NY (EST)</div>
+            <div style="color:var(--text-main); font-size:1.5rem; font-weight:900;">{time_str}</div>
+            <div style="color:{status_color}; font-weight:bold; font-size:0.9rem; margin-top:5px;">{status_txt}</div>
+            <div style="color:var(--text-muted); font-size:0.7rem;">Sesión: {session}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
         with st.expander("🧮 CALCULADORA"):
-            c_risk = st.number_input("Riesgo %", 1.0, 10.0, 1.0)
-            c_sl = st.number_input("SL (Pips)", 1.0, 100.0, 5.0)
-            accs = get_user_accounts(user)
-            sel_acc = st.selectbox("Cuenta", accs)
+            c_risk = st.number_input("Riesgo %", 1.0); c_sl = st.number_input("SL (Pips)", 5.0)
+            accs = get_user_accounts(user); sel_acc = st.selectbox("Cuenta", accs)
             _, act_bal, _ = get_balance_data(user, sel_acc)
             if c_sl > 0:
-                risk_usd = act_bal * (c_risk/100)
-                lots = risk_usd / (c_sl * 10)
+                risk_usd = act_bal * (c_risk/100); lots = risk_usd / (c_sl * 10)
                 st.success(f"Lotes: **{lots:.2f}** (${risk_usd:.0f})")
 
         st.markdown("---")
-        if st.button("CERRAR SESIÓN", use_container_width=True): 
-            st.session_state.user = None; st.rerun()
+        if st.button("CERRAR SESIÓN", use_container_width=True): st.session_state.user = None; st.rerun()
         
         ini, act, df_bal = get_balance_data(user, sel_acc)
         col_s = "#10b981" if act >= ini else "#ef4444"
-        
-        st.markdown(f"""
-        <div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); text-align:center;">
-            <div style="color:#94a3b8; font-size:0.8rem;">BALANCE</div>
-            <div style="color:{col_s}; font-size:1.8rem; font-weight:bold">${act:,.2f}</div>
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"""<div style="background:rgba(255,255,255,0.05); padding:15px; border-radius:10px; border:1px solid rgba(255,255,255,0.1); text-align:center;"><div style="color:#94a3b8; font-size:0.8rem;">BALANCE</div><div style="color:{col_s}; font-size:1.8rem; font-weight:bold">${act:,.2f}</div></div>""", unsafe_allow_html=True)
         
         c_new, c_bkp = st.columns(2)
         with c_new:
@@ -710,8 +554,7 @@ def main_app():
                 if st.button("Crear"): create_account(user, na, nb); st.rerun()
         with c_bkp:
             zip_path = create_backup_zip()
-            with open(zip_path, "rb") as f:
-                st.download_button("💾", f, "backup.zip", "application/zip")
+            with open(zip_path, "rb") as f: st.download_button("💾", f, "backup.zip", "application/zip")
 
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
@@ -727,22 +570,34 @@ def main_app():
         total = 0; sos, eng, rr = False, False, False
         with r1:
             st.markdown('<div class="strategy-box"><h5>1. CONTEXTO MACRO</h5>', unsafe_allow_html=True)
-            # DESGLOSE DETALLADO SEGÚN PDF
-            w1 = st.checkbox("Rechazo AOI (+10%)")
-            w2 = st.checkbox("Estructura (+10%)")
-            w3 = st.checkbox("Patrón (+10%)")
-            w4 = st.checkbox("EMA 50 (+5%)")
-            w5 = st.checkbox("Psicológico (+5%)")
+            # DESGLOSE DE ESTRATEGIA SEGUN PDF (Valores Exactos)
+            if "Swing" in st.session_state.global_mode:
+                w1 = st.checkbox("Rechazo AOI (+10%)")
+                w2 = st.checkbox("Rechazo Estructura Previa (+10%)")
+                w3 = st.checkbox("Patrón de Vela Rechazo (+10%)")
+                w4 = st.checkbox("Patrón Mercado (+10%)")
+                w5 = st.checkbox("EMA 50 (+5%)")
+                w6 = st.checkbox("Psicológico (+5%)")
+                score_macro = (w1+w2+w3+w4)*10 + (w5+w6)*5
+            else: # Scalping
+                s1 = st.checkbox("AOI (+5%)")
+                s2 = st.checkbox("Rechazo Estructura (+5%)")
+                s3 = st.checkbox("Patrón (+5%)")
+                s4 = st.checkbox("EMA 50 (+5%)")
+                s5 = st.checkbox("Psicológico (+5%)")
+                score_macro = (s1+s2+s3+s4+s5)*5
             st.markdown('</div>', unsafe_allow_html=True)
+            
         with r2:
-            st.markdown('<div class="strategy-box"><h5>2. GATILLO</h5>', unsafe_allow_html=True)
+            st.markdown('<div class="strategy-box"><h5>2. GATILLO FINAL</h5>', unsafe_allow_html=True)
             sos = st.checkbox("⚡ SOS (Obligatorio)")
             eng = st.checkbox("🕯️ Envolvente (Obligatorio)")
             rr = st.checkbox("💰 Ratio > 1:2.5")
             pat = st.checkbox("Patrón Extra (+5%)")
+            score_gatillo = (10 if sos else 0) + (10 if eng else 0) + (5 if pat else 0)
             st.markdown('</div>', unsafe_allow_html=True)
         
-        total = (w1+w2+w3)*10 + (w4+w5)*5 + (sos+eng)*10 + pat*5
+        total = score_macro + score_gatillo
         valid = sos and eng and rr
         msg, css = "ESPERAR", "status-warning"
         if valid and total>=50: msg, css = "VALIDO", "status-sniper"
@@ -762,9 +617,9 @@ def main_app():
                     with col_up3: img3 = st.file_uploader("3. GATILLO", type=["jpg","png"], key="u3")
                     
                     c_tf1, c_tf2, c_tf3 = st.columns(3)
-                    with c_tf1: tf1 = st.selectbox("TF Macro", ["W", "D"], key="tf1")
-                    with c_tf2: tf2 = st.selectbox("TF Intermedio", ["Daily", "4H", "1H"], key="tf2")
-                    with c_tf3: tf3 = st.selectbox("TF Gatillo", ["4H", "1H", "15M", "5M"], key="tf3")
+                    with c_tf1: tf1 = st.selectbox("TF 1", ["W", "D"], key="tf1")
+                    with c_tf2: tf2 = st.selectbox("TF 2", ["D", "4H", "1H"], key="tf2")
+                    with c_tf3: tf3 = st.selectbox("TF 3", ["4H", "1H", "15M", "5M"], key="tf3")
 
                     if st.button("🦁 ANALIZAR SINCRONÍA", type="primary", use_container_width=True):
                         images_data = []
@@ -810,12 +665,9 @@ def main_app():
                 if st.form_submit_button("GUARDAR"):
                     rm = mn if rs=="WIN" else -abs(mn) if rs=="LOSS" else 0
                     save_trade(user, sel_acc, {"Fecha":dt,"Par":pr,"Tipo":tp,"Resultado":rs,"Dinero":rm,"Ratio":rt,"Notas":nt})
-                    
                     if rs == "WIN" and st.session_state.ai_temp_result and st.session_state.ai_temp_images:
                         save_to_brain(st.session_state.ai_temp_result, pr, rs, st.session_state.global_mode, st.session_state.ai_temp_images)
                         st.toast("🧠 ¡Guardado en Playbook!", icon="📸")
-                        st.session_state.ai_temp_result = None
-                        st.session_state.ai_temp_images = None
                     st.success("Guardado"); st.rerun()
             st.markdown('</div>', unsafe_allow_html=True)
         
