@@ -10,24 +10,31 @@ import pytz
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 
-# --- GESTIÓN DE USUARIOS Y DATOS (BACKEND) ---
+# --- GESTIÓN DE DIRECTORIOS Y USUARIOS ---
 DATA_DIR = "user_data"
+IMG_DIR = "fotos"  # Carpeta de fotos locales
 if not os.path.exists(DATA_DIR): os.makedirs(DATA_DIR)
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
+ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json") # Archivo para guardar saldos iniciales
 
-def load_users():
-    if not os.path.exists(USERS_FILE): return {}
-    with open(USERS_FILE, "r") as f: return json.load(f)
+# --- FUNCIONES DE PERSISTENCIA ---
+def load_json(filepath):
+    if not os.path.exists(filepath): return {}
+    with open(filepath, "r") as f: return json.load(f)
 
-def save_user(username, password):
-    users = load_users()
-    users[username] = password
-    with open(USERS_FILE, "w") as f: json.dump(users, f)
+def save_json(filepath, data):
+    with open(filepath, "w") as f: json.dump(data, f)
 
 def verify_user(username, password):
-    users = load_users()
+    users = load_json(USERS_FILE)
     return username in users and users[username] == password
 
+def register_user(username, password):
+    users = load_json(USERS_FILE)
+    users[username] = password
+    save_json(USERS_FILE, users)
+
+# --- GESTIÓN DE CUENTAS ---
 def get_user_folder(username):
     folder = os.path.join(DATA_DIR, username)
     if not os.path.exists(folder): os.makedirs(folder)
@@ -38,60 +45,133 @@ def get_account_file(username, account_name):
     return os.path.join(get_user_folder(username), f"{clean}.csv")
 
 def get_user_accounts(username):
-    folder = get_user_folder(username)
-    files = [f.replace(".csv", "").replace("_", " ") for f in os.listdir(folder) if f.endswith(".csv")]
-    if not files: return ["Principal"]
-    return files
+    # Devuelve lista de cuentas
+    configs = load_json(ACCOUNTS_FILE)
+    if username in configs:
+        return list(configs[username].keys())
+    return ["Principal"]
 
-def cargar_trades(username, account_name):
-    path = get_account_file(username, account_name)
-    if not os.path.exists(path): return pd.DataFrame(columns=["Fecha", "Par", "Tipo", "Resultado", "Dinero", "Ratio", "Notas"])
-    return pd.read_csv(path)
+def create_account(username, account_name, initial_balance):
+    # Guardar configuración de saldo inicial
+    configs = load_json(ACCOUNTS_FILE)
+    if username not in configs: configs[username] = {}
+    
+    # Si ya existe, no sobrescribimos saldo inicial
+    if account_name not in configs[username]:
+        configs[username][account_name] = initial_balance
+        save_json(ACCOUNTS_FILE, configs)
+        
+        # Crear archivo CSV vacío
+        file_path = get_account_file(username, account_name)
+        if not os.path.exists(file_path):
+            df = pd.DataFrame(columns=["Fecha", "Par", "Tipo", "Resultado", "Dinero", "Ratio", "Notas"])
+            df.to_csv(file_path, index=False)
+
+def get_account_balance(username, account_name):
+    # 1. Obtener saldo inicial
+    configs = load_json(ACCOUNTS_FILE)
+    initial = 0
+    if username in configs and account_name in configs[username]:
+        initial = configs[username][account_name]
+    
+    # 2. Sumar PnL del CSV
+    file_path = get_account_file(username, account_name)
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+        total_pnl = df["Dinero"].sum()
+    else:
+        total_pnl = 0
+        
+    return initial, initial + total_pnl
 
 def guardar_trade(username, account_name, data):
-    df = cargar_trades(username, account_name)
+    file_path = get_account_file(username, account_name)
+    if os.path.exists(file_path):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.DataFrame(columns=["Fecha", "Par", "Tipo", "Resultado", "Dinero", "Ratio", "Notas"])
+    
     new = pd.DataFrame([data])
     df = pd.concat([df, new], ignore_index=True)
-    df.to_csv(get_account_file(username, account_name), index=False)
+    df.to_csv(file_path, index=False)
+    return df
 
-# --- FUNCIÓN IMÁGENES (ENLACES ESTABLES) ---
+# --- FUNCIÓN IMÁGENES (LOCALES) ---
 def mostrar_imagen(nombre_archivo, caption):
-    # Usamos enlaces de Wikimedia Commons que son estables y públicos
-    links = {
-        "bullish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Candlestick_Pattern_Bullish_Engulfing.png/320px-Candlestick_Pattern_Bullish_Engulfing.png",
-        "bearish_engulfing.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/19/Candlestick_Pattern_Bearish_Engulfing.png/320px-Candlestick_Pattern_Bearish_Engulfing.png",
-        "hammer.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/30/Candlestick_Pattern_Hammer.png/320px-Candlestick_Pattern_Hammer.png",
-        "shooting_star.png": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Candlestick_Pattern_Shooting_Star.png/320px-Candlestick_Pattern_Shooting_Star.png",
-        "morning_star.png": "https://a.c-dn.net/b/1XlqMQ/Morning-Star-Candlestick-Pattern_body_MorningStar.png.full.png" # Este suele funcionar bien
-    }
-    
-    if nombre_archivo in links: 
-        st.image(links[nombre_archivo], caption=caption, width=200)
-    else: 
-        st.warning(f"⚠️ Imagen no disponible: {nombre_archivo}")
+    ruta_completa = os.path.join(IMG_DIR, nombre_archivo)
+    if os.path.exists(ruta_completa):
+        st.image(ruta_completa, caption=caption, use_container_width=True)
+    else:
+        # Fallback si no está la foto local
+        st.warning(f"⚠️ No se encontró: {nombre_archivo} en la carpeta {IMG_DIR}")
 
-# --- ESTILOS CSS ---
+# --- ESTILOS CSS (MEJORADOS) ---
 st.markdown("""
     <style>
-    .stApp {background-color: #0E1117; color: white;}
+    .stApp {background-color: #050505; color: #e0e0e0;}
     
-    /* Contenedores */
-    div[data-testid="stVerticalBlock"] > div[style*="flex-direction: column;"] > div[data-testid="stVerticalBlock"] {
-        background-color: #161B22; padding: 15px; border-radius: 8px; border: 1px solid #30363D;
+    /* Inputs Estilizados */
+    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
+        background-color: #111 !important; 
+        color: #fff !important; 
+        border: 1px solid #333;
+        border-radius: 5px;
     }
-    /* Inputs */
-    .stTextInput>div>div>input, .stNumberInput>div>div>input, .stSelectbox>div>div>div {
-        background-color: #0E1117 !important; color: white !important; border: 1px solid #444;
+
+    /* Calendario Aesthetic */
+    .calendar-wrapper {
+        background: #111;
+        border-radius: 10px;
+        padding: 10px;
+        border: 1px solid #333;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    /* Calendario */
-    .calendar-container { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; background: #222; border: 1px solid #444; }
-    .calendar-header { background: #111; color: #ff9900; text-align: center; padding: 5px; font-weight: bold; }
-    .calendar-day { min-height: 80px; background: #000; padding: 5px; display: flex; flex-direction: column; justify-content: space-between; }
-    .day-num { color: #666; font-size: 0.8em; }
-    .day-val { text-align: right; font-weight: bold; }
+    .calendar-container { 
+        display: grid; 
+        grid-template-columns: repeat(7, 1fr); 
+        gap: 5px; 
+        margin-top: 10px;
+    }
+    .calendar-header { 
+        background: #222; 
+        color: #aaa; 
+        text-align: center; 
+        padding: 8px; 
+        font-weight: bold; 
+        border-radius: 4px;
+        font-size: 0.9rem;
+    }
+    .calendar-day { 
+        min-height: 90px; 
+        background: #0a0a0a; 
+        padding: 8px; 
+        display: flex; 
+        flex-direction: column; 
+        justify-content: space-between; 
+        border-radius: 6px;
+        border: 1px solid #222;
+        transition: transform 0.2s;
+    }
+    .calendar-day:hover {
+        border-color: #444;
+        transform: translateY(-2px);
+    }
+    .day-num { color: #555; font-size: 0.8em; font-weight: bold; }
+    .day-val { text-align: right; font-weight: bold; font-size: 1.1em; }
     
-    /* Alertas */
-    .plan-box {border-left: 5px solid #4CAF50; padding: 15px; background-color: rgba(76, 175, 80, 0.1); border-radius: 5px; margin-top: 10px;}
+    /* Colores Resultados */
+    .win-text { color: #00ff00; text-shadow: 0 0 5px rgba(0,255,0,0.2); }
+    .loss-text { color: #ff3333; text-shadow: 0 0 5px rgba(255,0,0,0.2); }
+    .be-text { color: #ffcc00; }
+
+    /* Info Box */
+    .balance-box {
+        background: linear-gradient(90deg, #111 0%, #0a0a0a 100%);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #00ff00;
+        margin-bottom: 20px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -106,264 +186,226 @@ def render_calendar(year, month, df):
     cal = calendar.Calendar(firstweekday=0)
     month_days = cal.monthdayscalendar(year, month)
     
-    html = '<div class="calendar-container">'
+    html = '<div class="calendar-wrapper"><div class="calendar-container">'
     for d in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: html += f'<div class="calendar-header">{d}</div>'
     
     for week in month_days:
         for day in week:
-            if day == 0: html += '<div class="calendar-day" style="background:#111;"></div>'
+            if day == 0: html += '<div class="calendar-day" style="opacity:0.3;"></div>'
             else:
                 val = data.get(day, 0)
-                color = "#00ff00" if val > 0 else "#ff4444" if val < 0 else "#555"
-                txt = f"${val:,.0f}" if val != 0 else "-"
-                html += f'<div class="calendar-day"><div class="day-num">{day}</div><div class="day-val" style="color:{color}">{txt}</div></div>'
-    html += '</div>'
+                txt = f"${val:,.0f}" if val != 0 else ""
+                
+                # Clase CSS según resultado
+                txt_class = "win-text" if val > 0 else "loss-text" if val < 0 else "be-text"
+                bg_style = ""
+                if val > 0: bg_style = "background: rgba(0, 255, 0, 0.05); border: 1px solid rgba(0,255,0,0.2);"
+                elif val < 0: bg_style = "background: rgba(255, 0, 0, 0.05); border: 1px solid rgba(255,0,0,0.2);"
+                
+                html += f'''
+                <div class="calendar-day" style="{bg_style}">
+                    <div class="day-num">{day}</div>
+                    <div class="day-val {txt_class}">{txt}</div>
+                </div>
+                '''
+    html += '</div></div>'
     return html
 
-# --- GRÁFICOS ---
-def plot_charts(df):
-    if df.empty: return
-    df = df.sort_values("Fecha")
-    df['Equity'] = df['Dinero'].cumsum()
-    
-    fig = go.Figure()
-    fig.add_trace(go.Scatter(x=df['Fecha'], y=df['Equity'], mode='lines+markers', line=dict(color='#00ff00')))
-    fig.update_layout(title="Equity Curve", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
-    st.plotly_chart(fig, use_container_width=True)
-
-# --- PANTALLAS ---
-def login():
-    c1,c2,c3 = st.columns([1,1,1])
-    with c2:
-        st.title("🔒 Trading Access")
-        t1, t2 = st.tabs(["LOGIN", "REGISTRO"])
+# --- LOGIN ---
+def login_screen():
+    col1, col2, col3 = st.columns([1,1,1])
+    with col2:
+        st.title("🦁 Trading Suite")
+        t1, t2 = st.tabs(["Ingresar", "Registrarse"])
         with t1:
             u = st.text_input("Usuario")
-            p = st.text_input("Pass", type="password")
-            if st.button("Entrar"):
+            p = st.text_input("Contraseña", type="password")
+            if st.button("Entrar", type="primary"):
                 if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Error")
+                else: st.error("Datos incorrectos")
         with t2:
-            nu = st.text_input("Nuevo User")
-            np = st.text_input("Nueva Pass", type="password")
-            if st.button("Crear"):
-                if nu and np: save_user(nu, np); st.success("Creado!")
+            nu = st.text_input("Nuevo Usuario")
+            np = st.text_input("Nueva Contraseña", type="password")
+            if st.button("Crear Cuenta"):
+                if nu and np: register_user(nu, np); st.success("Usuario Creado"); st.rerun()
 
-def app():
+# --- APP PRINCIPAL ---
+def main_app():
     user = st.session_state.user
+    
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title(f"👤 {user}")
-        if st.button("Salir"): st.session_state.user = None; st.rerun()
-        st.divider()
+        if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
+        st.markdown("---")
+        
+        # Selección de Cuenta
         accs = get_user_accounts(user)
-        sel_acc = st.selectbox("Cuenta", accs)
-        with st.expander("Nueva Cuenta"):
-            n_acc = st.text_input("Nombre")
-            if st.button("Crear") and n_acc: guardar_trade(user, n_acc, {"Fecha":datetime.now(),"Dinero":0}); st.rerun()
+        sel_acc = st.selectbox("📂 Seleccionar Cuenta", accs)
         
-        st.divider()
-        # SELECTOR DE MODO
-        modo = st.radio("Modo Operativa", ["Swing / Day (W-D-4H)", "Scalping (4H-2H-1H)"])
+        # Info Saldo Sidebar
+        saldo_ini, saldo_act = get_account_balance(user, sel_acc)
+        st.markdown(f"""
+        <div style="background:#111; padding:10px; border-radius:5px; border:1px solid #333;">
+            <small style="color:#888">Saldo Actual:</small>
+            <h2 style="color:#00ff00; margin:0">${saldo_act:,.2f}</h2>
+            <small style="color:#555">Inicial: ${saldo_ini:,.2f}</small>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Crear Nueva Cuenta
+        with st.expander("➕ Crear Nueva Cuenta"):
+            n_acc = st.text_input("Nombre (Ej: Fondeo 10k)")
+            n_bal = st.number_input("Saldo Inicial ($)", value=10000.0, step=100.0)
+            if st.button("Crear") and n_acc:
+                create_account(user, n_acc, n_bal)
+                st.rerun()
+
+    # --- PESTAÑAS (ORDEN NUEVO: REGISTRO -> DASH -> CAL -> OPERATIVA) ---
+    t_reg, t_dash, t_cal, t_op = st.tabs(["📝 REGISTRO", "📊 DASHBOARD", "📅 CALENDARIO", "🦁 OPERATIVA"])
+
+    # === 1. REGISTRO ===
+    with t_reg:
+        st.subheader(f"📝 Registrar Operación: {sel_acc}")
         
-        tz = pytz.timezone('America/Guayaquil')
-        h = datetime.now(tz).hour
-        st.markdown(f"**Mercado:** {'❌ CERRADO' if 15<=h<19 else '✅ ABIERTO'}")
-
-    # --- DEFINICIÓN DE PESTAÑAS (NOMBRES CORREGIDOS) ---
-    tab_op, tab_cal, tab_dash, tab_reg = st.tabs(["🦁 OPERATIVA", "📅 CALENDARIO", "📊 DASHBOARD", "📝 REGISTRO"])
-
-    # === TAB 1: OPERATIVA ===
-    with tab_op:
-        c_guia, c_check, c_res = st.columns([1, 2, 1.2], gap="medium")
-
-        # 1. IMÁGENES
-        with c_guia:
-            st.header("📖 Chuleta")
-            with st.expander("🐂 Alcistas", expanded=True):
-                st.markdown("### Bullish Engulfing"); mostrar_imagen("bullish_engulfing.png", "Verde envuelve roja")
-                st.markdown("### Morning Star"); mostrar_imagen("morning_star.png", "Giro 3 velas")
-                st.markdown("### Hammer"); mostrar_imagen("hammer.png", "Rechazo abajo")
-            with st.expander("🐻 Bajistas"):
-                st.markdown("### Bearish Engulfing"); mostrar_imagen("bearish_engulfing.png", "Roja envuelve verde")
-                st.markdown("### Shooting Star"); mostrar_imagen("shooting_star.png", "Rechazo arriba")
-
-        # 2. CHECKLIST DETALLADO
-        with c_check:
-            if "Swing" in modo:
-                st.subheader("🔗 Tendencias (W / D / 4H)")
-                c1, c2, c3 = st.columns(3)
-                # USAMOS NOMBRES DE VARIABLE ÚNICOS PARA NO CHOCAR
-                trend_w = c1.selectbox("Semanal", ["Alcista", "Bajista"], key="tw")
-                trend_d = c2.selectbox("Diario", ["Alcista", "Bajista"], key="td")
-                trend_4h = c3.selectbox("4 Horas", ["Alcista", "Bajista"], key="t4")
-                
-                if trend_w == trend_d == trend_4h: st.success("💎 TRIPLE SYNC")
-                elif trend_w == trend_d: st.info("✅ SWING SYNC")
-                elif trend_d == trend_4h: st.info("✅ DAY SYNC")
-                else: st.warning("⚠️ MIXTO")
-                
-                st.divider()
-                # Puntuaciones SWING
-                c_a, c_b = st.columns(2)
-                with c_a:
-                    st.caption("1. Semanal (W)")
-                    w_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+10%)", key="w1")*10,
-                        st.checkbox("Rechazo Estruc. Previa (+10%)", key="w2")*10,
-                        st.checkbox("Patrones (+10%)", key="w3")*10,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="w4")*5,
-                        st.checkbox("Nivel Psicológico (+5%)", key="w5")*5
-                    ])
-                with c_b:
-                    st.caption("2. Diario (D)")
-                    d_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+10%)", key="d1")*10,
-                        st.checkbox("Rechazo Estruc. Previa (+10%)", key="d2")*10,
-                        st.checkbox("Rechazo Vela (+10%)", key="d3")*10,
-                        st.checkbox("Patrones (+10%)", key="d4")*10,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="d5")*5
-                    ])
-                st.divider()
-                c_c, c_d = st.columns(2)
-                with c_c:
-                    st.caption("3. Ejecución (4H)")
-                    h4_sc = sum([
-                        st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
-                        st.checkbox("Patrones (+10%)", key="h2")*10,
-                        st.checkbox("En/Rechazo AOI (+5%)", key="h3")*5,
-                        st.checkbox("Rechazo Estructura (+5%)", key="h4")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="h5")*5
-                    ])
-                with c_d:
-                    st.caption("4. GATILLO (Obligatorio)")
-                    entry_sos = st.checkbox("⚡ Shift of Structure", key="e1")
-                    entry_eng = st.checkbox("🕯️ Vela Envolvente", key="e2")
-                    entry_rr = st.checkbox("💰 Ratio 1:2.5", key="e3")
-                    entry_score = sum([entry_sos*10, entry_eng*10])
-                
-                total = w_sc + d_sc + h4_sc + entry_score
-
-            else:
-                # LÓGICA SCALPING
-                st.subheader("🔗 Tendencias (4H / 2H / 1H)")
-                c1, c2, c3 = st.columns(3)
-                trend_4h = c1.selectbox("4H", ["Alcista", "Bajista"], key="st4")
-                trend_2h = c2.selectbox("2H", ["Alcista", "Bajista"], key="st2")
-                trend_1h = c3.selectbox("1H", ["Alcista", "Bajista"], key="st1")
-                
-                if trend_4h == trend_2h == trend_1h: st.success("💎 TRIPLE SYNC")
-                elif trend_4h == trend_2h: st.info("✅ 4H-2H SYNC")
-                elif trend_2h == trend_1h: st.info("✅ 2H-1H SYNC")
-                else: st.warning("⚠️ MIXTO")
-
-                st.divider()
-                c_a, c_b = st.columns(2)
-                with c_a:
-                    st.caption("1. Contexto 4H")
-                    w_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+5%)", key="sc1")*5,
-                        st.checkbox("Rechazo Estruc. (+5%)", key="sc2")*5,
-                        st.checkbox("Patrones (+5%)", key="sc3")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc4")*5,
-                        st.checkbox("Psicológico (+5%)", key="sc5")*5
-                    ])
-                with c_b:
-                    st.caption("2. Contexto 2H")
-                    d_sc = sum([
-                        st.checkbox("En/Rechazo AOI (+5%)", key="sc6")*5,
-                        st.checkbox("Rechazo Estruc. (+5%)", key="sc7")*5,
-                        st.checkbox("Rechazo Vela (+5%)", key="sc8")*5,
-                        st.checkbox("Patrones (+5%)", key="sc9")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc10")*5
-                    ])
-                st.divider()
-                c_c, c_d = st.columns(2)
-                with c_c:
-                    st.caption("3. Ejecución (1H)")
-                    h4_sc = sum([
-                        st.checkbox("Rechazo Vela (+5%)", key="sc11")*5,
-                        st.checkbox("Patrones (+5%)", key="sc12")*5,
-                        st.checkbox("Rechazo Estruc. (+5%)", key="sc13")*5,
-                        st.checkbox("Rechazo EMA 50 (+5%)", key="sc14")*5
-                    ])
-                with c_d:
-                    st.caption("4. GATILLO (M15/M30)")
-                    entry_sos = st.checkbox("⚡ SOS", key="se1")
-                    entry_eng = st.checkbox("🕯️ Vela Entrada", key="se2")
-                    entry_rr = st.checkbox("💰 Ratio 1:2.5", key="se3")
-                    entry_score = sum([entry_sos*10, entry_eng*10])
-                
-                total = w_sc + d_sc + h4_sc + entry_score + 10
-
-        # 3. RESULTADOS
-        with c_res:
-            is_valid = entry_sos and entry_eng and entry_rr
-            
-            def get_advice():
-                if not entry_sos: return "⛔ STOP: Falta Estructura"
-                if not entry_eng: return "⚠️ CUIDADO: Falta Vela"
-                if not entry_rr: return "💸 RIESGO: Mal Ratio"
-                if total >= 90: return "💎 SNIPER: Ejecuta"
-                return "💤 ESPERA"
-            
-            msg = get_advice()
-            st.header("🤖 Análisis")
-            if "STOP" in msg: st.error(msg)
-            elif "CUIDADO" in msg: st.warning(msg)
-            elif "SNIPER" in msg: st.success(msg)
-            else: st.info(msg)
-            
-            st.divider()
-            st.metric("Probabilidad", f"{min(total, 100)}%")
-            st.progress(min(total, 100))
-            
-            if is_valid and total >= 60:
-                st.success("### ✅ EJECUTAR")
-                plan = "<b>Swing:</b> SL 5-7 pips<br><b>Scalp:</b> SL 3-5 pips"
-                st.markdown(f'<div class="plan-box">{plan}</div>', unsafe_allow_html=True)
-            else:
-                st.error("### ❌ NO OPERAR")
-
-    # === TAB 2: CALENDARIO ===
-    with tab_cal:
-        st.subheader(f"📅 Calendario: {sel_acc}")
-        df = cargar_trades(user, sel_acc)
-        df_real = df[df['Dinero'] != 0]
-        y = st.number_input("Año", value=2025)
-        m = st.slider("Mes", 1, 12, datetime.now().month)
-        st.markdown(render_calendar(y, m, df_real), unsafe_allow_html=True)
-
-    # === TAB 3: DASHBOARD ===
-    with tab_dash:
-        st.subheader(f"📊 Métricas: {sel_acc}")
-        df = cargar_trades(user, sel_acc)
-        df_res = df[df['Resultado'].notna()]
-        if not df_res.empty:
-            k1,k2,k3 = st.columns(3)
-            net = df_res['Dinero'].sum()
-            wins = len(df_res[df_res['Dinero']>0])
-            k1.metric("Neto", f"${net:,.2f}")
-            k2.metric("Wins", wins)
-            k3.metric("Total Trades", len(df_res))
-            plot_charts(df_res)
-        else: st.info("Sin datos")
-
-    # === TAB 4: REGISTRO ===
-    with tab_reg:
-        st.subheader("📝 Registrar")
-        with st.form("reg"):
-            c1,c2 = st.columns(2)
+        # Caja de info rápida
+        st.info(f"Registrando trade para cuenta con saldo: **${saldo_act:,.2f}**")
+        
+        with st.form("trade_reg"):
+            c1, c2 = st.columns(2)
             dt = c1.date_input("Fecha", datetime.now())
-            pr = c1.text_input("Par", "XAUUSD")
+            pr = c1.text_input("Par (Ej: BTCUSD)", "XAUUSD").upper()
             tp = c1.selectbox("Tipo", ["BUY", "SELL"])
+            
             rs = c2.selectbox("Resultado", ["WIN", "LOSS", "BE"])
-            mn = c2.number_input("Dinero ($)", step=10.0)
-            rt = c2.number_input("Ratio", value=2.5)
-            nt = st.text_area("Notas")
-            if st.form_submit_button("Guardar"):
+            mn = c2.number_input("Profit/Loss ($)", step=10.0, help="Usa negativo para pérdidas")
+            rt = c2.number_input("Ratio (RR)", value=2.5)
+            nt = st.text_area("Notas / Emociones")
+            
+            if st.form_submit_button("💾 Guardar en Bitácora"):
                 guardar_trade(user, sel_acc, {"Fecha":dt, "Par":pr, "Tipo":tp, "Resultado":rs, "Dinero":mn, "Ratio":rt, "Notas":nt})
-                st.success("Guardado")
+                st.success("Trade Registrado Correctamente")
+                st.rerun() # Recargar para actualizar saldos
 
+    # === 2. DASHBOARD ===
+    with t_dash:
+        st.subheader(f"📊 Estadísticas: {sel_acc}")
+        file_path = get_account_file(user, sel_acc)
+        
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            if not df.empty:
+                # Métricas Principales
+                col1, col2, col3, col4 = st.columns(4)
+                neto = df["Dinero"].sum()
+                wins = len(df[df["Resultado"] == "WIN"])
+                total = len(df)
+                wr = (wins/total*100) if total > 0 else 0
+                
+                col1.metric("Beneficio Neto", f"${neto:,.2f}", delta_color="normal")
+                col2.metric("Win Rate", f"{wr:.1f}%")
+                col3.metric("Total Trades", total)
+                col4.metric("Saldo Final", f"${saldo_act:,.2f}")
+                
+                # Gráfico de Equity
+                st.divider()
+                df = df.sort_values("Fecha")
+                df["Equity"] = saldo_ini + df["Dinero"].cumsum()
+                
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=df["Fecha"], y=df["Equity"], mode='lines+markers', 
+                                         line=dict(color='#00ff00', width=3), name='Balance'))
+                fig.update_layout(
+                    title="Curva de Crecimiento (Equity)",
+                    paper_bgcolor='rgba(0,0,0,0)',
+                    plot_bgcolor='rgba(0,0,0,0)',
+                    font=dict(color='white'),
+                    xaxis=dict(showgrid=False),
+                    yaxis=dict(gridcolor='#333')
+                )
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("No hay trades registrados aún.")
+        else:
+            st.info("Cuenta nueva. Registra tu primer trade.")
+
+    # === 3. CALENDARIO ===
+    with t_cal:
+        st.subheader("📅 Calendario de P&L")
+        col_y, col_m = st.columns([1, 5])
+        y = col_y.number_input("Año", value=datetime.now().year)
+        m_idx = datetime.now().month
+        m = col_m.slider("Mes", 1, 12, m_idx)
+        
+        file_path = get_account_file(user, sel_acc)
+        if os.path.exists(file_path):
+            df = pd.read_csv(file_path)
+            st.markdown(render_calendar(y, m, df), unsafe_allow_html=True)
+        else:
+            st.info("Sin datos para mostrar.")
+
+    # === 4. OPERATIVA (TU ESTRATEGIA) ===
+    with t_op:
+        st.subheader("🦁 Análisis de Estrategia (Set & Forget)")
+        
+        col_guia, col_check, col_res = st.columns([1, 2, 1.2], gap="medium")
+
+        # GUIA (Fotos Locales)
+        with col_guia:
+            with st.expander("📖 Chuleta Visual", expanded=True):
+                st.caption("Alcistas")
+                mostrar_imagen("bullish_engulfing.png", "Bullish Engulfing")
+                mostrar_imagen("morning_star.png", "Morning Star")
+                st.caption("Bajistas")
+                mostrar_imagen("bearish_engulfing.png", "Bearish Engulfing")
+                mostrar_imagen("shooting_star.png", "Shooting Star")
+
+        # CHECKLIST
+        with col_check:
+            modo = st.radio("Modo", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True)
+            
+            if "Swing" in modo:
+                c1, c2, c3 = st.columns(3)
+                tw = c1.selectbox("Weekly", ["Alcista", "Bajista"], key="tw")
+                td = c2.selectbox("Daily", ["Alcista", "Bajista"], key="td")
+                t4 = c3.selectbox("4H", ["Alcista", "Bajista"], key="t4")
+                
+                if tw==td==t4: st.success("💎 TRIPLE SYNC")
+                else: st.warning("⚠️ TENDENCIA MIXTA")
+                
+                score = 0
+                st.write("**Confirmaciones:**")
+                if st.checkbox("Precio en AOI"): score += 20
+                if st.checkbox("Rechazo Estructural / EMA"): score += 20
+                if st.checkbox("Patrón de Vela Válido"): score += 20
+                
+                st.write("**Gatillo:**")
+                if st.checkbox("⚡ SOS + Engulfing + Ratio > 1:2.5"): score += 40
+                
+            else:
+                c1, c2, c3 = st.columns(3)
+                t4 = c1.selectbox("4H", ["Alcista", "Bajista"], key="st4")
+                t2 = c2.selectbox("2H", ["Alcista", "Bajista"], key="st2")
+                t1 = c3.selectbox("1H", ["Alcista", "Bajista"], key="st1")
+                
+                if t4==t2==t1: st.success("💎 TRIPLE SYNC")
+                else: st.warning("⚠️ CUIDADO")
+                
+                score = 0
+                if st.checkbox("Rechazo AOI (H1/H2)"): score += 30
+                if st.checkbox("Patrón Vela (H1)"): score += 20
+                if st.checkbox("⚡ Quiebre M15 + Ratio"): score += 50
+
+        # RESULTADOS
+        with col_res:
+            st.metric("Probabilidad", f"{score}%")
+            st.progress(score)
+            if score >= 80:
+                st.success("✅ EJECUTAR")
+            else:
+                st.error("⛔ ESPERAR")
+
+# --- LANZADOR ---
 if 'user' not in st.session_state: st.session_state.user = None
-if st.session_state.user: app()
-else: login()
+if st.session_state.user: main_app()
+else: login_screen()
