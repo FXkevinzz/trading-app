@@ -10,44 +10,68 @@ import pytz
 # --- 1. CONFIGURACIÓN INICIAL ---
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 
-# --- 2. ESTILOS CSS (TEMA CLEAN FINTECH - LIGHT MODE PRO) ---
+# --- 2. ESTILOS CSS DINÁMICOS (CLARO & OSCURO) ---
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
 
-    /* VARIABLES DE COLOR (PALETA CLARA PROFESIONAL) */
+    /* === PALETA DE COLORES INTELIGENTE === */
+    /* Por defecto (MODO CLARO - Clean Fintech) */
     :root {
-        --bg-main: #f1f5f9;       /* Gris azulado muy suave */
-        --bg-card: #ffffff;       /* Blanco puro */
-        --text-main: #0f172a;     /* Azul muy oscuro (casi negro) */
-        --text-muted: #64748b;    /* Gris medio */
-        --accent-blue: #2563eb;   /* Azul Royal */
-        --accent-green: #10b981;  /* Verde Esmeralda */
-        --accent-red: #ef4444;    /* Rojo Intenso */
-        --border-color: #e2e8f0;  /* Gris claro */
-        --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        --bg-main: #f1f5f9;
+        --bg-card: #ffffff;
+        --bg-sidebar: #0f172a; /* Sidebar siempre oscura para contraste profesional */
+        --text-main: #0f172a;
+        --text-card: #0f172a;
+        --text-muted: #64748b;
+        --border-color: #e2e8f0;
+        --accent-blue: #2563eb;
+        --accent-green: #10b981;
+        --accent-red: #ef4444;
+        --shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+        --input-bg: #ffffff;
+        --tab-bg: #ffffff;
+        --tab-text: #64748b;
     }
 
-    /* ESTRUCTURA GLOBAL */
+    /* Detección automática de MODO OSCURO (Dark Navy) */
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --bg-main: #0f172a;       /* Vuelve el Azul Profundo */
+            --bg-card: #1e293b;       /* Tarjetas Azul Acero */
+            --bg-sidebar: #020617;    /* Sidebar casi negra */
+            --text-main: #f8fafc;     /* Texto Blanco Hielo */
+            --text-card: #f8fafc;
+            --text-muted: #94a3b8;    /* Texto Gris Azulado */
+            --border-color: #334155;  /* Bordes sutiles oscuros */
+            --accent-blue: #3b82f6;   /* Azul más brillante */
+            --accent-green: #34d399;  
+            --accent-red: #f87171;    
+            --shadow: 0 4px 6px -1px rgba(0,0,0,0.3);
+            --input-bg: #1e293b;
+            --tab-bg: #1e293b;
+            --tab-text: #94a3b8;
+        }
+    }
+
+    /* === APLICACIÓN DE ESTILOS === */
+    
+    /* Estructura General */
     .stApp {
         background-color: var(--bg-main);
         color: var(--text-main);
         font-family: 'Inter', sans-serif;
     }
 
-    /* SIDEBAR (Mantenemos oscuro para contraste profesional) */
+    /* Sidebar */
     [data-testid="stSidebar"] {
-        background-color: #0f172a;
-        color: white;
+        background-color: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
     }
-    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 {
-        color: white !important;
-    }
-    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label {
-        color: #cbd5e1 !important;
-    }
+    [data-testid="stSidebar"] h1, [data-testid="stSidebar"] h2, [data-testid="stSidebar"] h3 { color: #f8fafc !important; }
+    [data-testid="stSidebar"] p, [data-testid="stSidebar"] span, [data-testid="stSidebar"] label { color: #94a3b8 !important; }
 
-    /* TARJETAS Y CONTENEDORES */
+    /* Tarjetas (Cards) */
     .strategy-box {
         background-color: var(--bg-card);
         border: 1px solid var(--border-color);
@@ -56,51 +80,54 @@ st.markdown("""
         box-shadow: var(--shadow);
         height: 100%;
     }
+    
+    /* Encabezados de Sección */
     .section-title {
         color: var(--accent-blue);
         font-weight: 800;
         text-transform: uppercase;
         letter-spacing: 0.5px;
         margin-bottom: 15px;
-        border-bottom: 2px solid var(--bg-main);
+        border-bottom: 2px solid var(--border-color);
         padding-bottom: 10px;
     }
 
-    /* INPUTS (Estilo limpio) */
+    /* Inputs, Selects y Áreas de texto */
     .stTextInput input, .stNumberInput input, .stSelectbox div[data-baseweb="select"] > div, .stDateInput input, .stTextArea textarea {
-        background-color: var(--bg-card) !important;
-        color: var(--text-main) !important;
-        border: 1px solid #cbd5e1 !important;
+        background-color: var(--input-bg) !important;
+        color: var(--text-card) !important;
+        border: 1px solid var(--border-color) !important;
         border-radius: 8px;
     }
-    
-    /* PESTAÑAS (TABS) ESTILO CÁPSULA */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 10px;
-        background-color: transparent;
-        padding-bottom: 10px;
-    }
+    /* Corrección de iconos en selects */
+    .stSelectbox svg, .stDateInput svg { fill: var(--text-muted) !important; }
+    /* Textos de ayuda en inputs */
+    .stNumberInput div[data-baseweb="input"] { color: var(--text-card); }
+
+    /* Pestañas (Tabs) Tipo Cápsula */
+    .stTabs [data-baseweb="tab-list"] { gap: 10px; background: transparent; padding-bottom: 10px; }
     .stTabs [data-baseweb="tab"] {
         height: 50px;
-        background-color: white !important;
+        background-color: var(--tab-bg) !important;
         border: 1px solid var(--border-color);
         border-radius: 25px !important;
-        color: var(--text-muted) !important;
+        color: var(--tab-text) !important;
         font-weight: 600;
         padding: 0 25px !important;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        box-shadow: var(--shadow);
+        transition: all 0.3s ease;
     }
     .stTabs [data-baseweb="tab"][aria-selected="true"] {
         background-color: var(--accent-blue) !important;
         color: white !important;
         border: none !important;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     }
     .stTabs [data-baseweb="tab-highlight"] { display: none; }
 
-    /* HUD DASHBOARD */
+    /* HUD Dashboard (Puntaje) */
     .hud-container {
-        background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+        background: linear-gradient(135deg, var(--bg-card) 0%, var(--bg-main) 100%);
         border: 1px solid var(--border-color);
         border-radius: 16px;
         padding: 25px;
@@ -111,20 +138,18 @@ st.markdown("""
         align-items: center;
     }
     .hud-label { color: var(--text-muted); font-size: 0.8rem; font-weight: 700; letter-spacing: 1px; }
-    .hud-value { color: var(--text-main); font-size: 2.5rem; font-weight: 800; line-height: 1; }
+    .hud-value { color: var(--text-card); font-size: 2.5rem; font-weight: 800; line-height: 1; }
 
-    /* ALERTAS */
-    .status-sniper { background-color: #ecfdf5; color: #047857; border: 1px solid #10b981; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
-    .status-warning { background-color: #fefce8; color: #b45309; border: 1px solid #facc15; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
-    .status-stop { background-color: #fef2f2; color: #b91c1c; border: 1px solid #ef4444; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
+    /* Estados / Alertas */
+    .status-sniper { background-color: rgba(16, 185, 129, 0.15); color: var(--accent-green); border: 1px solid var(--accent-green); padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
+    .status-warning { background-color: rgba(250, 204, 21, 0.15); color: #d97706; border: 1px solid #facc15; padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
+    .status-stop { background-color: rgba(239, 68, 68, 0.15); color: var(--accent-red); border: 1px solid var(--accent-red); padding: 12px; border-radius: 8px; font-weight: bold; text-align: center;}
 
-    /* TEXTOS GLOBALES */
-    h1, h2, h3, h4, p, span, label { color: var(--text-main); }
-    
-    /* CALENDARIO */
-    .calendar-day { background-color: white; border: 1px solid var(--border-color); color: var(--text-main); border-radius: 6px;}
+    /* Checkboxes */
+    .stCheckbox label p { color: var(--text-card) !important; }
+
+    /* Calendario */
     .calendar-header { color: var(--text-muted); font-weight: bold; font-size: 0.8rem; text-align: center; }
-    
     </style>
     """, unsafe_allow_html=True)
 
@@ -206,18 +231,20 @@ def render_cal_html(df):
             else:
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
-                bg = "#ffffff"
-                border = "#e2e8f0"
-                col = "#0f172a"
+                
+                # Colores adaptables (CSS Variables)
+                bg = "var(--bg-card)"
+                border = "var(--border-color)"
+                col = "var(--text-card)"
                 
                 if val > 0:
-                    bg = "#ecfdf5"; border = "#10b981"; col = "#047857"
+                    bg = "rgba(16, 185, 129, 0.15)"; border = "var(--accent-green)"; col = "var(--accent-green)"
                 elif val < 0:
-                    bg = "#fef2f2"; border = "#ef4444"; col = "#b91c1c"
+                    bg = "rgba(239, 68, 68, 0.15)"; border = "var(--accent-red)"; col = "var(--accent-red)"
 
                 html += f'''
                 <div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
-                    <div style="color:#94a3b8; font-size:0.8rem; font-weight:bold;">{day}</div>
+                    <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div>
                     <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div>
                 </div>'''
     html += '</div>'
@@ -227,7 +254,7 @@ def render_cal_html(df):
 def login_screen():
     c1,c2,c3 = st.columns([1,1,1])
     with c2:
-        st.markdown("<h1 style='text-align:center; color:#2563eb;'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
+        st.markdown("<h1 style='text-align:center; color:var(--accent-blue);'>🦁 Trading Suite</h1>", unsafe_allow_html=True)
         t1, t2 = st.tabs(["INGRESAR", "REGISTRARSE"])
         with t1:
             u = st.text_input("Usuario")
@@ -246,7 +273,7 @@ def main_app():
     user = st.session_state.user
     if 'cal_date' not in st.session_state: st.session_state['cal_date'] = datetime.now()
 
-    # --- SIDEBAR (NAVY BLUE) ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
         if st.button("CERRAR SESIÓN", use_container_width=True): st.session_state.user = None; st.rerun()
@@ -254,7 +281,7 @@ def main_app():
         
         accs = get_user_accounts(user)
         sel_acc = st.selectbox("📂 CUENTA ACTIVA", accs)
-        ini, act, _ = get_balance_data(user, sel_acc)
+        ini, act, df = get_balance_data(user, sel_acc)
         
         col_s = "#10b981" if act >= ini else "#ef4444"
         st.markdown(f"""
@@ -294,8 +321,8 @@ def main_app():
         
         # Selector de Modo
         st.markdown("""
-        <div style="background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0; text-align:center; margin-bottom:20px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-            <h4 style="margin:0; color:#2563eb; text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN DE ESTRATEGIA</h4>
+        <div style="background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center; margin-bottom:20px; box-shadow: var(--shadow);">
+            <h4 style="margin:0; color:var(--accent-blue); text-transform:uppercase; letter-spacing:1px;">⚡ CONFIGURACIÓN DE ESTRATEGIA</h4>
         </div>
         """, unsafe_allow_html=True)
         
@@ -381,33 +408,30 @@ def main_app():
                 total = w_sc + d_sc + h4_sc + entry_score + 15
                 st.markdown('</div>', unsafe_allow_html=True)
 
-        # --- HUD ---
+        # --- HUD DE RESULTADOS ---
         st.markdown("<br>", unsafe_allow_html=True)
         valid = sos and eng and rr
         
-        msg_header, msg_body, css_class = "", "", ""
-        if not sos: msg_header, msg_body, css_class = "⛔ STOP", "Falta Estructura (SOS)", "status-stop"
-        elif not eng: msg_header, msg_body, css_class = "⚠️ CUIDADO", "Falta Vela Entrada", "status-warning"
-        elif not rr: msg_header, msg_body, css_class = "💸 RIESGO", "Ratio Insuficiente", "status-warning"
-        elif total >= 90: msg_header, msg_body, css_class = "💎 SNIPER ENTRY", "Alta Probabilidad", "status-sniper"
-        elif total >= 60 and valid: msg_header, msg_body, css_class = "✅ EJECUTAR", "Setup Válido", "status-sniper"
-        else: msg_header, msg_body, css_class = "💤 ESPERAR", "Puntaje Bajo", "status-warning"
+        msg, css_cl = "💤 ESPERAR", "status-warning"
+        if not sos: msg, css_cl = "⛔ FALTA ESTRUCTURA", "status-stop"
+        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
+        elif not rr: msg, css_cl = "💸 RATIO BAJO", "status-warning"
+        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
+        elif total >= 60 and valid: msg, css_cl = "✅ TRADE VÁLIDO", "status-sniper"
 
+        # HUD DINÁMICO
         st.markdown(f"""
         <div class="hud-container">
-            <div>
-                <div class="hud-label">PUNTAJE TOTAL</div>
+            <div class="hud-stat">
+                <div class="hud-label">PUNTAJE</div>
                 <div class="hud-value">{total}%</div>
             </div>
-            <div style="flex-grow:1; margin:0 30px;">
-                <div class="{css_class}">
-                    <div style="font-size:1.1rem">{msg_header}</div>
-                    <div style="font-weight:400; font-size:0.9rem">{msg_body}</div>
-                </div>
+            <div style="flex-grow:1; text-align:center; margin:0 20px;">
+                <span class="{css_cl}">{msg}</span>
             </div>
-            <div style="text-align:right">
-                <div class="hud-label">ESTADO</div>
-                <div style="font-size:1.5rem; font-weight:bold; color:{'#10b981' if valid else '#ef4444'}">
+            <div class="hud-stat">
+                <div class="hud-label">GATILLOS</div>
+                <div style="font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if valid else 'var(--accent-red)'}">
                     {'LISTO' if valid else 'PENDIENTE'}
                 </div>
             </div>
@@ -416,9 +440,13 @@ def main_app():
         
         st.progress(min(total, 100))
 
+        if valid and total >= 60:
+            sl = "5-7 pips" if "Swing" in modo else "3-5 pips"
+            st.info(f"📝 PLAN: Stop Loss {sl} | TP: Liquidez Opuesta | Riesgo 1%")
+
     # === 2. REGISTRO ===
     with t_reg:
-        st.markdown("<h3 style='color:#2563eb'>📝 Bitácora</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 style='color:var(--accent-blue)'>📝 Registrar Operación</h3>", unsafe_allow_html=True)
         with st.form("reg"):
             c1,c2 = st.columns(2)
             dt = c1.date_input("Fecha", datetime.now())
@@ -435,31 +463,35 @@ def main_app():
 
     # === 3. DASHBOARD ===
     with t_dash:
-        ini, act, df = get_balance_data(user, sel_acc)
+        st.markdown(f"<h3 style='color:var(--accent-blue)'>📊 Rendimiento: {sel_acc}</h3>", unsafe_allow_html=True)
         if not df.empty:
-            st.markdown(f"<h3 style='color:#2563eb'>📊 Rendimiento: {sel_acc}</h3>", unsafe_allow_html=True)
             k1,k2,k3,k4 = st.columns(4)
             wins = len(df[df["Resultado"]=="WIN"])
             net = df['Dinero'].sum()
             
-            k1.markdown(f"<div style='background:white; padding:15px; border-radius:10px; border:1px solid #e2e8f0; text-align:center'><div style='color:#64748b; font-size:0.8rem; font-weight:bold'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'#10b981' if net>=0 else '#ef4444'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
+            k1.markdown(f"<div style='background:var(--bg-card); padding:15px; border-radius:10px; border:1px solid var(--border-color); text-align:center'><div style='color:var(--text-muted); font-size:0.8rem'>NETO</div><div style='font-size:1.5rem; font-weight:bold; color:{'var(--accent-green)' if net>=0 else 'var(--accent-red)'}'>${net:,.2f}</div></div>", unsafe_allow_html=True)
             k2.metric("WIN RATE", f"{(wins/len(df)*100):.1f}%")
             k3.metric("TRADES", len(df))
             k4.metric("SALDO FINAL", f"${act:,.2f}")
             
-            st.markdown("#### Curva de Crecimiento")
+            st.markdown("#### Curva de Crecimiento (Desde Capital Inicial)")
             df = df.sort_values("Fecha")
-            # Crear datos para gráfico desde saldo inicial
+            
+            # Lógica Equity
             fechas = [df["Fecha"].iloc[0]] if not df.empty else [datetime.now().date()]
             valores = [ini]
-            acumulado = ini
-            for _, row in df.iterrows():
-                fechas.append(row["Fecha"])
-                acumulado += row["Dinero"]
-                valores.append(acumulado)
+            acum = ini
+            for _, r in df.iterrows():
+                fechas.append(r["Fecha"])
+                acum += r["Dinero"]
+                valores.append(acum)
 
-            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#2563eb', width=3), fill='tozeroy'))
-            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color='#0f172a'), xaxis=dict(showgrid=False), yaxis=dict(gridcolor='#e2e8f0'))
+            fig = go.Figure(go.Scatter(x=fechas, y=valores, mode='lines+markers', line=dict(color='#3b82f6', width=3), fill='tozeroy'))
+            # Colores de la gráfica dinámicos según el tema
+            grid_col = "#334155" # Default dark
+            font_col = "#94a3b8"
+            
+            fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color=font_col), xaxis=dict(showgrid=False), yaxis=dict(gridcolor=grid_col))
             st.plotly_chart(fig, use_container_width=True)
         else: st.info("Sin datos")
 
@@ -471,9 +503,8 @@ def main_app():
         with c_n: 
             if st.button("➡️", use_container_width=True): change_month(1); st.rerun()
             
-        _, _, df = get_balance_data(user, sel_acc)
         html, y, m = render_cal_html(df)
-        with c_t: st.markdown(f"<h3 style='text-align:center; color:#0f172a; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
+        with c_t: st.markdown(f"<h3 style='text-align:center; margin:0'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
         st.markdown(html, unsafe_allow_html=True)
 
 if 'user' not in st.session_state: st.session_state.user = None
