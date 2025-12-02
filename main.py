@@ -52,10 +52,10 @@ def main_app():
         sel_acc = st.selectbox("Cuenta Seleccionada", accs)
         ini, act, df = get_balance_data(user, sel_acc)
         
-        # --- RECTÁNGULO DE PNL TOTAL (FINAL FIX) ---
+        # --- RECTÁNGULO DE PNL TOTAL (FINALMENTE CORREGIDO) ---
         pnl_total = act - ini
         color_pnl = "#10b981" if pnl_total >= 0 else "#ef4444"
-        pnl_bg = color_pnl + '10' 
+        pnl_bg = color_pnl + '10'
         pnl_sign = '+' if pnl_total > 0 else ''
 
         st.markdown(f"""
@@ -68,7 +68,7 @@ def main_app():
                 <div style="color:var(--text-muted); font-size:0.7rem;">(Net PnL)</div>
             </div>
             
-        </div>""", unsafe_allow_html=True) # <<< AHORA ESTÁ EN UNA SOLA LLAMADA GRANDE, NO ANIDADA.
+        </div>""", unsafe_allow_html=True) # <<< AHORA SÍ CON EL PERMISO CLARO
         # ----------------------------------------
         
         st.markdown("---")
