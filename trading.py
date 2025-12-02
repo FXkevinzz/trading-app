@@ -6,7 +6,7 @@ import google.generativeai as genai
 from PIL import Image
 
 # ==============================================================================
-# 1. CONFIGURACIÓN Y ESTILOS (DISEÑO PREMIUM FINAL)
+# 1. CONFIGURACIÓN Y ESTILOS (DISEÑO PREMIUM "CONTAINER")
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
@@ -25,65 +25,77 @@ def inject_custom_css():
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
-        /* --- TARJETAS DE SECCIÓN (Cajas Individuales) --- */
-        .section-card {
-            background-color: #161b26;
+        /* --- CONTENEDOR DE SECCIÓN (ESTILO IMAGEN 10) --- */
+        .section-container {
+            background-color: #161b26; /* Fondo de la tarjeta */
             border: 1px solid #2d3748;
-            border-radius: 16px;
-            padding: 25px; 
-            margin-bottom: 25px; /* Separación clara entre cajas */
+            border-radius: 12px;
+            padding: 0; /* Padding 0 para que el header toque los bordes si quisieras, pero usaremos interno */
+            margin-bottom: 25px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            transition: all 0.3s ease;
-        }
-        
-        .section-card:hover {
-            border-color: #3b82f6; /* Brillo azul al pasar mouse */
-            transform: translateY(-2px);
+            overflow: hidden; /* Para que el header no se salga */
         }
 
-        .section-header {
+        .section-header-box {
+            background-color: #1f2937; /* Un tono ligeramente más claro para el título */
+            padding: 15px 25px;
+            border-bottom: 1px solid #2d3748;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            border-bottom: 1px solid #2d3748;
-            padding-bottom: 10px;
         }
-        
-        .section-title {
-            font-size: 1.2rem;
+
+        .section-title-text {
+            font-size: 1.1rem;
             font-weight: 800;
             color: #e2e8f0;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        .section-score-badge {
-            font-size: 1.1rem;
+        .section-score-text {
+            font-size: 1.2rem;
             font-weight: 800;
-            color: #3b82f6; 
+            color: #10b981; /* Verde brillante */
         }
 
-        /* --- TOGGLES ESTILIZADOS --- */
-        .toggle-row {
+        .section-body {
+            padding: 10px 25px 25px 25px; /* Espacio para los toggles */
+        }
+
+        /* --- TOGGLES DE LÍNEA --- */
+        .toggle-wrapper {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding: 12px 0;
-            border-bottom: 1px solid #1f2937; /* Línea sutil separadora */
+            border-bottom: 1px solid #2d3748; /* Línea separadora sutil */
         }
         
-        .toggle-label {
-            font-size: 1rem;
+        .toggle-wrapper:last-child {
+            border-bottom: none; /* Quitar línea al último elemento */
+        }
+
+        .toggle-label-text {
+            font-size: 0.95rem;
             font-weight: 500;
             color: #cbd5e1;
         }
-        
-        .toggle-value {
+
+        .right-side-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px; /* Espacio entre +10% y el Switch */
+        }
+
+        .points-badge {
             font-size: 0.85rem;
             font-weight: 700;
-            color: #10b981; /* Verde para los puntos positivos */
-            margin-right: 15px; /* Separación del switch */
+            color: #10b981;
+        }
+        
+        .points-badge-disabled {
+            color: #475569;
         }
 
         /* --- DASHBOARD SCORE (Gigante) --- */
@@ -210,11 +222,10 @@ with c_nav2:
 st.markdown("---")
 
 # ==============================================================================
-# PÁGINA 1: CHECKLIST (Diseño Final)
+# PÁGINA 1: CHECKLIST (Diseño Contenedor Único)
 # ==============================================================================
 if st.session_state.page == 'checklist':
     
-    # 1. Calcular Totales
     total, sec_scores = calculate_totals()
     
     status_txt = "WEAK SETUP"
@@ -222,7 +233,7 @@ if st.session_state.page == 'checklist':
     if total >= 60: score_color = "#facc15"; status_txt = "MODERATE"
     if total >= 90: score_color = "#10b981"; status_txt = "🔥 SNIPER ENTRY"
 
-    # 2. Dashboard Score Gigante
+    # Dashboard Score Gigante
     st.markdown(f"""
     <div class="total-score-box" style="border-color: {score_color};">
         <div style="color:#ccfbf1; letter-spacing:2px; font-weight:600; margin-bottom:10px;">TOTAL OVERALL SCORE</div>
@@ -237,68 +248,75 @@ if st.session_state.page == 'checklist':
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # 3. Secciones (Grid de 2 columnas)
-    col_izq, col_der = st.columns(2, gap="large")
+    # GRIDS PARA LAS SECCIONES (2 Columnas)
+    left_col, right_col = st.columns(2, gap="large")
     
-    sections = list(STRATEGY.items())
-    
-    for i, (sec_name, items) in enumerate(sections):
-        # Asignar columna (Izquierda/Derecha)
-        target_col = col_izq if i % 2 == 0 else col_der
+    for i, (sec_name, items) in enumerate(STRATEGY.items()):
+        target_col = left_col if i % 2 == 0 else right_col
         
         with target_col:
-            # Inicio de la Tarjeta (Box)
-            current_sec_score = sec_scores.get(sec_name, 0)
+            # 1. INICIO DEL CONTENEDOR (Todo lo de esta sección va dentro)
+            current_score = sec_scores.get(sec_name, 0)
             
-            # HTML Header de Sección
+            # Header del Contenedor (Título + Score)
             st.markdown(f"""
-            <div class="section-card">
-                <div class="section-header">
-                    <span class="section-title">{sec_name}</span>
-                    <span class="section-score-badge">{current_sec_score}%</span>
+            <div class="section-container">
+                <div class="section-header-box">
+                    <span class="section-title-text">{sec_name}</span>
+                    <span class="section-score-text">{current_score}%</span>
                 </div>
+                <div class="section-body">
             """, unsafe_allow_html=True)
             
-            # Generar Toggles
+            # 2. CUERPO DEL CONTENEDOR (Lista de Toggles)
             for label, pts in items:
                 key = f"{sec_name}_{label}"
                 
-                # Lógica Psych Level
+                # Lógica de bloqueo
                 disabled = False
                 help_msg = None
                 if label == "Round Psych Level":
                     if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
                         disabled = True
-                        help_msg = "⛔ Ya seleccionado en otra TF"
+                        help_msg = "⛔ Ya usado en otra TF"
 
-                # Layout de Fila: Label + (+Pts%) + Toggle
-                c1, c2, c3 = st.columns([6, 2, 1])
+                # Layout de Fila: Label a la izquierda, (+10% Switch) a la derecha
+                c_label, c_ctrl = st.columns([3, 1])
                 
-                with c1:
-                    # Label
-                    st.markdown(f"<div class='toggle-label' style='color:{'#475569' if disabled else '#cbd5e1'}'>{label}</div>", unsafe_allow_html=True)
+                with c_label:
+                    color_lbl = "#64748b" if disabled else "#cbd5e1"
+                    st.markdown(f"""
+                    <div style="display:flex; align-items:center; height:40px;">
+                        <span class="toggle-label-text" style="color:{color_lbl}">{label}</span>
+                    </div>
+                    """, unsafe_allow_html=True)
                     if help_msg: st.caption(help_msg)
                 
-                with c2:
-                    # Puntos (+10%)
-                    col_p = "#10b981" if not disabled else "#475569"
-                    st.markdown(f"<div style='text-align:right; color:{col_p}; font-weight:bold; font-size:0.9rem;'>+{pts}%</div>", unsafe_allow_html=True)
+                with c_ctrl:
+                    # Contenedor flex para alinear (+10% y Switch)
+                    col_pts = "#475569" if disabled else "#10b981"
+                    
+                    # Usamos 2 subcolumnas apretadas para simular el "flex"
+                    sub_c1, sub_c2 = st.columns([1, 1])
+                    with sub_c1:
+                        st.markdown(f"<div style='text-align:right; color:{col_pts}; font-weight:bold; font-size:0.85rem; padding-top:10px;'>+{pts}%</div>", unsafe_allow_html=True)
+                    with sub_c2:
+                        val = st.toggle(
+                            "x", key=key, 
+                            value=st.session_state.checklist.get(key, False),
+                            label_visibility="collapsed",
+                            disabled=disabled,
+                            on_change=handle_psych_logic if label == "Round Psych Level" else None,
+                            args=(sec_name,) if label == "Round Psych Level" else None
+                        )
+                        st.session_state.checklist[key] = val
                 
-                with c3:
-                    # Switch
-                    val = st.toggle(
-                        "x", key=key, 
-                        value=st.session_state.checklist.get(key, False),
-                        label_visibility="collapsed",
-                        disabled=disabled,
-                        on_change=handle_psych_logic if label == "Round Psych Level" else None,
-                        args=(sec_name,) if label == "Round Psych Level" else None
-                    )
-                    st.session_state.checklist[key] = val
-                
-                st.markdown("<div style='border-bottom:1px solid #1f2937; margin: 8px 0;'></div>", unsafe_allow_html=True)
+                # Divisor sutil entre items (menos el último)
+                if label != items[-1][0]:
+                    st.markdown("<div style='border-bottom:1px solid #2d3748; margin: 5px 0;'></div>", unsafe_allow_html=True)
 
-            st.markdown("</div>", unsafe_allow_html=True) # Cierre Card
+            # 3. CIERRE DEL CONTENEDOR
+            st.markdown("</div></div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # PÁGINAS RESTANTES (PLACEHOLDERS)
