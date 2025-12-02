@@ -147,52 +147,50 @@ if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# --- DICCIONARIO DE AYUDAS (TEXTO ESPAÑOL + NOMBRE DE IMAGEN EN CARPETA 'foto') ---
-# Asegúrate de poner imágenes con estos nombres en tu carpeta "foto"
-# Si no tienes la imagen, el código solo mostrará el texto.
+# --- DICCIONARIO DE AYUDAS LIMPIO ---
 HELPER_DATA = {
     "Trend": {
-        [cite_start]"title": "Estructura de Mercado [cite: 19, 23]",
+        "title": "Estructura de Mercado",
         "desc": "¿Tu estructura de mercado alcista o bajista se ve así?\nBusca Altos Más Altos (HH) y Bajos Más Altos (HL) para compras, o viceversa.",
         "img": "trend.png" 
     },
     "At AOI / Rejected": {
-        [cite_start]"title": "Zona de Interés (AOI) [cite: 201]",
+        "title": "Zona de Interés (AOI)",
         "desc": "¿El precio está tocando o dentro de la zona marcada?\nRecuerda: Si el precio está flotando lejos de la zona, NO es válido.",
         "img": "aoi.png"
     },
     "Touching EMA": {
-        [cite_start]"title": "Rechazo Dinámico (50 EMA) [cite: 281]",
+        "title": "Rechazo Dinámico (50 EMA)",
         "desc": "¿El precio está tocando o rechazando la línea de la EMA 50 en este momento?",
         "img": "ema.png"
     },
     "Round Psych Level": {
-        [cite_start]"title": "Nivel Psicológico [cite: 231]",
+        "title": "Nivel Psicológico",
         "desc": "¿Hay un número redondo cerca (ej. 1.5000, 150.00, .500)?\nLos bancos usan estos niveles como imanes.",
         "img": "psych.png"
     },
     "Rejection Structure": {
-        [cite_start]"title": "Estructura Previa [cite: 307]",
+        "title": "Estructura Previa",
         "desc": "¿El precio está rebotando en un Alto o Bajo anterior que ahora actúa como soporte/resistencia?",
         "img": "structure.png"
     },
     "Candlestick Rejection": {
-        [cite_start]"title": "Patrón de Velas [cite: 318]",
+        "title": "Patrón de Velas",
         "desc": "¿Ves patrones de rechazo claros como Pinbars (Martillo), Dojis o Envolventes en la zona?",
         "img": "candles.png"
     },
     "Break & Retest": {
-        [cite_start]"title": "Ruptura y Retesteo [cite: 410]",
+        "title": "Ruptura y Retesteo",
         "desc": "¿El precio rompió la zona y regresó para probarla antes de continuar?",
         "img": "retest.png"
     },
     "SOS (Shift of Structure)": {
-        [cite_start]"title": "Cambio de Estructura (SOS) [cite: 460]",
+        "title": "Cambio de Estructura (SOS)",
         "desc": "¿En temporalidad menor, el precio rompió el último alto/bajo validando el cambio de tendencia?",
         "img": "sos.png"
     },
     "Engulfing candlestick": {
-        [cite_start]"title": "Vela Gatillo [cite: 322]",
+        "title": "Vela Gatillo",
         "desc": "¿Tienes una vela envolvente clara que confirme la entrada?",
         "img": "engulfing.png"
     }
@@ -333,7 +331,7 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # --- AQUÍ LA MAGIA: VISUAL HELPER PARA TODOS ---
+                    # --- VISUAL HELPER PARA TODOS ---
                     # Se activa si el toggle está ON y existe ayuda para ese label
                     if val and label in HELPER_DATA:
                         data = HELPER_DATA[label]
@@ -352,10 +350,6 @@ if st.session_state.page == 'checklist':
                         # Si existe la imagen, la mostramos
                         if img_path:
                             st.image(img_path, use_container_width=True)
-                        else:
-                            # Mensaje de debug discreto si no hay imagen (opcional)
-                            # st.caption(f"(Sube '{data['img']}' a la carpeta 'foto' para ver referencia)")
-                            pass
 
                     # Separador visual
                     if label != items[-1][0]:
@@ -378,7 +372,7 @@ if st.session_state.page == 'checklist':
                 st.toast("Abriendo modal de guardado...", icon="✅")
 
 # ==============================================================================
-# OTRAS PÁGINAS (Placeholders)
+# OTRAS PÁGINAS
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
