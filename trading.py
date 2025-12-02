@@ -6,18 +6,18 @@ import google.generativeai as genai
 from PIL import Image
 
 # ==============================================================================
-# 1. CONFIGURACIÓN VISUAL (CSS DE ALTO CONTRASTE Y ANIMACIÓN)
+# 1. CONFIGURACIÓN VISUAL (REPLICA EXACTA)
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
 def inject_custom_css():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-        /* --- 1. FONDO GENERAL (MUY OSCURO PARA CONTRASTE) --- */
+        /* --- FONDO GENERAL --- */
         .stApp {
-            background-color: #020617; /* Casi negro */
+            background-color: #0f172a; /* Slate 900 */
             font-family: 'Inter', sans-serif;
             color: #f8fafc;
         }
@@ -25,119 +25,114 @@ def inject_custom_css():
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
-        /* --- 2. LA CAJA MAGICA (st.container) --- */
-        /* Esta clase afecta a los st.container(border=True) */
+        /* --- CONTENEDOR DE LA TARJETA (WEEKLY, DAILY...) --- */
+        /* Afecta a st.container(border=True) */
         div[data-testid="stBorderDomWrapper"] {
-            background-color: #1e293b; /* GRIS ACERO (Se nota la diferencia con el fondo) */
-            border: 2px solid #334155;
-            border-radius: 16px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); /* Sombra fuerte */
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); /* Animación suave */
+            background-color: #1e293b; /* Slate 800 */
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
         }
 
-        /* --- 3. ANIMACIÓN AL PASAR EL MOUSE (HOVER) --- */
-        div[data-testid="stBorderDomWrapper"]:hover {
-            border-color: #10b981; /* Borde VERDE NEÓN */
-            background-color: #252f45; /* Se aclara ligeramente */
-            transform: translateY(-5px); /* SE LEVANTA */
-            box-shadow: 0 15px 30px -5px rgba(16, 185, 129, 0.15); /* Resplandor verde */
-        }
-
-        /* --- HEADER DENTRO DE LA CAJA (Weekly - 0%) --- */
-        .box-header {
+        /* --- HEADER DE SECCIÓN (TÍTULO Y PORCENTAJE) --- */
+        .section-header-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #334155;
+            margin-bottom: 25px; /* Espacio antes de los toggles */
         }
-        .box-title {
-            font-size: 1.1rem;
-            font-weight: 900;
+        
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 800;
             color: #ffffff;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
-        .box-score {
-            font-size: 1.2rem;
+
+        .section-score {
+            font-size: 1.5rem;
             font-weight: 800;
-            color: #34d399; /* Verde claro */
+            color: #34d399; /* Verde esmeralda brillante */
         }
 
         /* --- FILAS DE TOGGLES --- */
-        .row-item {
+        /* Alineación perfecta: Label a la izq, Puntos y Switch a la der */
+        .toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px; /* Espaciado entre filas */
+        }
+
+        .toggle-label {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #e2e8f0; /* Blanco suave */
+        }
+
+        .toggle-right-group {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            height: 45px;
-            border-bottom: 1px solid #334155; /* Línea separadora sutil */
+            gap: 12px; /* Espacio entre +10% y el Switch */
         }
-        .row-item:last-child { border-bottom: none; }
 
-        .label-text {
-            color: #cbd5e1;
-            font-weight: 500;
-            font-size: 0.95rem;
+        .points-text {
+            color: #34d399; /* Verde neón para el texto */
+            font-weight: 700;
+            font-size: 0.85rem;
         }
         
-        .points-tag {
-            background-color: rgba(16, 185, 129, 0.1);
-            color: #10b981;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.8rem;
-            margin-right: 12px;
-        }
-        .points-tag-disabled {
-            background-color: rgba(71, 85, 105, 0.2);
-            color: #64748b;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-weight: 700;
-            font-size: 0.8rem;
-            margin-right: 12px;
+        .points-text-disabled {
+            color: #64748b; /* Gris para deshabilitado */
+            font-weight: 600;
+            font-size: 0.85rem;
         }
 
-        /* --- DASHBOARD SCORE GIGANTE --- */
-        .score-hero {
-            background: linear-gradient(135deg, #111827 0%, #1f2937 100%);
-            border: 2px solid #10b981;
-            border-radius: 20px;
-            padding: 30px;
+        /* --- DASHBOARD SUMMARY (CAJA GIGANTE) --- */
+        .summary-box {
+            background-color: #164e63; /* Cyan oscuro de fondo base */
+            background: linear-gradient(180deg, #115e59 0%, #0f172a 100%);
+            border: 1px solid #14b8a6;
+            border-radius: 16px;
+            padding: 40px;
             text-align: center;
             margin-bottom: 40px;
-            box-shadow: 0 0 25px rgba(16, 185, 129, 0.2);
         }
-        .hero-number {
+        
+        .summary-title {
+            color: #ccfbf1;
+            font-size: 0.9rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+        
+        .summary-score-big {
             font-size: 5rem;
             font-weight: 900;
-            color: #fff;
+            color: #ef4444; /* Rojo por defecto */
             line-height: 1;
-            text-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
         }
-        .hero-text {
-            color: #10b981;
-            font-size: 1.5rem;
-            font-weight: 800;
-            text-transform: uppercase;
+        
+        .summary-status {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #ef4444;
             margin-top: 10px;
         }
 
         /* --- BOTONES --- */
         .stButton button {
             background-color: #10b981 !important;
-            color: #022c22 !important;
-            font-weight: 800;
-            border-radius: 8px;
+            color: #ffffff !important;
             border: none;
-            transition: transform 0.1s;
-        }
-        .stButton button:hover {
-            transform: scale(1.02);
-            background-color: #34d399 !important;
+            border-radius: 6px;
+            font-weight: 600;
+            padding: 0.6rem 1.2rem;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -145,7 +140,7 @@ def inject_custom_css():
 inject_custom_css()
 
 # ==============================================================================
-# 2. LÓGICA DE NEGOCIO
+# 2. LÓGICA
 # ==============================================================================
 
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
@@ -202,11 +197,11 @@ def handle_psych_logic(section_changed):
         if st.session_state.psych_selected_in == section_changed: st.session_state.psych_selected_in = None
 
 # ==============================================================================
-# 3. INTERFAZ: NAVBAR
+# 3. INTERFAZ
 # ==============================================================================
 c_nav1, c_nav2 = st.columns([1, 4])
 with c_nav1:
-    st.markdown('<div style="font-size:1.3rem; font-weight:900; color:#fff;">🦁 PERFECT TRADE</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:1.2rem; font-weight:800; color:#fff;">🦁 PERFECT TRADE</div>', unsafe_allow_html=True)
 with c_nav2:
     b1, b2, b3, b4 = st.columns(4)
     with b1: 
@@ -220,79 +215,80 @@ with c_nav2:
 
 st.markdown("---")
 
-# ==============================================================================
-# PÁGINA 1: CHECKLIST (DISEÑO CAJAS DE ALTO CONTRASTE)
-# ==============================================================================
 if st.session_state.page == 'checklist':
     
     total, sec_scores = calculate_totals()
     
-    status_txt = "WEAK SETUP"
+    status_txt = "Weak Setup"
     score_color = "#ef4444"
-    if total >= 60: score_color = "#facc15"; status_txt = "MODERATE"
-    if total >= 90: score_color = "#10b981"; status_txt = "🔥 SNIPER ENTRY"
+    if total >= 60: score_color = "#facc15"; status_txt = "Moderate Setup"
+    if total >= 90: score_color = "#10b981"; status_txt = "🔥 Sniper Entry"
 
-    # DASHBOARD GIGANTE SUPERIOR
+    # --- DASHBOARD SUMMARY ---
     st.markdown(f"""
-    <div class="score-hero" style="border-color:{score_color}; box-shadow: 0 0 30px {score_color}40;">
-        <div style="color:#94a3b8; font-weight:600; letter-spacing:2px; margin-bottom:10px;">TOTAL OVERALL SCORE</div>
-        <div class="hero-number" style="color:{score_color}; text-shadow: 0 0 20px {score_color}60;">{total}%</div>
-        <div class="hero-text" style="color:{score_color};">{status_txt}</div>
+    <div class="summary-box" style="border-color:{score_color};">
+        <div class="summary-title">TOTAL OVERALL SCORE</div>
+        <div class="summary-score-big" style="color:{score_color};">{total}%</div>
+        <div class="summary-status" style="color:{score_color};">{status_txt}</div>
     </div>
     """, unsafe_allow_html=True)
 
     if total > 0:
-        if st.button("💾 GUARDAR TRADE", use_container_width=True):
+        if st.button("💾 SAVE TRADE", use_container_width=True):
             st.toast("Abriendo modal...", icon="✅")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # GRID DE SECCIONES
+    # --- GRID DE SECCIONES (2 Columnas) ---
     col_izq, col_der = st.columns(2, gap="large")
     
     for i, (sec_name, items) in enumerate(STRATEGY.items()):
         target_col = col_izq if i % 2 == 0 else col_der
         
         with target_col:
-            current_score = sec_scores.get(sec_name, 0)
+            # Puntuación actual
+            current_sec_score = sec_scores.get(sec_name, 0)
             
-            # --- CAJA CON BORDE NATIVO (Animada por CSS) ---
+            # --- CAJA "THE PERFECT TRADE" ---
             with st.container(border=True):
                 
-                # HEADER INTERNO (Personalizado)
+                # Header Interno: Título a la Izq, Score Verde a la Der
                 st.markdown(f"""
-                <div class="box-header">
-                    <span class="box-title">{sec_name}</span>
-                    <span class="box-score">{current_score}%</span>
+                <div class="section-header-row">
+                    <div class="section-title">{sec_name}</div>
+                    <div class="section-score">{current_sec_score}%</div>
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # LISTA DE TOGGLES
+                st.markdown("<div style='font-size:0.8rem; color:#64748b; margin-top:-15px; margin-bottom:20px;'>0% confluence</div>", unsafe_allow_html=True)
+
+                # Filas de Toggles
                 for label, pts in items:
                     key = f"{sec_name}_{label}"
                     
-                    # Lógica de bloqueo
                     disabled = False
                     if label == "Round Psych Level":
                         if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
                             disabled = True
 
-                    # ESTRUCTURA DE FILA: Texto .......... [Badge] [Switch]
-                    c_txt, c_ctrl = st.columns([3, 1])
+                    # ESTRUCTURA DE FILA: Texto ................ +10% Switch
+                    c1, c2 = st.columns([4, 1])
                     
-                    with c_txt:
-                        col_lbl = "#475569" if disabled else "#cbd5e1"
-                        st.markdown(f"""<div style="padding-top:12px; font-weight:500; color:{col_lbl};">{label}</div>""", unsafe_allow_html=True)
+                    with c1:
+                        # Label a la izquierda
+                        col_lbl = "#4b5563" if disabled else "#e2e8f0"
+                        st.markdown(f"""<div style="padding-top:8px; font-weight:600; font-size:0.95rem; color:{col_lbl};">{label}</div>""", unsafe_allow_html=True)
                     
-                    with c_ctrl:
-                        # Usamos columnas anidadas para pegar el badge al toggle
-                        sub_c1, sub_c2 = st.columns([1, 1])
-                        with sub_c1:
-                            # Badge de puntos (+10%)
-                            badge_cls = "points-tag-disabled" if disabled else "points-tag"
-                            st.markdown(f"""<div style="padding-top:10px; text-align:right;"><span class="{badge_cls}">+{pts}%</span></div>""", unsafe_allow_html=True)
-                        with sub_c2:
-                            # Switch Real
+                    with c2:
+                        # Grupo Derecha: Texto Verde + Switch
+                        # Usamos HTML para el texto verde y st.toggle para el switch
+                        # pero necesitamos que estén en la misma línea visual.
+                        # Truco: Columnas anidadas muy pegadas.
+                        sc1, sc2 = st.columns([1, 1])
+                        with sc1:
+                            p_cls = "points-text" if not disabled else "points-text-disabled"
+                            st.markdown(f"""<div style="padding-top:8px; text-align:right;" class="{p_cls}">+{pts}%</div>""", unsafe_allow_html=True)
+                        with sc2:
                             val = st.toggle(
                                 "x", key=key, 
                                 value=st.session_state.checklist.get(key, False),
@@ -303,12 +299,11 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # Separador visual
-                    if label != items[-1][0]:
-                        st.markdown("<div style='border-bottom:1px solid #334155; margin-bottom:5px;'></div>", unsafe_allow_html=True)
+                    # Separador visual entre filas (Espacio vacío o línea muy sutil)
+                    st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
 # ==============================================================================
-# OTRAS PÁGINAS
+# PLACEHOLDERS OTRAS PÁGINAS
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
