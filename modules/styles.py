@@ -5,6 +5,7 @@ def inject_theme(theme_mode):
     if theme_mode == "Claro (Swiss Design)":
         css_vars = """
             --bg-app: #f8fafc; --bg-card: #ffffff; --bg-sidebar: #1e293b;
+            --bg-quadrant: #ffffff; /* En claro, igual que la tarjeta, el borde separa */
             --text-main: #0f172a; --text-muted: #475569; --border-color: #e2e8f0;
             --input-bg: #ffffff; --accent: #2563eb; --accent-green: #16a34a;
             --accent-red: #dc2626; --button-text: #ffffff;
@@ -14,14 +15,13 @@ def inject_theme(theme_mode):
         # Modo Oscuro (Cyber Navy)
         css_vars = """
             --bg-app: #0b1121; --bg-card: #151e32; --bg-sidebar: #020617;
+            --bg-quadrant: #1e293b; /* <-- NUEVO: Color más claro para los cuadrantes */
             --text-main: #f1f5f9; --text-muted: #94a3b8; --border-color: #2a3655;
             --input-bg: #1e293b; --accent: #3b82f6; --accent-green: #00e676;
             --accent-red: #ff1744; --button-text: #ffffff;
             --shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
         """
 
-    # He minificado un poco el CSS para que ocupe menos espacio visual aquí, 
-    # pero mantiene toda tu lógica original de pestañas redondas y colores.
     st.markdown(f"""
     <style>
     :root {{ {css_vars} }}
@@ -53,6 +53,17 @@ def inject_theme(theme_mode):
     
     /* Cards & HUD */
     .strategy-box {{ background-color: var(--bg-card); border: 1px solid var(--border-color); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); }}
+    
+    /* NUEVA CLASE PARA CUADRANTES MÁS CLAROS */
+    .quadrant-container {
+        background-color: var(--bg-quadrant) !important; /* Usa el color más claro */
+        border: 1px solid var(--border-color);
+        padding: 25px; /* Un poco más de espacio */
+        border-radius: 15px; /* Bordes más redondeados */
+        box-shadow: var(--shadow);
+        height: 100%;
+    }
+
     .strategy-header {{ color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-color); margin-bottom: 15px; }}
     .hud-container {{ background: linear-gradient(135deg, var(--bg-card), var(--bg-app)); border: 1px solid var(--accent); border-radius: 12px; padding: 20px; margin-top: 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }}
     .hud-value-large {{ font-size: 3rem; font-weight: 900; color: var(--text-main); line-height: 1; }}
