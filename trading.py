@@ -149,53 +149,53 @@ if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# --- DICCIONARIO DE AYUDAS ---
-# IMPORTANTE: Los nombres de archivo 'img' coinciden con tu captura de pantalla
+# --- DICCIONARIO DE AYUDAS ACTUALIZADO ---
+# Ahora "Trend" tiene una LISTA de imágenes para mostrar ambas.
 HELPER_DATA = {
     "Trend": {
-        "title": "Estructura de Mercado",
-        "desc": "¿Estructura alcista (HH/HL) o bajista (LH/LL)?",
-        "img": "trend img.jpg"
+        "title": "Estructura de Mercado (Alcista y Bajista)",
+        "desc": "Identifica si estás en una tendencia Alcista (HH/HL) o Bajista (LH/LL).",
+        "images": ["trend img.jpg", "Bearish trend.jpg"] # AQUÍ ESTÁN LAS DOS
     },
     "At AOI / Rejected": {
         "title": "Zona de Interés (AOI)",
         "desc": "El precio debe estar tocando o reaccionando a la zona.",
-        "img": "ATAOI.jpg"
+        "images": ["ATAOI.jpg"]
     },
     "Touching EMA": {
         "title": "Rechazo Dinámico (50 EMA)",
         "desc": "El precio toca o rechaza la EMA 50.",
-        "img": "EMA.jpg"
+        "images": ["EMA.jpg"]
     },
     "Round Psych Level": {
         "title": "Nivel Psicológico",
         "desc": "Número redondo cercano (ej. 1.5000, .500).",
-        "img": "ROUND-PSYCHO-LEVEL.jpg"
+        "images": ["ROUND-PSYCHO-LEVEL.jpg"]
     },
     "Rejection from Previous Structure": {
         "title": "Estructura Previa",
         "desc": "Rebote en un Alto o Bajo anterior.",
-        "img": "PREVIOUS STRUCTURE.jpg"
+        "images": ["PREVIOUS STRUCTURE.jpg"]
     },
     "Candlestick Rejection from AOI": {
         "title": "Patrón de Velas",
         "desc": "Mechas largas, Dojis o Envolventes en la zona.",
-        "img": "ATAOIII.jpg" 
+        "images": ["ATAOIII.jpg"] 
     },
     "Break & Retest / Head & Shoulders Pattern": {
         "title": "Patrones Avanzados",
         "desc": "Ruptura y Retesteo o Hombro-Cabeza-Hombro.",
-        "img": "HEAD&SHOULDERS copy.jpg"
+        "images": ["HEAD&SHOULDERS copy.jpg"]
     },
     "SOS": {
         "title": "Cambio de Estructura (SOS)",
         "desc": "Ruptura del último alto/bajo válido.",
-        "img": "trend img.jpg" # Reusamos trend
+        "images": ["trend img.jpg"]
     },
     "Engulfing candlestick (30m, 1H, 2H, 4H)": {
         "title": "Vela Gatillo",
         "desc": "Vela envolvente clara que confirma la dirección.",
-        "img": "ATAOIII.jpg" # Reusamos velas
+        "images": ["ATAOIII.jpg"]
     }
 }
 
@@ -351,10 +351,9 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # --- VISUAL HELPER CON IMAGEN PEQUEÑA (350px) ---
+                    # --- VISUAL HELPER CON LISTA DE IMÁGENES ---
                     if val and label in HELPER_DATA:
                         data = HELPER_DATA[label]
-                        img_path = get_local_image(data['img'])
                         
                         st.markdown(f"""
                         <div class="visual-helper-box">
@@ -363,11 +362,15 @@ if st.session_state.page == 'checklist':
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        if img_path:
-                            # Width 350 es el tamaño perfecto para que no moleste
-                            st.image(img_path, width=350) 
-                        else:
-                            st.caption(f"⚠️ Falta: foto/{data['img']}")
+                        # Iterar sobre la lista de imágenes (para mostrar 1 o 2)
+                        if "images" in data:
+                            for img_name in data["images"]:
+                                img_path = get_local_image(img_name)
+                                if img_path:
+                                    # Use_container_width=True para máxima calidad responsiva
+                                    st.image(img_path, use_container_width=True)
+                                else:
+                                    st.caption(f"⚠️ Falta: foto/{img_name}")
 
                     if label != items[-1][0]:
                         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
@@ -386,7 +389,7 @@ if st.session_state.page == 'checklist':
         
         if total > 0:
             if st.button("💾 SAVE TRADE", use_container_width=True):
-                st.toast("Abriendo modal...", icon="✅")
+                st.toast("Abriendo modal de guardado...", icon="✅")
 
 # ==============================================================================
 # OTRAS PÁGINAS
