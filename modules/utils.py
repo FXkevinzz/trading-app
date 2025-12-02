@@ -3,46 +3,39 @@ import calendar
 import pytz
 import streamlit as st
 from datetime import datetime, time
-import requests # LIBRERÍA NUEVA PARA TELEGRAM
+import requests
 
-# --- FUNCIÓN TELEGRAM (NUEVA) ---
-def send_telegram_alert(trade_data, image_path=None):
-    """Envía una alerta rica en formato al bot de Telegram."""
+# --- FUNCIÓN TELEGRAM DINÁMICA ---
+def send_telegram_alert(trade_data, image_path=None, user_token=None, user_chat_id=None):
+    """Envía alerta usando las credenciales DEL USUARIO."""
     try:
-        # 1. Obtener credenciales de los secretos
-        if "TELEGRAM_TOKEN" not in st.secrets or "TELEGRAM_CHAT_ID" not in st.secrets:
-            return False # No configurado, no hacemos nada
+        # Si el usuario no configuró su bot, no hacemos nada
+        if not user_token or not user_chat_id:
+            return False 
 
-        token = st.secrets["TELEGRAM_TOKEN"]
-        chat_id = st.secrets["TELEGRAM_CHAT_ID"]
-        
-        # 2. Construir el mensaje con Emojis
-        # Formato HTML simple soportado por Telegram
         msg = f"""
-🦁 <b>NUEVO TRADE REGISTRADO</b>
+🦁 <b>NUEVO TRADE ({trade_data['Par']})</b>
 -----------------------------
-<b>Activo:</b> {trade_data['Par']}
 <b>Dirección:</b> {trade_data['Direccion']}
-<b>Precio Entrada:</b> {trade_data.get('Entry', 'N/A')}
-<b>Stop Loss:</b> {trade_data.get('SL', 'N/A')}
-<b>Take Profit:</b> {trade_data.get('TP', 'N/A')}
+<b>Entrada:</b> {trade_data.get('Entry', 'N/A')}
+<b>SL:</b> {trade_data.get('SL', 'N/A')}
+<b>TP:</b> {trade_data.get('TP', 'N/A')}
 -----------------------------
 <b>Riesgo:</b> {trade_data.get('Risk', '1%')}
-<b>Lotaje Sugerido:</b> {trade_data.get('Lots', 'N/A')}
+<b>Lotes:</b> {trade_data.get('Lots', 'N/A')}
 -----------------------------
 <i>"{trade_data.get('Notes', '')}"</i>
         """
 
-        # 3. Enviar Imagen (si existe) o solo Texto
         if image_path:
-            url = f"https://api.telegram.org/bot{token}/sendPhoto"
+            url = f"https://api.telegram.org/bot{user_token}/sendPhoto"
             with open(image_path, "rb") as img:
-                payload = {"chat_id": chat_id, "caption": msg, "parse_mode": "HTML"}
+                payload = {"chat_id": user_chat_id, "caption": msg, "parse_mode": "HTML"}
                 files = {"photo": img}
                 requests.post(url, data=payload, files=files)
         else:
-            url = f"https://api.telegram.org/bot{token}/sendMessage"
-            payload = {"chat_id": chat_id, "text": msg, "parse_mode": "HTML"}
+            url = f"https://api.telegram.org/bot{user_token}/sendMessage"
+            payload = {"chat_id": user_chat_id, "text": msg, "parse_mode": "HTML"}
             requests.post(url, data=payload)
             
         return True
@@ -50,39 +43,32 @@ def send_telegram_alert(trade_data, image_path=None):
         print(f"Error Telegram: {e}")
         return False
 
-# --- LÓGICA DE HORARIO (ALEX G) ---
+# --- LÓGICA HORARIO (IGUAL QUE ANTES) ---
 def get_market_status():
     try:
         tz_ny = pytz.timezone('America/New_York')
         now_ny = datetime.now(tz_ny)
         curr_t = now_ny.time()
-        
-        # Ventana 11 PM - 11 AM
         in_zone = (curr_t >= time(23, 0)) or (curr_t <= time(11, 0))
         wd = now_ny.weekday()
         
-        # Nombres de Sesiones
         session_display = "ASIA 🇯🇵"
         if time(3, 0) <= curr_t < time(8, 0): session_display = "LONDRES 🇬🇧"
         elif time(8, 0) <= curr_t < time(12, 0): session_display = "NY / LONDRES 🇺🇸🇬🇧"
         elif time(12, 0) <= curr_t < time(17, 0): session_display = "NUEVA YORK 🇺🇸"
         
         status = "ESPERAR 💤"; color = "#94a3b8"
-        
-        if wd >= 5: 
-            status = "CERRADO ❌"; color = "#ef4444"
+        if wd >= 5: status = "CERRADO ❌"; color = "#ef4444"
         elif wd == 4:
             if curr_t < time(11, 0): status = "⚠️ VIERNES"; color = "#fbbf24"
             else: status = "CERRADO"; color = "#ef4444"
-        elif in_zone:
-            status = "✅ ZONA DE TRADING"; color = "#10b981"
-        else:
-            status = "⛔ FUERA DE SESIÓN"; color = "#ef4444"
+        elif in_zone: status = "✅ ZONA PRIME"; color = "#10b981"
+        else: status = "⛔ FUERA DE SESIÓN"; color = "#ef4444"
 
         return now_ny.strftime("%I:%M %p"), session_display, status, color
     except: return "--:--", "Error", "Error", "#333"
 
-# --- COMPONENTE RELOJ VIVO (JS) ---
+# --- RELOJ VIVO (IGUAL) ---
 def get_live_clock_html():
     return """
     <!DOCTYPE html>
@@ -111,18 +97,14 @@ def get_live_clock_html():
                 const now = new Date();
                 const options = { timeZone: 'America/New_York', hour12: true, hour: 'numeric', minute: '2-digit', second: '2-digit' };
                 document.getElementById('time').innerText = now.toLocaleTimeString('en-US', options);
-                
                 const nyDate = new Date(now.toLocaleString('en-US', { timeZone: 'America/New_York' }));
                 const h = nyDate.getHours(); const d = nyDate.getDay();
                 const inZone = (h >= 23) || (h < 11);
-                
                 let s = "FUERA DE SESIÓN", c = "stop";
                 if (d===0||d===6) { s="CERRADO ❌"; }
                 else if (d===5) { s = h<11 ? "⚠️ VIERNES" : "CERRADO"; c = h<11 ? "warn" : "stop"; }
                 else if (inZone) { s="✅ ZONA PRIME"; c="go"; }
-                
-                const el = document.getElementById('status');
-                el.innerText = s; el.className = "status-badge " + c;
+                const el = document.getElementById('status'); el.innerText = s; el.className = "status-badge " + c;
             }
             setInterval(updateClock, 1000); updateClock();
         </script>
@@ -131,6 +113,7 @@ def get_live_clock_html():
     """
 
 def render_cal_html(df, is_dark):
+    # (El código del calendario se queda igual que antes, cópialo del archivo anterior o mantenlo)
     d = st.session_state.get('cal_date', datetime.now())
     y, m = d.year, d.month
     data = {}
