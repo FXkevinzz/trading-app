@@ -37,7 +37,7 @@ def main_app():
     user = st.session_state.user
     inject_theme("Oscuro")
     
-    # Inicialización de estado de chat
+    # Inicialización de chat
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "🦁 **Mentor IA:** Hola. He analizado tu bitácora. Sube un gráfico si quieres que revise tu análisis o pregúntame sobre psicología.", "image": None}]
     
@@ -53,14 +53,23 @@ def main_app():
         sel_acc = st.selectbox("Cuenta Seleccionada", accs)
         ini, act, df = get_balance_data(user, sel_acc)
         
+        # --- RECTÁNGULO DE PNL TOTAL (RESTAURADO) ---
         pnl_total = act - ini
         color_pnl = "#10b981" if pnl_total >= 0 else "#ef4444"
+        pnl_bg = color_pnl + '10' # 10 para baja opacidad
+        pnl_sign = '+' if pnl_total > 0 else ''
+
         st.markdown(f"""
         <div class="dashboard-card" style="text-align:center; padding:15px;">
             <div class="sub-stat-label">BALANCE ACTUAL</div>
             <div style="font-size:2rem; font-weight:bold; color:white;">${act:,.2f}</div>
-            <div style="color:{color_pnl}; font-weight:bold;">{'+' if pnl_total>0 else ''}${pnl_total:,.2f}</div>
-        </div>""", unsafe_allow_html=True)
+            
+            <div style="border: 1px solid {color_pnl}; background: {pnl_bg}; border-radius: 8px; padding: 8px; margin-top: 15px;">
+                <div style="color:{color_pnl}; font-weight:bold; font-size:1.1rem;">{pnl_sign}${pnl_total:,.2f}</div>
+                <div style="color:var(--text-muted); font-size:0.7rem;">(Net PnL)</div>
+            </div>
+            </div>""", unsafe_allow_html=True)
+        # ---------------------------------------------
         
         st.markdown("---")
         
@@ -72,16 +81,12 @@ def main_app():
     # --- PESTAÑAS ---
     tab_op, tab_hist, tab_dash, tab_ai, tab_news = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA", "📰 NOTICIAS"])
 
-    # ==========================================
-    # PESTAÑA 1: OPERATIVA (CHECKLIST RESTAURADO)
-    # ==========================================
+    # 1. PESTAÑA OPERATIVA
     with tab_op:
-        # 1. Configuración Superior (Modo de Operación)
         c_mod = st.columns([1,2,1])
         with c_mod[1]: 
             global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, key="mode_op", label_visibility="collapsed")
         
-        # Selector de activo que alimenta la sesión
         st.session_state.pair_selector = st.selectbox("ACTIVO", OFFICIAL_PAIRS, key="sb_pair_main")
         st.markdown("---")
         
@@ -91,7 +96,7 @@ def main_app():
 
         def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
 
-        # LÓGICA SWING (W-D-4H)
+        # Lógica Original
         if "Swing" in global_mode:
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
@@ -140,35 +145,27 @@ def main_app():
                 entry_score = (10 if sos else 0) + (10 if eng else 0) + (5 if pat_ent else 0)
                 total = w_sc + d_sc + h4_sc + entry_score
         
-        # LÓGICA SCALPING (4H-2H-1H)
-        else:
+        else: # Scalping
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
                 t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
-                w_sc = sum([st.checkbox("AOI", key="s1")*10, st.checkbox("Estructura", key="s2")*10]) 
+                total = sum([st.checkbox("AOI (+50%)")*50, st.checkbox("Estructura (+50%)")*50])
                 st.markdown('</div>', unsafe_allow_html=True)
-            total = w_sc 
-        
-        # 2. HUD DE PUNTAJE Y BOTÓN
+
         st.markdown("<br>", unsafe_allow_html=True)
-        valid = sos and eng and rr
-        msg, css_cl = "💤 ESPERAR", "status-warning"
-        if total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
-        elif total >= 60: msg, css_cl = "✅ VÁLIDO", "status-sniper"
         
         col_hud, col_btn = st.columns([3, 1])
         with col_hud:
             st.markdown(f"""
             <div class="hud-container">
                 <div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div>
-                <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div>
+                <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{'status-sniper' if total>=90 else 'status-warning' if total>=60 else 'status-stop'}">{('SNIPER' if total>=90 else 'VÁLIDO' if total>=60 else 'ESPERAR')}</span></div>
             </div>
             """, unsafe_allow_html=True)
             st.progress(min(total, 100))
         with col_btn:
             if st.button("🚀 EJECUTAR", type="primary" if total >= 60 else "secondary", use_container_width=True):
-                # Llamada al modal con el puntaje y el par actual
                 modal_new_trade(user, sel_acc, global_mode, st.session_state.pair_selector, total)
 
     # 2. PESTAÑA HISTORIAL
