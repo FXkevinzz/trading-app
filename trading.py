@@ -6,76 +6,136 @@ import google.generativeai as genai
 from PIL import Image
 
 # ==============================================================================
-# 1. CONFIGURACIÓN INICIAL Y ESTILOS (THEME DARK NAVY)
+# 1. CONFIGURACIÓN E INYECCIÓN DE CSS (ESTILO PREMIUM)
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
 def inject_custom_css():
     st.markdown("""
         <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
 
-        /* --- GLOBAL THEME --- */
+        /* --- TEMA GLOBAL --- */
         .stApp {
-            background-color: #0f172a; /* Slate 900 */
+            background-color: #0b0f19; /* Fondo Ultra Dark */
             font-family: 'Inter', sans-serif;
-            color: #f8fafc;
+            color: #f1f5f9;
         }
         
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
-        /* --- NAVBAR --- */
-        .nav-container {
-            display: flex; justify-content: space-between; align-items: center;
-            background-color: #0f172a; padding: 10px 0; border-bottom: 1px solid #1e293b; margin-bottom: 30px;
+        /* --- ANIMACIONES Y TARJETAS INTERACTIVAS --- */
+        .section-card {
+            background-color: #161b26;
+            border: 1px solid #2d3748;
+            border-radius: 16px;
+            padding: 30px; /* Más espacio interno */
+            margin-bottom: 30px; /* Separación entre secciones */
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
         }
-        .nav-logo { font-weight: 800; font-size: 1.2rem; color: #fff; }
-        .nav-user { color: #cbd5e1; font-weight: 600; font-size: 0.9rem; }
-        .logout-btn { 
-            background-color: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; 
-            color: #ef4444; padding: 5px 15px; border-radius: 6px; font-size: 0.8rem; 
-        }
-
-        /* --- CARDS --- */
-        .card {
-            background-color: #1e293b;
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
-        }
-
-        /* --- CHECKLIST --- */
-        .confluence-box { background: #1e293b; border-radius: 8px; padding: 15px; text-align: center; border: 1px solid #334155; }
         
-        /* --- DASHBOARD --- */
-        .stat-card-big {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-            border: 1px solid #334155; border-radius: 16px; padding: 25px; position: relative;
+        /* Efecto HOVER: Se eleva y brilla el borde */
+        .section-card:hover {
+            transform: translateY(-5px) scale(1.01);
+            border-color: #10b981;
+            box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
         }
-        .stat-money { font-size: 3rem; font-weight: 800; color: #10b981; line-height: 1; }
-        .kpi-card { background: #334155; border-radius: 8px; padding: 15px; text-align: center; }
-        .kpi-label { color: #cbd5e1; font-size: 0.75rem; text-transform: uppercase; }
-        .kpi-value { color: #fff; font-size: 1.2rem; font-weight: 700; }
 
-        /* --- HISTORY --- */
-        .history-item { 
-            background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 15px 20px; 
-            display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #2d3748;
+            padding-bottom: 15px;
         }
-        .pair-badge { font-size: 1.1rem; font-weight: 700; color: white; display: flex; align-items: center; gap: 10px; }
-        .dir-badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 4px; font-weight: 700; text-transform: uppercase; }
-        .dir-LONG { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-        .dir-SHORT { background: rgba(239, 68, 68, 0.2); color: #f87171; }
+        
+        .section-title {
+            font-size: 1.5rem; /* Letra más grande */
+            font-weight: 800;
+            color: #e2e8f0;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
 
-        /* --- BOTONES & INPUTS --- */
-        .stButton button { background-color: #334155; color: white; border: none; border-radius: 8px; font-weight: 500; }
-        .stButton button:hover { background-color: #475569; }
-        div[data-testid="stForm"] { background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 20px; }
-        .stTextInput input, .stNumberInput input, .stSelectbox div, .stTextArea textarea {
-            background-color: #0f172a !important; color: white !important; border: 1px solid #334155 !important; border-radius: 6px;
+        .section-score {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 5px 15px;
+            border-radius: 8px;
+        }
+
+        /* --- TOGGLES MÁS GRANDES Y ESTILIZADOS --- */
+        .toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 10px;
+            border-bottom: 1px solid #2d3748;
+            transition: background 0.2s;
+        }
+        .toggle-container:hover {
+            background-color: #1f2937;
+            border-radius: 8px;
+        }
+        .toggle-label {
+            font-size: 1.1rem; /* Texto de opciones más grande */
+            font-weight: 500;
+            color: #cbd5e1;
+        }
+        .toggle-points {
+            font-size: 0.9rem;
+            color: #10b981;
+            font-weight: 700;
+            background: rgba(16, 185, 129, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 10px;
+        }
+
+        /* --- DASHBOARD SCORE --- */
+        .total-score-container {
+            background: linear-gradient(145deg, #111827, #0f172a);
+            border: 2px solid #374151;
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 40px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+        }
+        .score-big-number {
+            font-size: 5rem; /* Gigante */
+            font-weight: 900;
+            line-height: 1;
+            background: -webkit-linear-gradient(#10b981, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        /* --- ESTILOS GENERALES DE INPUTS --- */
+        .stButton button {
+            background-color: #10b981 !important;
+            color: #064e3b !important;
+            border: none;
+            font-weight: 800;
+            font-size: 1.1rem;
+            padding: 0.8rem 2rem;
+            border-radius: 10px;
+            transition: all 0.3s;
+        }
+        .stButton button:hover {
+            background-color: #34d399 !important;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.5);
+        }
+        
+        /* Ocultar etiquetas de los toggles nativos para usar los custom */
+        div[data-testid="stMarkdownContainer"] p {
+            font-size: 1.1rem;
         }
         </style>
     """, unsafe_allow_html=True)
@@ -83,289 +143,200 @@ def inject_custom_css():
 inject_custom_css()
 
 # ==============================================================================
-# 2. SISTEMA DE GESTIÓN (DATA & IA)
+# 2. LÓGICA Y DATOS
 # ==============================================================================
 
+# Inicialización de Estado
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
-if 'chat_history' not in st.session_state: 
-    st.session_state.chat_history = [{"role": "assistant", "content": "🦁 Hola. Soy tu Mentor 'Set & Forget'. Sube tu gráfico y analicemos la estructura."}]
+# Estado especial para controlar el bloqueo de Niveles Psicológicos
+if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-if 'trades' not in st.session_state: 
-    st.session_state.trades = [
-        {"id": "1", "pair": "EURUSD", "type": "LONG", "result": "WIN", "pnl": 1250.00, "date": "2025-12-02", "score": 95},
-        {"id": "2", "pair": "GBPJPY", "type": "SHORT", "result": "LOSS", "pnl": -500.00, "date": "2025-12-03", "score": 80},
-    ]
-
+# Definición de la Estrategia
 STRATEGY = {
     "WEEKLY": [("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), ("Round Psych Level", 5), ("Rejection Structure", 10)],
     "DAILY": [("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), ("Round Psych Level", 5), ("Rejection Structure", 10)],
     "4H": [("Trend", 5), ("At AOI / Rejected", 5), ("Touching EMA", 5), ("Round Psych Level", 5), ("Rejection Structure", 10)],
     "2H, 1H, 30m": [("Trend", 5), ("Touching EMA", 5), ("Break & Retest", 5)],
-    "ENTRY SIGNAL": [("SOS", 10), ("Engulfing candlestick", 10)]
+    "ENTRY SIGNAL": [("SOS (Shift of Structure)", 10), ("Engulfing candlestick", 10)]
 }
 
-# --- LÓGICA DE IA MEJORADA (USA SECRETS) ---
-def get_ai_mentor_response(messages, image=None):
-    # 1. Buscar la API Key en los secretos de Streamlit
-    if "GEMINI_KEY" not in st.secrets:
-        return "⚠️ ERROR CRÍTICO: No encontré 'GEMINI_KEY' en tu archivo .streamlit/secrets.toml"
+# --- LÓGICA DE CÁLCULO ---
+def calculate_totals():
+    total_score = 0
+    section_scores = {}
     
-    api_key = st.secrets["GEMINI_KEY"]
-    
-    try:
-        genai.configure(api_key=api_key)
-        
-        system_instruction = """
-        Eres el MENTOR SENIOR de la estrategia 'Set & Forget' (Alex G).
-        Tu tono es profesional, institucional y estricto con el riesgo.
-        
-        REGLAS PARA VALIDAR GRÁFICOS (VISIÓN):
-        1. 📅 DÍAS: ¿Es Lunes-Jueves? (Viernes/Domingo prohibido).
-        2. ⏰ HORARIO: 11 PM - 11 AM EST (London/NY).
-        3. 🎯 AOI: El precio DEBE reaccionar a una zona SEMANAL o DIARIA.
-        4. ⚡ GATILLO: Busca 'Shift of Structure' + Vela Envolvente.
-        
-        SI VES EL GRÁFICO:
-        - Identifica la tendencia.
-        - Busca la EMA 50 y Niveles Psicológicos.
-        - Da un veredicto: "✅ TRADE VÁLIDO" o "❌ DESCARTAR".
-        """
-        
-        # Usamos gemini-1.5-flash (Es la versión estable más rápida y con visión actual)
-        model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction=system_instruction)
-        
-        prompt = messages[-1]["content"]
-        inputs = [prompt, image] if image else [prompt]
-        
-        response = model.generate_content(inputs)
-        return response.text
-    except Exception as e:
-        return f"Error IA: {str(e)}"
-
-def calc_score():
-    score = 0
-    for sec, items in STRATEGY.items():
+    for section, items in STRATEGY.items():
+        sec_score = 0
         for label, pts in items:
-            if st.session_state.checklist.get(f"{sec}_{label}", False):
-                score += pts
-    return score
+            key = f"{section}_{label}"
+            # Verificamos si está marcado en el estado
+            if st.session_state.checklist.get(key, False):
+                sec_score += pts
+        
+        section_scores[section] = sec_score
+        total_score += sec_score
+        
+    return total_score, section_scores
 
-@st.dialog("Save Trade")
-def save_trade_modal(score):
-    st.markdown(f"<h3 style='color:#10b981'>Confluence Score: {score}%</h3>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1: pair = st.selectbox("Currency Pair *", ["EURUSD", "GBPUSD", "XAUUSD", "US30", "NAS100"])
-    with c2: direction = st.selectbox("Direction *", ["LONG", "SHORT"])
+# --- CALLBACK PARA NIVEL PSICOLÓGICO ---
+def handle_psych_logic(section_changed):
+    """
+    Esta función asegura que el Nivel Psicológico solo cuente una vez.
+    Si se activa en SEMANAL, se desactiva visualmente en DIARIO y 4H, etc.
+    """
+    key_changed = f"{section_changed}_Round Psych Level"
+    is_active = st.session_state.checklist.get(key_changed, False)
     
-    c3, c4 = st.columns(2)
-    with c3: sl = st.number_input("Stop Loss", format="%.5f")
-    with c4: tp = st.number_input("Take Profit", format="%.5f")
-    
-    entry = st.number_input("Entry Price", format="%.5f")
-    risk = st.number_input("Risk %", value=1.0)
-    
-    lots = 0.0
-    if entry > 0 and sl > 0:
-        pips = abs(entry - sl) * 10000 if "JPY" not in pair else abs(entry - sl) * 100
-        if pips > 0:
-            risk_usd = 10000 * (risk/100)
-            lots = risk_usd / (pips * 10)
-    
-    st.info(f"🔢 Lotaje Sugerido (Cuenta $10k): {lots:.2f} Lotes")
-    notes = st.text_area("Notes *")
-    
-    if st.button("💾 Save Trade", use_container_width=True, type="primary"):
-        new_trade = {
-            "id": str(uuid.uuid4()), "pair": pair, "type": direction, "result": "PENDING",
-            "pnl": 0.0, "date": datetime.now().strftime("%Y-%m-%d"), "score": score,
-            "entry": entry, "sl": sl, "tp": tp, "notes": notes
-        }
-        st.session_state.trades.insert(0, new_trade)
-        st.session_state.checklist = {} 
-        st.rerun()
-
-# ==============================================================================
-# 3. INTERFAZ: BARRA DE NAVEGACIÓN
-# ==============================================================================
-
-with st.sidebar:
-    st.markdown("### ⚙️ Sistema")
-    # Verificación automática de la llave
-    if "GEMINI_KEY" in st.secrets:
-        st.success("🟢 IA Cerebro: ACTIVADO")
+    if is_active:
+        # Si se activó, registramos quién lo tiene y apagamos los otros
+        st.session_state.psych_selected_in = section_changed
+        # Desactivar en otros timeframes
+        for sec in ["WEEKLY", "DAILY", "4H"]:
+            if sec != section_changed:
+                other_key = f"{sec}_Round Psych Level"
+                if other_key in st.session_state.checklist:
+                    st.session_state.checklist[other_key] = False
     else:
-        st.error("🔴 IA Cerebro: DESCONECTADO")
-        st.caption("Asegúrate de tener GEMINI_KEY en .streamlit/secrets.toml")
-    
-    st.divider()
-    st.markdown("Developed for **The Perfect Trade**")
+        # Si se desactivó el actual dueño, liberamos el bloqueo
+        if st.session_state.psych_selected_in == section_changed:
+            st.session_state.psych_selected_in = None
 
+# ==============================================================================
+# 3. INTERFAZ: NAVBAR SUPERIOR
+# ==============================================================================
 c_nav1, c_nav2 = st.columns([1, 4])
 with c_nav1:
-    st.markdown('<div class="nav-logo">🦁 THE PERFECT TRADE</div>', unsafe_allow_html=True)
+    st.markdown('<div style="font-size:1.5rem; font-weight:900; color:#10b981;">🦁 PERFECT TRADE</div>', unsafe_allow_html=True)
 with c_nav2:
-    b1, b2, b3, b4, b_user = st.columns([1, 1, 1, 1, 2])
+    b1, b2, b3, b4 = st.columns(4)
     with b1: 
-        if st.button("📈 Checklist", use_container_width=True): st.session_state.page = 'checklist'; st.rerun()
+        if st.button("📈 CHECKLIST", use_container_width=True): st.session_state.page = 'checklist'; st.rerun()
     with b2: 
-        if st.button("📖 History", use_container_width=True): st.session_state.page = 'history'; st.rerun()
+        if st.button("📖 HISTORY", use_container_width=True): st.session_state.page = 'history'; st.rerun()
     with b3: 
-        if st.button("📊 Dashboard", use_container_width=True): st.session_state.page = 'dashboard'; st.rerun()
+        if st.button("📊 DASHBOARD", use_container_width=True): st.session_state.page = 'dashboard'; st.rerun()
     with b4: 
-        if st.button("🤖 AI Mentor", use_container_width=True): st.session_state.page = 'ai_mentor'; st.rerun()
-    with b_user:
-        st.markdown('<div style="text-align:right; padding-top:5px;"><span class="nav-user">kevin zambrano</span> <span class="logout-btn">Logout</span></div>', unsafe_allow_html=True)
+        if st.button("🤖 AI MENTOR", use_container_width=True): st.session_state.page = 'ai_mentor'; st.rerun()
 
-st.divider()
+st.markdown("---")
 
 # ==============================================================================
-# PÁGINA 1: CHECKLIST
+# PÁGINA 1: CHECKLIST INTERACTIVO (MEJORADO)
 # ==============================================================================
 if st.session_state.page == 'checklist':
     
-    score = calc_score()
-    score_color = "#ef4444"
-    score_txt = "Weak Setup"
-    if score > 60: score_color = "#facc15"; score_txt = "Moderate"
-    if score > 90: score_color = "#10b981"; score_txt = "🔥 SNIPER ENTRY"
-
-    st.markdown("<h3 style='text-align:center'>Confluence Summary</h3>", unsafe_allow_html=True)
-    cols = st.columns(5)
-    labels = ["WEEKLY", "DAILY", "4H", "2H/1H", "ENTRY"]
-    for i, c in enumerate(cols):
-        c.markdown(f"""<div class="confluence-box"><div style="color:#94a3b8; font-size:0.7rem;">{labels[i]}</div><div style="color:#2dd4bf; font-size:1.5rem; font-weight:bold">--%</div></div>""", unsafe_allow_html=True)
+    # 1. Calcular puntuación ANTES de renderizar para que esté actualizada
+    total, sec_scores = calculate_totals()
     
+    # Colores dinámicos según puntuación
+    score_color = "#ef4444" # Rojo
+    status_txt = "WEAK SETUP"
+    if total >= 60: score_color = "#facc15"; status_txt = "MODERATE" # Amarillo
+    if total >= 90: score_color = "#10b981"; status_txt = "🔥 SNIPER ENTRY" # Verde
+
+    # 2. Dashboard de Puntuación (Gigante y Centrado)
     st.markdown(f"""
-    <div style="background:#1e293b; border:2px solid {score_color}; border-radius:16px; padding:30px; text-align:center; margin:20px 0;">
-        <div style="color:#cbd5e1; letter-spacing:1px; font-weight:600;">TOTAL OVERALL SCORE</div>
-        <div style="font-size:4rem; font-weight:900; color:{score_color}; line-height:1.1;">{score}%</div>
-        <div style="color:{score_color}; font-weight:bold;">{score_txt}</div>
+    <div class="total-score-container" style="border-color: {score_color};">
+        <div style="color:#94a3b8; font-weight:600; letter-spacing:2px; margin-bottom:10px;">TOTAL CONFLUENCE SCORE</div>
+        <div class="score-big-number" style="color:{score_color}; -webkit-text-fill-color:{score_color};">{total}%</div>
+        <div style="font-size:1.5rem; font-weight:800; color:{score_color}; margin-top:10px;">{status_txt}</div>
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("✅ SAVE TRADE", use_container_width=True, type="primary"):
-        save_trade_modal(score)
+    # Botón Guardar (Solo aparece si hay datos)
+    if total > 0:
+        if st.button("💾 GUARDAR OPERACIÓN EN BITÁCORA", use_container_width=True):
+            # Aquí iría la llamada al modal de guardado
+            st.toast("Abriendo formulario de guardado...", icon="✅")
 
-    c_left, c_right = st.columns(2)
-    for i, (sec, items) in enumerate(STRATEGY.items()):
-        target_col = c_left if i % 2 == 0 else c_right
-        with target_col:
-            st.markdown(f'<div class="card"><h4>{sec}</h4>', unsafe_allow_html=True)
-            for label, pts in items:
-                key = f"{sec}_{label}"
-                cl, cr = st.columns([4, 1])
-                cl.markdown(f"<span style='font-size:0.9rem; color:#e2e8f0'>{label}</span>", unsafe_allow_html=True)
-                toggle_val = cr.toggle(f"+{pts}", key=key, label_visibility="collapsed")
-                st.session_state.checklist[key] = toggle_val
-                if toggle_val: cr.markdown(f"<div style='text-align:right; color:#10b981; font-size:0.7rem;'>+{pts}%</div>", unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-# ==============================================================================
-# PÁGINA 2: HISTORY
-# ==============================================================================
-elif st.session_state.page == 'history':
-    st.title("Trading History")
-    
-    c_fil = st.columns([1,1,1,1,4])
-    c_fil[0].button("ALL", type="primary")
-    c_fil[1].button("WIN")
-    c_fil[2].button("LOSS")
     st.markdown("<br>", unsafe_allow_html=True)
 
-    for trade in st.session_state.trades:
-        dir_cls = "dir-LONG" if trade['type'] == "LONG" else "dir-SHORT"
-        score_col = "#10b981" if trade['score'] > 80 else "#facc15"
-        pnl_col = '#10b981' if trade['pnl'] >= 0 else '#ef4444'
+    # 3. Renderizado de Secciones (Cards Grandes)
+    # Dividimos en 2 columnas grandes para que se vea masivo
+    left_col, right_col = st.columns(2, gap="large")
+    
+    sections = list(STRATEGY.items())
+    
+    for i, (sec_name, items) in enumerate(sections):
+        # Alternar columnas (Zig-Zag)
+        target_col = left_col if i % 2 == 0 else right_col
         
-        st.markdown(f"""
-        <div class="history-item">
-            <div>
-                <div class="pair-badge"><span style="background:#334155; padding:5px; border-radius:4px;">📈</span> {trade['pair']}</div>
-                <div style="margin-top:5px;"><span class="{dir_cls}">{trade['type']}</span></div>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-size:0.8rem; color:#94a3b8;">Confluence</div>
-                <div style="color:{score_col}; font-weight:bold;">{trade['score']}%</div>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-size:0.8rem; color:#94a3b8;">PnL</div>
-                <div style="color:{pnl_col}; font-weight:bold;">${trade['pnl']}</div>
-            </div>
-            <div style="text-align:right;">
-                <div style="font-size:0.8rem; color:#94a3b8;">Date</div>
-                <div style="color:white;">{trade['date']}</div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
+        with target_col:
+            # HTML Header de la Tarjeta
+            current_sec_score = sec_scores.get(sec_name, 0)
+            st.markdown(f"""
+            <div class="section-card">
+                <div class="section-header">
+                    <span class="section-title">{sec_name}</span>
+                    <span class="section-score">{current_sec_score}%</span>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Renderizar los Toggles dentro de la tarjeta
+            for label, pts in items:
+                key = f"{sec_name}_{label}"
+                
+                # Lógica de Bloqueo de Psych Level
+                disabled = False
+                help_txt = None
+                if label == "Round Psych Level":
+                    # Si ya hay un nivel psicológico seleccionado en OTRA sección, deshabilitamos este
+                    if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
+                        disabled = True
+                        help_txt = "⛔ Ya seleccionaste Nivel Psicológico en otra temporalidad. Solo cuenta una vez."
+
+                # Usamos columnas nativas de Streamlit para alinear Toggle y Texto
+                c_txt, c_tog = st.columns([4, 1])
+                
+                with c_txt:
+                    color_pts = "#10b981" if not disabled else "#475569"
+                    st.markdown(f"""
+                    <div style="display:flex; align-items:center; height:100%; padding-top:10px;">
+                        <span class="toggle-label" style="color:{'#64748b' if disabled else '#e2e8f0'}">{label}</span>
+                        <span class="toggle-points" style="background:{'rgba(71,85,105,0.2)' if disabled else 'rgba(16,185,129,0.1)'}; color:{color_pts}">+{pts}%</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with c_tog:
+                    # El Toggle real
+                    val = st.toggle(
+                        label="x", # Label oculto visualmente
+                        key=key,
+                        value=st.session_state.checklist.get(key, False),
+                        label_visibility="collapsed",
+                        disabled=disabled,
+                        # Si es Psych Level, activamos el callback
+                        on_change=handle_psych_logic if label == "Round Psych Level" else None,
+                        args=(sec_name,) if label == "Round Psych Level" else None
+                    )
+                    # Actualizar estado manualmente si no es Psych (para el cálculo inmediato)
+                    st.session_state.checklist[key] = val
+
+                if help_txt:
+                    st.caption(help_txt)
+                
+                st.markdown("<div style='margin-bottom:15px;'></div>", unsafe_allow_html=True) # Espaciador
+
+            st.markdown("</div>", unsafe_allow_html=True) # Cierre del div section-card
 
 # ==============================================================================
-# PÁGINA 3: DASHBOARD
+# PÁGINA 2: HISTORY (PLACEHOLDER)
+# ==============================================================================
+elif st.session_state.page == 'history':
+    st.title("📖 Trading History")
+    st.info("Aquí aparecerán tus trades guardados.")
+
+# ==============================================================================
+# PÁGINA 3: DASHBOARD (PLACEHOLDER)
 # ==============================================================================
 elif st.session_state.page == 'dashboard':
-    trades = pd.DataFrame(st.session_state.trades)
-    net_pnl = trades['pnl'].sum() if not trades.empty else 0
-    wins = trades[trades['pnl'] > 0]
-    
-    c_main, c_side = st.columns([2, 1])
-    with c_main:
-        st.markdown(f"""
-        <div class="stat-card-big">
-            <div style="color:#cbd5e1; font-weight:600;">Net Profit & Loss</div>
-            <div class="stat-money" style="color: {'#10b981' if net_pnl >= 0 else '#ef4444'}">${net_pnl:,.2f}</div>
-            <div class="stat-sub">+ {len(trades)} trades completed</div>
-            <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:10px; margin-top:20px;">
-                <div class="kpi-card"><div class="kpi-label">Win Rate</div><div class="kpi-value">65%</div></div>
-                <div class="kpi-card"><div class="kpi-label">Profit Factor</div><div class="kpi-value">2.4</div></div>
-                <div class="kpi-card"><div class="kpi-label">Streak</div><div class="kpi-value">🔥 3</div></div>
-            </div>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    with c_side:
-        st.markdown(f"""
-        <div class="card"><div style="color:#94a3b8; font-size:0.8rem;">Total Profit</div><div style="font-size:1.5rem; color:#10b981; font-weight:bold">${wins['pnl'].sum():,.2f}</div></div>
-        <div class="card"><div style="color:#94a3b8; font-size:0.8rem;">Total Loss</div><div style="font-size:1.5rem; color:#ef4444; font-weight:bold">$0.00</div></div>
-        """, unsafe_allow_html=True)
+    st.title("📊 Performance Dashboard")
+    st.info("Tus métricas y calendario aparecerán aquí.")
 
 # ==============================================================================
-# PÁGINA 4: AI MENTOR (AUTO-LOGIN SECRETS)
+# PÁGINA 4: AI MENTOR (PLACEHOLDER)
 # ==============================================================================
 elif st.session_state.page == 'ai_mentor':
-    st.markdown("## 🤖 AI Trading Mentor")
-    
-    c_chat, c_playbook = st.columns([3, 1])
-    
-    with c_chat:
-        chat_container = st.container(height=500)
-        for msg in st.session_state.chat_history:
-            avatar = "🦁" if msg["role"] == "assistant" else "👤"
-            with chat_container.chat_message(msg["role"], avatar=avatar):
-                st.write(msg["content"])
-                if "image" in msg: st.image(msg["image"], width=300)
-        
-        with st.form("chat_form", clear_on_submit=True):
-            c_up, c_in = st.columns([1, 5])
-            with c_up: uploaded_file = st.file_uploader("📷", type=["png", "jpg"], label_visibility="collapsed")
-            with c_in: user_input = st.text_input("Mensaje...", label_visibility="collapsed")
-            sent = st.form_submit_button("Enviar")
-            
-            if sent and (user_input or uploaded_file):
-                img = Image.open(uploaded_file) if uploaded_file else None
-                
-                user_msg = {"role": "user", "content": user_input}
-                if img: user_msg["image"] = img
-                st.session_state.chat_history.append(user_msg)
-                
-                with st.spinner("🦁 Analizando..."):
-                    # Llamada a la IA usando Secrets
-                    reply = get_ai_mentor_response(st.session_state.chat_history, img)
-                
-                st.session_state.chat_history.append({"role": "assistant", "content": reply})
-                st.rerun()
-
-    with c_playbook:
-        st.markdown('<div class="card"><h4>📘 Quick Tips</h4><ul style="font-size:0.8rem; color:#cbd5e1;"><li>Sube una foto de tu gráfico 4H.</li><li>Pregunta si el AOI es válido.</li><li>Verifica la vela envolvente.</li></ul></div>', unsafe_allow_html=True)
-    with c_playbook:
-        st.markdown('<div class="card"><h4>📘 Quick Tips</h4><ul style="font-size:0.8rem; color:#cbd5e1;"><li>Sube una foto de tu gráfico 4H.</li><li>Pregunta si el AOI es válido.</li><li>Verifica la vela envolvente.</li></ul></div>', unsafe_allow_html=True)
-
+    st.title("🤖 AI Mentor")
+    st.info("Sube tus gráficos para análisis.")
