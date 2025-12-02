@@ -6,12 +6,12 @@ from modules.data import (
     init_filesystem, verify_user, register_user, get_user_accounts, 
     get_balance_data, OFFICIAL_PAIRS
 )
-from modules.ui import modal_new_trade, modal_update_trade
+from modules.ui import modal_new_trade, modal_update_trade, modal_user_settings
 from modules.utils import get_live_clock_html, render_cal_html
 from modules.ai import init_ai, chat_with_mentor
 import streamlit.components.v1 as components
 
-# 1. CONFIGURACIÓN
+# 1. CONFIG
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 init_filesystem()
 
@@ -37,7 +37,6 @@ def main_app():
     user = st.session_state.user
     inject_theme("Oscuro")
     
-    # Inicializar chat
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "🦁 **Mentor IA:** Hola. He analizado tu bitácora. Sube un gráfico si quieres que revise tu análisis o pregúntame sobre psicología.", "image": None}]
 
@@ -60,9 +59,15 @@ def main_app():
         </div>""", unsafe_allow_html=True)
         
         st.markdown("---")
+        
+        # --- BOTÓN DE CONFIGURACIÓN DE USUARIO ---
+        if st.button("⚙️ Configurar Alertas", use_container_width=True):
+            modal_user_settings(user)
+        # ----------------------------------------
+
         if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
 
-    # --- PESTAÑAS (AHORA SON 5) ---
+    # --- PESTAÑAS ---
     tab_op, tab_hist, tab_dash, tab_ai, tab_news = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA", "📰 NOTICIAS"])
 
     # 1. PESTAÑA OPERATIVA
@@ -220,7 +225,7 @@ def main_app():
                     st.session_state.messages.append({"role": "assistant", "content": response, "image": None})
                     st.rerun()
 
-    # 5. PESTAÑA NOTICIAS (NUEVA)
+    # 5. PESTAÑA NOTICIAS
     with tab_news:
         st.markdown("### 🌍 Calendario Económico")
         components.html(
