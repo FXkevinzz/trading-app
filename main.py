@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
-import calendar
 from modules.styles import inject_theme
 from modules.data import (
     init_filesystem, verify_user, register_user, get_user_accounts, 
@@ -12,7 +11,7 @@ from modules.utils import get_live_clock_html, render_cal_html
 from modules.ai import init_ai, chat_with_mentor
 import streamlit.components.v1 as components
 
-# 1. CONFIG
+# 1. CONFIGURACIÓN
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 init_filesystem()
 
@@ -63,8 +62,8 @@ def main_app():
         st.markdown("---")
         if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
 
-    # --- PESTAÑAS ---
-    tab_op, tab_hist, tab_dash, tab_ai = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA"])
+    # --- PESTAÑAS (AHORA SON 5) ---
+    tab_op, tab_hist, tab_dash, tab_ai, tab_news = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA", "📰 NOTICIAS"])
 
     # 1. PESTAÑA OPERATIVA
     with tab_op:
@@ -83,18 +82,25 @@ def main_app():
         def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
 
         # Lógica Original
-        with r1_c1:
-            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-            st.markdown(header("1. CONTEXTO MACRO"), unsafe_allow_html=True)
-            s1 = sum([st.checkbox("Tendencia Alineada (+20%)")*20, st.checkbox("Rechazo AOI (+20%)")*20, st.checkbox("Patrón Vela (+10%)")*10])
-            st.markdown('</div>', unsafe_allow_html=True)
-        with r1_c2:
-            st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-            st.markdown(header("2. GATILLO FINAL"), unsafe_allow_html=True)
-            s2 = sum([st.checkbox("SOS / Quiebre (+20%)")*20, st.checkbox("Vela Envolvente (+20%)")*20, st.checkbox("Ratio > 1:2.5 (+10%)")*10])
-            st.markdown('</div>', unsafe_allow_html=True)
-        
-        total = s1 + s2
+        if "Swing" in global_mode:
+            with r1_c1:
+                st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+                st.markdown(header("1. CONTEXTO MACRO"), unsafe_allow_html=True)
+                s1 = sum([st.checkbox("Tendencia Alineada (+20%)")*20, st.checkbox("Rechazo AOI (+20%)")*20, st.checkbox("Patrón Vela (+10%)")*10])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r1_c2:
+                st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+                st.markdown(header("2. GATILLO FINAL"), unsafe_allow_html=True)
+                s2 = sum([st.checkbox("SOS / Quiebre (+20%)")*20, st.checkbox("Vela Envolvente (+20%)")*20, st.checkbox("Ratio > 1:2.5 (+10%)")*10])
+                st.markdown('</div>', unsafe_allow_html=True)
+            total = s1 + s2
+        else: # Scalping
+            with r1_c1:
+                st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
+                st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
+                total = sum([st.checkbox("AOI (+50%)")*50, st.checkbox("Estructura (+50%)")*50])
+                st.markdown('</div>', unsafe_allow_html=True)
+
         st.markdown("<br>", unsafe_allow_html=True)
         
         col_hud, col_btn = st.columns([3, 1])
@@ -181,59 +187,50 @@ def main_app():
             for wk in ["Week 1", "Week 2", "Week 3", "Week 4"]:
                 st.markdown(f"""<div class="dashboard-card" style="padding:10px; margin-bottom:8px; min-height:60px;"><div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8; font-size:0.8rem;">{wk}</span><span style="color:#10b981; font-weight:bold;">$0.00</span></div></div>""", unsafe_allow_html=True)
 
-    # ==========================================
-    # PESTAÑA 4: MENTOR IA (REDSEÑADA)
-    # ==========================================
+    # 4. PESTAÑA MENTOR IA
     with tab_ai:
         if not init_ai():
             st.error("⚠️ Configura GEMINI_KEY en Secrets")
         else:
-            # Layout de Chat Pro
             st.markdown("### 🧠 Mentor Inteligente")
-            
-            # 1. ÁREA DE CHAT (Scrollable)
             chat_container = st.container(height=500)
-            
-            # 2. MOSTRAR MENSAJES
             with chat_container:
                 for msg in st.session_state.messages:
                     with st.chat_message(msg["role"], avatar="🦁" if msg["role"]=="assistant" else "👤"):
-                        if msg.get("image"):
-                            st.image(msg["image"], width=250)
+                        if msg.get("image"): st.image(msg["image"], width=250)
                         st.markdown(msg["content"])
-
-            # 3. ZONA DE INPUT (ESTILO COMANDO)
             st.markdown("---")
             col_upl, col_txt = st.columns([1, 4])
-            
-            # Uploader en un Expander para no ensuciar
             with col_upl:
                 with st.popover("📸 Adjuntar", use_container_width=True):
                     img_upload = st.file_uploader("Subir Gráfico", type=['png', 'jpg'], key="chat_img")
-            
-            # Input de texto
             with col_txt:
                 if prompt := st.chat_input("Escribe tu consulta al Mentor..."):
-                    # a) Guardar mensaje usuario
                     user_msg = {"role": "user", "content": prompt, "image": img_upload}
                     st.session_state.messages.append(user_msg)
-                    
-                    # Mostrar inmediatamente en el chat
                     with chat_container:
                         with st.chat_message("user", avatar="👤"):
                             if img_upload: st.image(img_upload, width=250)
                             st.markdown(prompt)
-
-                    # b) Pensar y Responder
                     with chat_container:
                         with st.chat_message("assistant", avatar="🦁"):
                             with st.spinner("Analizando gráfico y datos..."):
                                 response = chat_with_mentor(prompt, df, img_upload)
                                 st.markdown(response)
-                    
-                    # c) Guardar respuesta
                     st.session_state.messages.append({"role": "assistant", "content": response, "image": None})
-                    st.rerun() # Refrescar para limpiar uploader si se usó
+                    st.rerun()
+
+    # 5. PESTAÑA NOTICIAS (NUEVA)
+    with tab_news:
+        st.markdown("### 🌍 Calendario Económico")
+        components.html(
+            """<div class="tradingview-widget-container">
+              <div class="tradingview-widget-container__widget"></div>
+              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
+              {"colorTheme": "dark", "isTransparent": true, "width": "100%", "height": "600", "locale": "es", "importanceFilter": "-1,0", "currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}
+              </script></div>""",
+            height=600
+        )
 
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
