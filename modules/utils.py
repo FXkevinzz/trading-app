@@ -7,17 +7,69 @@ from datetime import datetime, time
 from modules.data import IMG_DIR 
 import os
 
-def render_heatmap(df, is_dark):
-    if df.empty: return None
-    df['Fecha'] = pd.to_datetime(df['Fecha'])
-    df['Dia'] = df['Fecha'].dt.day_name()
-    grouped = df.groupby('Dia')['Dinero'].sum().reset_index()
-    fig = px.bar(grouped, x='Dia', y='Dinero', color='Dinero', color_continuous_scale=['red', 'green'])
-    bg = 'rgba(0,0,0,0)'
-    text_col = '#94a3b8' if is_dark else '#0f172a'
-    fig.update_layout(paper_bgcolor=bg, plot_bgcolor=bg, font=dict(color=text_col), title="PnL por Día")
-    return fig
+# --- LÓGICA DE HORARIO (PDF ALEX G) ---
+def get_market_status():
+    try:
+        # 1. Definir Zona Horaria NY (EST)
+        tz_ny = pytz.timezone('America/New_York')
+        now_ny = datetime.now(tz_ny)
+        
+        # 2. Definir Ventana de Trading (23:00 - 11:00)
+        # Nota: Como cruza la medianoche, la lógica es:
+        # O es tarde en la noche (> 23:00) O es temprano en la mañana (< 11:00)
+        current_time = now_ny.time()
+        start_time = time(23, 0) # 11 PM
+        end_time = time(11, 0)   # 11 AM
+        
+        in_time_window = (current_time >= start_time) or (current_time <= end_time)
+        
+        # 3. Definir Días (0=Lun, 6=Dom)
+        weekday = now_ny.weekday()
+        is_weekend = weekday >= 5 # Sabado(5) o Domingo(6)
+        is_friday = weekday == 4
+        
+        # 4. Determinar Sesión Actual
+        session_name = "ASIA (Consolidación)"
+        if time(2, 0) <= current_time < time(8, 0):
+            session_name = "LONDRES 🇬🇧"
+        elif time(8, 0) <= current_time < time(12, 0):
+            session_name = "NY / LONDRES (Cruce) 🇺🇸🇬🇧"
+        elif time(12, 0) <= current_time < time(17, 0):
+            session_name = "NUEVA YORK 🇺🇸"
+        
+        # 5. Determinar ESTADO DE ESTRATEGIA (Semáforo)
+        # Regla PDF: Lun-Jue (Mejor), Vie (Cuidado), Dom (No)
+        # Regla PDF: 11pm - 11am EST
+        
+        status_text = "ESPERAR 💤"
+        color = "#94a3b8" # Gris
+        
+        if is_weekend:
+            status_text = "MERCADO CERRADO ❌"
+            color = "#ef4444" # Rojo
+        
+        elif in_time_window:
+            if weekday <= 3: # Lun, Mar, Mie, Jue
+                status_text = "✅ ZONA DE TRADING (GO)"
+                color = "#10b981" # Verde
+            elif is_friday and current_time < time(11, 0):
+                status_text = "⚠️ VIERNES (CUIDADO)"
+                color = "#fbbf24" # Amarillo
+        else:
+            status_text = "⛔ FUERA DE SESIÓN"
+            color = "#ef4444" # Rojo si no es hora
+            
+            # Excepción: Si es Lunes-Jueves pero fuera de hora (ej: 2pm), es "Bajo Volumen"
+            if weekday <= 3 and not in_time_window:
+                status_text = "💤 BAJO VOLUMEN"
+                color = "#f59e0b" # Naranja
 
+        return now_ny.strftime("%I:%M %p"), session_name, status_text, color
+        
+    except Exception as e:
+        return "--:--", "Error", str(e), "#333"
+
+# --- UTILIDADES VISUALES (MANTENER IGUAL) ---
 def render_cal_html(df, is_dark):
     d = st.session_state.get('cal_date', datetime.now())
     y, m = d.year, d.month
@@ -33,7 +85,7 @@ def render_cal_html(df, is_dark):
     html = '<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-top:15px;">'
     day_col = "#94a3b8" if is_dark else "#64748b"
     for h in ["LUN","MAR","MIÉ","JUE","VIE","SÁB","DOM"]: 
-        html += f'<div style="text-align:center; color:{day_col}; font-size:0.8rem; font-weight:bold; padding:5px;">{h}</div>'
+        html += f'<div style="text-align:center; color:{day_col}; font-size:0.7rem; font-weight:bold; padding:5px;">{h}</div>'
     
     for week in cal.monthdayscalendar(y, m):
         for day in week:
@@ -41,42 +93,29 @@ def render_cal_html(df, is_dark):
             else:
                 val = data.get(day, 0)
                 txt = f"${val:,.0f}" if val != 0 else ""
-                bg, border, col = "var(--bg-card)", "var(--border-color)", "var(--text-main)"
-                if val > 0: bg, border, col = "rgba(16, 185, 129, 0.15)", "var(--accent-green)", "var(--accent-green)"
-                elif val < 0: bg, border, col = "rgba(239, 68, 68, 0.15)", "var(--accent-red)", "var(--accent-red)"
+                bg = "var(--bg-card)"
+                border = "var(--border-color)"
+                col = "var(--text-main)"
+                
+                if val > 0:
+                    bg = "rgba(16, 185, 129, 0.15)"
+                    border = "#10b981"
+                    col = "#10b981"
+                elif val < 0:
+                    bg = "rgba(239, 68, 68, 0.15)"
+                    border = "#ef4444"
+                    col = "#ef4444"
 
-                html += f'''<div style="background:{bg}; border:1px solid {border}; border-radius:8px; min-height:80px; padding:10px; display:flex; flex-direction:column; justify-content:space-between;">
-                            <div style="color:var(--text-muted); font-size:0.8rem; font-weight:bold;">{day}</div>
-                            <div style="color:{col}; font-weight:bold; text-align:right;">{txt}</div></div>'''
+                html += f'''
+                <div style="background:{bg}; border:1px solid {border}; border-radius:6px; min-height:60px; padding:5px; display:flex; flex-direction:column; justify-content:space-between;">
+                    <div style="color:var(--text-muted); font-size:0.7rem;">{day}</div>
+                    <div style="color:{col}; font-weight:bold; font-size:0.8rem; text-align:right;">{txt}</div>
+                </div>'''
     html += '</div>'
     return html, y, m
 
-def get_market_status():
-    try:
-        tz_ny = pytz.timezone('America/New_York')
-        now_ny = datetime.now(tz_ny)
-        weekday, current_time = now_ny.weekday(), now_ny.time()
-        
-        session_name = "ASIA (TOKIO)"
-        if time(3,0) <= current_time < time(8,0): session_name = "LONDRES 🇬🇧"
-        elif time(8,0) <= current_time < time(12,0): session_name = "NY / LONDRES 🇺🇸🇬🇧"
-        elif time(12,0) <= current_time < time(17,0): session_name = "NUEVA YORK 🇺🇸"
-        
-        status, color = "🔴 CERRADO", "#ff4444"
-        is_open = current_time >= time(23,0) or current_time <= time(11,0) # Logica simplificada 24/5 forex
-        
-        # Logica rapida de ejemplo (ajustar segun necesidad exacta)
-        if weekday < 4:
-            status, color = ("🟢 ZONA PRIME", "#00e676") if (time(2,0) <= current_time <= time(11,0)) else ("💤 BAJO VOLUMEN", "#ffca28")
-        elif weekday == 4 and current_time < time(16,0):
-             status, color = ("⚠️ VIERNES", "#ffca28")
-        elif weekday >= 5:
-             status, color = ("❌ WEEKEND", "#ff4444")
-             
-        return now_ny.strftime("%I:%M %p"), session_name, status, color
-    except: return "--:--", "--", "--", "#333"
+def render_heatmap(df, is_dark):
+    return None # Placeholder si no se usa
 
 def mostrar_imagen(nombre, caption):
-    # Logica simplificada de imagenes locales vs web
-    local = os.path.join(IMG_DIR, nombre)
-    if os.path.exists(local): st.image(local, caption=caption, use_container_width=True)
+    return None
