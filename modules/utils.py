@@ -5,19 +5,20 @@ import streamlit as st
 from datetime import datetime, time
 import requests
 
-# --- FUNCIÓN TELEGRAM DINÁMICA ---
-def send_telegram_alert(trade_data, image_path=None, user_token=None, user_chat_id=None):
-    """Envía alerta usando las credenciales DEL USUARIO."""
+# --- FUNCIÓN: ENVIAR ALERTA (USANDO TOKEN GLOBAL) ---
+def send_telegram_alert(trade_data, image_path=None, user_chat_id=None):
+    """Envía alerta usando el Token Global al Chat ID del usuario."""
     try:
-        # Si el usuario no configuró su bot, no hacemos nada
-        if not user_token or not user_chat_id:
-            return False 
+        # Usamos el token global de la app
+        if "GLOBAL_BOT_TOKEN" not in st.secrets: return False
+        token = st.secrets["GLOBAL_BOT_TOKEN"]
+        
+        if not user_chat_id: return False 
 
         msg = f"""
 🦁 <b>NUEVO TRADE ({trade_data['Par']})</b>
 -----------------------------
-<b>Dirección:</b> {trade_data['Direccion']}
-<b>Entrada:</b> {trade_data.get('Entry', 'N/A')}
+<b>{trade_data['Direccion']}</b> @ {trade_data.get('Entry', 'N/A')}
 <b>SL:</b> {trade_data.get('SL', 'N/A')}
 <b>TP:</b> {trade_data.get('TP', 'N/A')}
 -----------------------------
@@ -28,22 +29,44 @@ def send_telegram_alert(trade_data, image_path=None, user_token=None, user_chat_
         """
 
         if image_path:
-            url = f"https://api.telegram.org/bot{user_token}/sendPhoto"
+            url = f"https://api.telegram.org/bot{token}/sendPhoto"
             with open(image_path, "rb") as img:
-                payload = {"chat_id": user_chat_id, "caption": msg, "parse_mode": "HTML"}
-                files = {"photo": img}
-                requests.post(url, data=payload, files=files)
+                requests.post(url, data={"chat_id": user_chat_id, "caption": msg, "parse_mode": "HTML"}, files={"photo": img})
         else:
-            url = f"https://api.telegram.org/bot{user_token}/sendMessage"
-            payload = {"chat_id": user_chat_id, "text": msg, "parse_mode": "HTML"}
-            requests.post(url, data=payload)
+            url = f"https://api.telegram.org/bot{token}/sendMessage"
+            requests.post(url, data={"chat_id": user_chat_id, "text": msg, "parse_mode": "HTML"})
             
         return True
     except Exception as e:
         print(f"Error Telegram: {e}")
         return False
 
-# --- LÓGICA HORARIO (IGUAL QUE ANTES) ---
+# --- FUNCIÓN: VINCULACIÓN AUTOMÁTICA (NUEVO) ---
+def check_telegram_connection(search_code):
+    """Busca en los mensajes del bot si alguien envió el código mágico."""
+    if "GLOBAL_BOT_TOKEN" not in st.secrets: return None
+    token = st.secrets["GLOBAL_BOT_TOKEN"]
+    
+    try:
+        # Obtenemos las últimas actualizaciones del bot
+        url = f"https://api.telegram.org/bot{token}/getUpdates"
+        resp = requests.get(url).json()
+        
+        if not resp.get("ok"): return None
+        
+        # Buscamos el código
+        for result in resp["result"]:
+            if "message" in result and "text" in result["message"]:
+                text = result["message"]["text"].strip()
+                # Si el mensaje es el código que buscamos
+                if text == search_code:
+                    # RETORNAMOS EL ID DEL USUARIO
+                    return str(result["message"]["chat"]["id"])
+        return None
+    except:
+        return None
+
+# --- LÓGICA HORARIO & RELOJ (IGUAL) ---
 def get_market_status():
     try:
         tz_ny = pytz.timezone('America/New_York')
@@ -68,7 +91,6 @@ def get_market_status():
         return now_ny.strftime("%I:%M %p"), session_display, status, color
     except: return "--:--", "Error", "Error", "#333"
 
-# --- RELOJ VIVO (IGUAL) ---
 def get_live_clock_html():
     return """
     <!DOCTYPE html>
@@ -113,7 +135,7 @@ def get_live_clock_html():
     """
 
 def render_cal_html(df, is_dark):
-    # (El código del calendario se queda igual que antes, cópialo del archivo anterior o mantenlo)
+    # (Mantener código calendario)
     d = st.session_state.get('cal_date', datetime.now())
     y, m = d.year, d.month
     data = {}
