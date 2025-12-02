@@ -1,0 +1,9 @@
+modules/__init__.py (Este puede estar vacío, pero debe existir).
+
+modules/styles.py (Pega aquí el código de estilos/CSS).
+
+modules/data.py (Pega aquí la gestión de archivos y usuarios).
+
+modules/ai.py (Pega aquí la lógica de Gemini).
+
+modules/utils.py (Pega aquí calendarios y gráficos).
