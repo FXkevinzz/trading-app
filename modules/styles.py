@@ -1,7 +1,6 @@
 import streamlit as st
 
 def inject_theme(theme_mode):
-    """Inyecta el CSS dinámico basado en el tema seleccionado."""
     # Colores base (Inspirados en la imagen que mandaste)
     bg_app = "#0b1121"       # Fondo muy oscuro
     bg_card = "#151e32"      # Fondo de las tarjetas (Azul grisáceo)
@@ -10,6 +9,7 @@ def inject_theme(theme_mode):
     border_color = "#2a3655"
     accent_green = "#10b981" # Verde TradeZella
     accent_red = "#ef4444"   # Rojo TradeZella
+    accent = "#3b82f6"       # Azul de acento
 
     css = f"""
     <style>
@@ -37,25 +37,18 @@ def inject_theme(theme_mode):
     .sub-stat-label {{ color: {text_muted}; font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }}
     .sub-stat-value {{ font-size: 1.5rem; font-weight: 700; color: {text_main}; }}
     
-    /* COLORES DE TEXTO */
-    .text-green {{ color: {accent_green} !important; }}
-    .text-red {{ color: {accent_red} !important; }}
-    .text-white {{ color: {text_main} !important; }}
-    
-    /* CALENDARIO ESTILO GRID */
-    .cal-grid {{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }}
-    .cal-day-box {{
-        background-color: {bg_card};
-        border: 1px solid {border_color};
-        border-radius: 8px;
-        min-height: 80px;
-        padding: 8px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        transition: transform 0.2s;
+    /* HUD PUNTAJE (CAJA DE LA OPERATIVA) */
+    .hud-container {{ 
+        background: {bg_card}; 
+        border: 1px solid {border_color}; /* Bordes bien definidos */
+        padding: 15px; 
+        border-radius: 12px;
+        display: flex; 
+        align-items: center; 
     }}
-    .cal-day-box:hover {{ border-color: {text_muted}; }}
+    .status-sniper {{ background-color: rgba(16, 185, 129, 0.2); color: {accent_green}; border: 1px solid {accent_green}; padding: 5px 10px; border-radius: 50px; font-weight: bold; }}
+    .status-warning {{ background-color: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid #fbbf24; padding: 5px 10px; border-radius: 50px; font-weight: bold; }}
+    .status-stop {{ background-color: rgba(239, 68, 68, 0.2); color: {accent_red}; border: 1px solid {accent_red}; padding: 5px 10px; border-radius: 50px; font-weight: bold; }}
     
     /* SIDEBAR */
     [data-testid="stSidebar"] {{ background-color: #020617; border-right: 1px solid {border_color}; }}
@@ -68,6 +61,9 @@ def inject_theme(theme_mode):
         font-weight: 600;
         border: none;
     }}
+    
+    /* Estilo de la cabecera de estrategia */
+    .strategy-header {{ color: {accent_green}; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid {border_color}; padding-bottom: 8px; }}
     </style>
     """
     st.markdown(css, unsafe_allow_html=True)
