@@ -17,12 +17,11 @@ def inject_custom_css():
 
         /* --- GLOBAL THEME --- */
         .stApp {
-            background-color: #0f172a; /* Slate 900 - Fondo Principal */
+            background-color: #0f172a; /* Slate 900 */
             font-family: 'Inter', sans-serif;
             color: #f8fafc;
         }
         
-        /* Ocultar elementos de Streamlit */
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
@@ -31,16 +30,16 @@ def inject_custom_css():
             display: flex; justify-content: space-between; align-items: center;
             background-color: #0f172a; padding: 10px 0; border-bottom: 1px solid #1e293b; margin-bottom: 30px;
         }
-        .nav-logo { font-weight: 800; font-size: 1.2rem; color: #fff; display: flex; align-items: center; gap: 10px; }
+        .nav-logo { font-weight: 800; font-size: 1.2rem; color: #fff; }
         .nav-user { color: #cbd5e1; font-weight: 600; font-size: 0.9rem; }
         .logout-btn { 
             background-color: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; 
             color: #ef4444; padding: 5px 15px; border-radius: 6px; font-size: 0.8rem; 
         }
 
-        /* --- CARDS GENERALES --- */
+        /* --- CARDS --- */
         .card {
-            background-color: #1e293b; /* Slate 800 */
+            background-color: #1e293b;
             border: 1px solid #334155;
             border-radius: 12px;
             padding: 20px;
@@ -48,10 +47,10 @@ def inject_custom_css():
             margin-bottom: 20px;
         }
 
-        /* --- CHECKLIST STYLES --- */
+        /* --- CHECKLIST --- */
         .confluence-box { background: #1e293b; border-radius: 8px; padding: 15px; text-align: center; border: 1px solid #334155; }
         
-        /* --- DASHBOARD STATS --- */
+        /* --- DASHBOARD --- */
         .stat-card-big {
             background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
             border: 1px solid #334155; border-radius: 16px; padding: 25px; position: relative;
@@ -61,7 +60,7 @@ def inject_custom_css():
         .kpi-label { color: #cbd5e1; font-size: 0.75rem; text-transform: uppercase; }
         .kpi-value { color: #fff; font-size: 1.2rem; font-weight: 700; }
 
-        /* --- HISTORY LIST --- */
+        /* --- HISTORY --- */
         .history-item { 
             background: #1e293b; border: 1px solid #334155; border-radius: 12px; padding: 15px 20px; 
             display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;
@@ -84,7 +83,7 @@ def inject_custom_css():
 inject_custom_css()
 
 # ==============================================================================
-# 2. SISTEMA DE GESTIÓN DE ESTADO Y DATOS
+# 2. SISTEMA DE GESTIÓN (DATA & IA)
 # ==============================================================================
 
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
@@ -92,25 +91,27 @@ if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'chat_history' not in st.session_state: 
     st.session_state.chat_history = [{"role": "assistant", "content": "🦁 Hola. Soy tu Mentor 'Set & Forget'. Sube tu gráfico y analicemos la estructura."}]
 
-# Datos de prueba iniciales
 if 'trades' not in st.session_state: 
     st.session_state.trades = [
         {"id": "1", "pair": "EURUSD", "type": "LONG", "result": "WIN", "pnl": 1250.00, "date": "2025-12-02", "score": 95},
         {"id": "2", "pair": "GBPJPY", "type": "SHORT", "result": "LOSS", "pnl": -500.00, "date": "2025-12-03", "score": 80},
     ]
 
-# Configuración de Estrategia
 STRATEGY = {
     "WEEKLY": [("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), ("Round Psych Level", 5), ("Rejection Structure", 10)],
     "DAILY": [("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), ("Round Psych Level", 5), ("Rejection Structure", 10)],
     "4H": [("Trend", 5), ("At AOI / Rejected", 5), ("Touching EMA", 5), ("Round Psych Level", 5), ("Rejection Structure", 10)],
     "2H, 1H, 30m": [("Trend", 5), ("Touching EMA", 5), ("Break & Retest", 5)],
-    "ENTRY SIGNAL": [("SOS (Shift of Structure)", 10), ("Engulfing candlestick", 10)]
+    "ENTRY SIGNAL": [("SOS", 10), ("Engulfing candlestick", 10)]
 }
 
-# --- LÓGICA DE IA (GEMINI 2.0 FLASH) ---
-def get_ai_mentor_response(messages, image=None, api_key=None):
-    if not api_key: return "⚠️ Por favor ingresa tu API KEY en la barra lateral."
+# --- LÓGICA DE IA MEJORADA (USA SECRETS) ---
+def get_ai_mentor_response(messages, image=None):
+    # 1. Buscar la API Key en los secretos de Streamlit
+    if "GEMINI_KEY" not in st.secrets:
+        return "⚠️ ERROR CRÍTICO: No encontré 'GEMINI_KEY' en tu archivo .streamlit/secrets.toml"
+    
+    api_key = st.secrets["GEMINI_KEY"]
     
     try:
         genai.configure(api_key=api_key)
@@ -131,7 +132,7 @@ def get_ai_mentor_response(messages, image=None, api_key=None):
         - Da un veredicto: "✅ TRADE VÁLIDO" o "❌ DESCARTAR".
         """
         
-        # Usamos gemini-2.0-flash-exp (o 1.5-flash si 2.0 no está disponible en tu región aun)
+        # Usamos gemini-1.5-flash (Es la versión estable más rápida y con visión actual)
         model = genai.GenerativeModel(model_name="gemini-1.5-flash", system_instruction=system_instruction)
         
         prompt = messages[-1]["content"]
@@ -142,7 +143,6 @@ def get_ai_mentor_response(messages, image=None, api_key=None):
     except Exception as e:
         return f"Error IA: {str(e)}"
 
-# --- LÓGICA DE PUNTUACIÓN ---
 def calc_score():
     score = 0
     for sec, items in STRATEGY.items():
@@ -151,7 +151,6 @@ def calc_score():
                 score += pts
     return score
 
-# --- MODAL DE GUARDADO ---
 @st.dialog("Save Trade")
 def save_trade_modal(score):
     st.markdown(f"<h3 style='color:#10b981'>Confluence Score: {score}%</h3>", unsafe_allow_html=True)
@@ -166,12 +165,11 @@ def save_trade_modal(score):
     entry = st.number_input("Entry Price", format="%.5f")
     risk = st.number_input("Risk %", value=1.0)
     
-    # Calculadora simple de lotaje (Forex Standard aprox)
     lots = 0.0
     if entry > 0 and sl > 0:
         pips = abs(entry - sl) * 10000 if "JPY" not in pair else abs(entry - sl) * 100
         if pips > 0:
-            risk_usd = 10000 * (risk/100) # Asumiendo cuenta 10k
+            risk_usd = 10000 * (risk/100)
             lots = risk_usd / (pips * 10)
     
     st.info(f"🔢 Lotaje Sugerido (Cuenta $10k): {lots:.2f} Lotes")
@@ -179,13 +177,8 @@ def save_trade_modal(score):
     
     if st.button("💾 Save Trade", use_container_width=True, type="primary"):
         new_trade = {
-            "id": str(uuid.uuid4()),
-            "pair": pair,
-            "type": direction,
-            "result": "PENDING",
-            "pnl": 0.0,
-            "date": datetime.now().strftime("%Y-%m-%d"),
-            "score": score,
+            "id": str(uuid.uuid4()), "pair": pair, "type": direction, "result": "PENDING",
+            "pnl": 0.0, "date": datetime.now().strftime("%Y-%m-%d"), "score": score,
             "entry": entry, "sl": sl, "tp": tp, "notes": notes
         }
         st.session_state.trades.insert(0, new_trade)
@@ -197,9 +190,14 @@ def save_trade_modal(score):
 # ==============================================================================
 
 with st.sidebar:
-    st.markdown("### 🔐 Configuración")
-    api_key = st.text_input("Gemini API Key", type="password", placeholder="Pega tu Key aquí")
-    st.caption("Obtén tu key gratis en Google AI Studio")
+    st.markdown("### ⚙️ Sistema")
+    # Verificación automática de la llave
+    if "GEMINI_KEY" in st.secrets:
+        st.success("🟢 IA Cerebro: ACTIVADO")
+    else:
+        st.error("🔴 IA Cerebro: DESCONECTADO")
+        st.caption("Asegúrate de tener GEMINI_KEY en .streamlit/secrets.toml")
+    
     st.divider()
     st.markdown("Developed for **The Perfect Trade**")
 
@@ -232,7 +230,6 @@ if st.session_state.page == 'checklist':
     if score > 60: score_color = "#facc15"; score_txt = "Moderate"
     if score > 90: score_color = "#10b981"; score_txt = "🔥 SNIPER ENTRY"
 
-    # Dashboard Score
     st.markdown("<h3 style='text-align:center'>Confluence Summary</h3>", unsafe_allow_html=True)
     cols = st.columns(5)
     labels = ["WEEKLY", "DAILY", "4H", "2H/1H", "ENTRY"]
@@ -274,7 +271,6 @@ elif st.session_state.page == 'history':
     c_fil[0].button("ALL", type="primary")
     c_fil[1].button("WIN")
     c_fil[2].button("LOSS")
-    
     st.markdown("<br>", unsafe_allow_html=True)
 
     for trade in st.session_state.trades:
@@ -333,7 +329,7 @@ elif st.session_state.page == 'dashboard':
         """, unsafe_allow_html=True)
 
 # ==============================================================================
-# PÁGINA 4: AI MENTOR (GEMINI 2.0 VISION)
+# PÁGINA 4: AI MENTOR (AUTO-LOGIN SECRETS)
 # ==============================================================================
 elif st.session_state.page == 'ai_mentor':
     st.markdown("## 🤖 AI Trading Mentor")
@@ -357,18 +353,19 @@ elif st.session_state.page == 'ai_mentor':
             if sent and (user_input or uploaded_file):
                 img = Image.open(uploaded_file) if uploaded_file else None
                 
-                # 1. Guardar Usuario
                 user_msg = {"role": "user", "content": user_input}
                 if img: user_msg["image"] = img
                 st.session_state.chat_history.append(user_msg)
                 
-                # 2. IA
                 with st.spinner("🦁 Analizando..."):
-                    reply = get_ai_mentor_response(st.session_state.chat_history, img, api_key)
+                    # Llamada a la IA usando Secrets
+                    reply = get_ai_mentor_response(st.session_state.chat_history, img)
                 
-                # 3. Guardar Bot
                 st.session_state.chat_history.append({"role": "assistant", "content": reply})
                 st.rerun()
 
     with c_playbook:
         st.markdown('<div class="card"><h4>📘 Quick Tips</h4><ul style="font-size:0.8rem; color:#cbd5e1;"><li>Sube una foto de tu gráfico 4H.</li><li>Pregunta si el AOI es válido.</li><li>Verifica la vela envolvente.</li></ul></div>', unsafe_allow_html=True)
+    with c_playbook:
+        st.markdown('<div class="card"><h4>📘 Quick Tips</h4><ul style="font-size:0.8rem; color:#cbd5e1;"><li>Sube una foto de tu gráfico 4H.</li><li>Pregunta si el AOI es válido.</li><li>Verifica la vela envolvente.</li></ul></div>', unsafe_allow_html=True)
+
