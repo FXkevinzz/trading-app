@@ -118,29 +118,43 @@ def main_app():
     # --- PESTAÑAS PRINCIPALES ---
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
-    # TAB 1: OPERATIVA (CON LISTA DESPLEGABLE DE ACTIVOS)
+    # TAB 1: OPERATIVA (CON LISTA COMPLETA OANDA)
     with tabs[0]:
         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
         c_mod = st.columns([1,2,1])
         with c_mod[1]: st.session_state.global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
         st.markdown("---")
         
-        # --- NUEVA LISTA OFICIAL DE ACTIVOS ---
+        # --- LISTA EXTENDIDA OANDA/PROP FIRMS ---
         OFFICIAL_PAIRS = [
-            "XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", # Majors
-            "US30", "US100", "US500", "DE40", # Índices
-            "BTCUSD", "ETHUSD", # Crypto
-            "GBPJPY", "EURJPY", "AUDJPY" # Cruces populares
+            # MAJORS
+            "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF",
+            # METALS & ENERGY
+            "XAUUSD", "XAGUSD", "XPTUSD", "WTICOUSD", "BCOUSD", "NATGAS",
+            # INDICES USA
+            "US30", "US100", "US500", "US2000",
+            # INDICES GLOBAL
+            "DE40", "UK100", "FR40", "JP225", "HK50", "AU200", "EU50",
+            # CROSSES (EUR/GBP/JPY/AUD)
+            "EURGBP", "EURJPY", "EURAUD", "EURNZD", "EURCAD", "EURCHF",
+            "GBPJPY", "GBPAUD", "GBPNZD", "GBPCAD", "GBPCHF",
+            "AUDJPY", "AUDNZD", "AUDCAD", "AUDCHF",
+            "NZDJPY", "NZDCAD", "NZDCHF", "CADJPY", "CADCHF", "CHFJPY",
+            # EXOTICS
+            "USDMXN", "USDSGD", "USDZAR", "USDTRY", "USDHKD", "USDCNH", "USDSEK", "USDNOK", "USDPLN",
+            # CRYPTO
+            "BTCUSD", "ETHUSD", "LTCUSD", "BCHUSD", "XRPUSD", "SOLUSD"
         ]
         
-        # Lógica para mantener la selección si ya existe
+        # Lógica para mantener la selección
         curr_idx = 0
         if st.session_state.global_pair in OFFICIAL_PAIRS:
             curr_idx = OFFICIAL_PAIRS.index(st.session_state.global_pair)
-        
-        # Usamos selectbox en lugar de text_input
+        elif "XAU" in st.session_state.global_pair: # Fallback inteligente para Oro
+             if "XAUUSD" in OFFICIAL_PAIRS: curr_idx = OFFICIAL_PAIRS.index("XAUUSD")
+
+        # Selectbox con búsqueda
         st.session_state.global_pair = st.selectbox("ACTIVO GLOBAL", OFFICIAL_PAIRS, index=curr_idx)
-        # -------------------------------------
         
         st.markdown('</div><br>', unsafe_allow_html=True)
 
