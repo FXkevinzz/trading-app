@@ -55,7 +55,7 @@ def main_app():
         # --- RECTÁNGULO DE PNL TOTAL (CORREGIDO) ---
         pnl_total = act - ini
         color_pnl = "#10b981" if pnl_total >= 0 else "#ef4444"
-        pnl_bg = color_pnl + '10' # Baja opacidad para el fondo del rectángulo
+        pnl_bg = color_pnl + '10'
         pnl_sign = '+' if pnl_total > 0 else ''
 
         st.markdown(f"""
@@ -95,7 +95,7 @@ def main_app():
 
         def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
 
-        # Lógica Original (Simplificada en el último paso para evitar la repetición masiva)
+        # Lógica Original
         if "Swing" in global_mode:
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
@@ -130,6 +130,7 @@ def main_app():
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
+                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
                 total = sum([st.checkbox("AOI (+50%)")*50, st.checkbox("Estructura (+50%)")*50])
                 st.markdown('</div>', unsafe_allow_html=True)
 
