@@ -7,8 +7,9 @@ from modules.data import (
     get_balance_data, OFFICIAL_PAIRS
 )
 from modules.ui import modal_new_trade, modal_update_trade
-from modules.utils import get_market_status, render_cal_html
+from modules.utils import get_live_clock_html, render_cal_html
 from modules.ai import init_ai, chat_with_mentor
+import streamlit.components.v1 as components # Importante para el reloj
 
 # 1. CONFIG
 st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
@@ -40,26 +41,16 @@ def main_app():
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "Hola. Soy tu Mentor IA. ¿Analizamos el mercado o tu psicología?"}]
 
-    # --- SIDEBAR (BARRA LATERAL) ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.title(f"👤 {user.upper()}")
         
-        # === AQUÍ ESTÁ EL RELOJ (Tiene que aparecer sí o sí) ===
-        time_str, sess, status, col_st = get_market_status()
-        
-        st.markdown(f"""
-        <div style="background:var(--bg-card); border:1px solid {col_st}; border-radius:12px; padding:15px; text-align:center; margin-bottom:20px; box-shadow: 0 4px 10px rgba(0,0,0,0.2);">
-            <div style="color:#94a3b8; font-size:0.75rem; letter-spacing:1px; margin-bottom:5px;">HORA NY (EST)</div>
-            <div style="color:#fff; font-size:2.2rem; font-weight:900; line-height:1; margin-bottom:8px;">{time_str}</div>
-            <div style="background:{col_st}25; color:{col_st}; padding:6px 12px; border-radius:50px; font-size:0.85rem; font-weight:bold; display:inline-block; border:1px solid {col_st};">
-                {status}
-            </div>
-            <div style="color:#64748b; font-size:0.8rem; margin-top:10px; font-weight:500;">Sesión: {sess}</div>
-        </div>
-        """, unsafe_allow_html=True)
-        # =======================================================
+        # === RELOJ VIVO (JAVASCRIPT) ===
+        # Esto inyecta el reloj que se mueve solo
+        components.html(get_live_clock_html(), height=160)
+        # ================================
 
-        # Cuenta y Balance
+        # Cuenta
         accs = get_user_accounts(user)
         sel_acc = st.selectbox("Cuenta", accs)
         ini, act, df = get_balance_data(user, sel_acc)
@@ -86,7 +77,6 @@ def main_app():
         with c_mod[1]: 
             global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
         
-        # Selector de par para guardar en sesión
         if 'pair_selector' not in st.session_state: st.session_state.pair_selector = OFFICIAL_PAIRS[0]
         st.session_state.pair_selector = st.selectbox("ACTIVO", OFFICIAL_PAIRS, key="sb_pair_main")
         
