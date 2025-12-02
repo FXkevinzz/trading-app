@@ -4,10 +4,9 @@ from datetime import datetime
 import uuid
 import os
 from PIL import Image
-import google.generativeai as genai
 
 # ==============================================================================
-# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY)
+# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY "THE PERFECT TRADE")
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
@@ -123,6 +122,7 @@ def inject_custom_css():
             color: #cbd5e1;
             font-size: 0.9rem;
             line-height: 1.4;
+            margin-bottom: 10px;
         }
 
         /* --- BOTONES --- */
@@ -148,69 +148,93 @@ if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# --- DICCIONARIO DE AYUDAS (Con tus nombres de archivo EXACTOS) ---
+# --- DICCIONARIO DE AYUDAS ---
+# He unificado las claves para que coincidan con la Estrategia
 HELPER_DATA = {
     "Trend": {
         "title": "Estructura de Mercado",
-        "desc": "¿Tu estructura de mercado alcista o bajista se ve así? Busca Altos Más Altos (HH) y Bajos Más Altos (HL).",
-        "img": "trend img.jpg"  # Actualizado según tu captura
+        "desc": "¿Estructura alcista (HH/HL) o bajista (LH/LL)?",
+        "img": "trend img.jpg"
     },
     "At AOI / Rejected": {
         "title": "Zona de Interés (AOI)",
-        "desc": "¿El precio está tocando o dentro de la zona marcada?",
-        "img": "ATAOI.jpg"  # Actualizado según tu captura
+        "desc": "El precio debe estar tocando o reaccionando a la zona.",
+        "img": "ATAOI.jpg"
     },
     "Touching EMA": {
         "title": "Rechazo Dinámico (50 EMA)",
-        "desc": "¿El precio está tocando o rechazando la línea de la EMA 50?",
-        "img": "EMA.jpg"  # Actualizado según tu captura
+        "desc": "El precio toca o rechaza la EMA 50.",
+        "img": "EMA.jpg"
     },
     "Round Psych Level": {
         "title": "Nivel Psicológico",
-        "desc": "¿Hay un número redondo cerca (ej. 1.5000, 150.00)?",
-        "img": "ROUND-PSYCHO-LEVEL.jpg"  # Actualizado según tu captura
+        "desc": "Número redondo cercano (ej. 1.5000).",
+        "img": "ROUND-PSYCHO-LEVEL.jpg"
     },
-    "Rejection Structure": {
+    "Rejection from Previous Structure": {
         "title": "Estructura Previa",
-        "desc": "¿El precio está rebotando en un Alto o Bajo anterior?",
-        "img": "PREVIOUS STRUCTURE.jpg"  # Actualizado según tu captura
+        "desc": "Rebote en un Alto o Bajo anterior.",
+        "img": "PREVIOUS STRUCTURE.jpg"
     },
-    "Candlestick Rejection": {
+    "Candlestick Rejection from AOI": {
         "title": "Patrón de Velas",
-        "desc": "¿Ves patrones de rechazo claros como Pinbars, Dojis o Envolventes?",
-        "img": "ATAOIII.jpg" # Usé esta como ejemplo de rechazo, ajusta si tienes otra
+        "desc": "Mechas largas, Dojis o Envolventes en la zona.",
+        "img": "ATAOIII.jpg" 
     },
-    "Break & Retest": {
-        "title": "Ruptura y Retesteo / H&S",
-        "desc": "¿El precio rompió la zona y regresó para probarla?",
-        "img": "HEAD&SHOULDERS copy.jpg"  # Actualizado según tu captura
+    "Break & Retest / Head & Shoulders Pattern": {
+        "title": "Patrones Avanzados",
+        "desc": "Ruptura y Retesteo o Hombro-Cabeza-Hombro.",
+        "img": "HEAD&SHOULDERS copy.jpg"
     },
-    # Valores por defecto para otros
-    "SOS (Shift of Structure)": { "title": "Cambio de Estructura", "desc": "Ruptura del último alto/bajo.", "img": "trend img.jpg" },
-    "Engulfing candlestick": { "title": "Vela Gatillo", "desc": "Vela envolvente clara.", "img": "ATAOIII.jpg" }
+    "SOS": {
+        "title": "Cambio de Estructura (SOS)",
+        "desc": "Ruptura del último alto/bajo válido.",
+        "img": "trend img.jpg" # Reusamos trend o podrías tener una específica SOS.jpg
+    },
+    "Engulfing candlestick (30m, 1H, 2H, 4H)": {
+        "title": "Vela Gatillo",
+        "desc": "Vela envolvente clara que confirma la dirección.",
+        "img": "ATAOIII.jpg" # Reusamos la de velas
+    }
 }
 
+# He estandarizado los nombres aquí para que sean iguales en todas las secciones
 STRATEGY = {
     "WEEKLY": [
-        ("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), 
-        ("Round Psych Level", 5), ("Rejection Structure", 10), 
-        ("Candlestick Rejection", 10), ("Break & Retest", 10)
+        ("Trend", 10), 
+        ("At AOI / Rejected", 10), 
+        ("Touching EMA", 5), 
+        ("Round Psych Level", 5), 
+        ("Rejection from Previous Structure", 10), 
+        ("Candlestick Rejection from AOI", 10), 
+        ("Break & Retest / Head & Shoulders Pattern", 10)
     ],
     "DAILY": [
-        ("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), 
-        ("Round Psych Level", 5), ("Rejection Structure", 10),
-        ("Candlestick Rejection", 10), ("Break & Retest", 10)
+        ("Trend", 10), 
+        ("At AOI / Rejected", 10), 
+        ("Touching EMA", 5), 
+        ("Round Psych Level", 5), 
+        ("Rejection from Previous Structure", 10), 
+        ("Candlestick Rejection from AOI", 10), 
+        ("Break & Retest / Head & Shoulders Pattern", 10)
     ],
     "4H": [
-        ("Trend", 5), ("At AOI / Rejected", 5), ("Touching EMA", 5), 
-        ("Round Psych Level", 5), ("Rejection Structure", 10),
-        ("Candlestick Rejection", 5), ("Break & Retest", 10)
+        ("Trend", 5), 
+        ("At AOI / Rejected", 5), 
+        ("Touching EMA", 5), 
+        ("Round Psych Level", 5), 
+        ("Rejection from Previous Structure", 10), 
+        ("Candlestick Rejection from AOI", 5), 
+        ("Break & Retest / Head & Shoulders Pattern", 10)
     ],
     "2H, 1H, 30M": [
-        ("Trend", 5), ("Touching EMA", 5), ("Break & Retest", 5)
+        ("Trend", 5), 
+        ("Touching EMA", 5), 
+        ("Break & Retest / Head & Shoulders Pattern", 5)
     ],
     "ENTRY SIGNAL": [
-        ("SOS (Shift of Structure)", 10), ("Engulfing candlestick", 10)
+        ("SOS", 10), 
+        ("Engulfing candlestick (30m, 1H, 2H, 4H)", 10)
     ]
 }
 
@@ -240,17 +264,10 @@ def handle_psych_logic(section_changed):
         if st.session_state.psych_selected_in == section_changed: st.session_state.psych_selected_in = None
 
 def get_local_image(filename):
-    """Busca la imagen en la carpeta 'foto' con manejo de errores."""
-    # Posibles rutas
-    paths_to_check = [
-        os.path.join("foto", filename),
-        os.path.join("fotos", filename), # Por si acaso se llama fotos
-        filename # En la raiz
-    ]
-    
-    for path in paths_to_check:
-        if os.path.exists(path):
-            return path
+    # Busca en la carpeta 'foto'
+    path = os.path.join("foto", filename)
+    if os.path.exists(path):
+        return path
     return None
 
 # ==============================================================================
@@ -281,15 +298,14 @@ if st.session_state.page == 'checklist':
     if total >= 60: score_color = "#facc15"; status_txt = "Moderate Setup"
     if total >= 90: score_color = "#10b981"; status_txt = "🔥 Sniper Entry"
 
-    # --- LAYOUT PRINCIPAL: 2 COLUMNAS (Checklist Izq | Score Der) ---
+    # --- LAYOUT PRINCIPAL: 2 COLUMNAS ---
     main_col, side_col = st.columns([3, 1], gap="large")
 
-    # === COLUMNA IZQUIERDA: EL CHECKLIST ===
+    # === COLUMNA IZQUIERDA: CHECKLIST ===
     with main_col:
         for sec_name, items in STRATEGY.items():
             current_sec_score = sec_scores.get(sec_name, 0)
             
-            # CAJA CONTENEDORA
             with st.container(border=True):
                 # HEADER
                 st.markdown(f"""
@@ -299,17 +315,15 @@ if st.session_state.page == 'checklist':
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # LISTA DE TOGGLES
+                # TOGGLES
                 for label, pts in items:
                     key = f"{sec_name}_{label}"
                     
-                    # Logica bloqueo
                     disabled = False
                     if label == "Round Psych Level":
                         if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
                             disabled = True
 
-                    # FILA FLEX
                     c1, c2 = st.columns([3, 1])
                     
                     with c1:
@@ -332,7 +346,7 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # --- VISUAL HELPER PARA TODOS ---
+                    # --- VISUAL HELPER CON IMAGEN PEQUEÑA ---
                     if val and label in HELPER_DATA:
                         data = HELPER_DATA[label]
                         img_path = get_local_image(data['img'])
@@ -345,15 +359,14 @@ if st.session_state.page == 'checklist':
                         """, unsafe_allow_html=True)
                         
                         if img_path:
-                            st.image(img_path, use_container_width=True)
-                        else:
-                            st.warning(f"No encuentro la imagen: {data['img']} en la carpeta 'foto'")
+                            # AQUÍ ESTÁ EL CAMBIO: width=350 para hacerla pequeña
+                            st.image(img_path, width=350) 
 
-                    # Separador visual
+                    # Separador
                     if label != items[-1][0]:
                         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # === COLUMNA DERECHA: SCORE + GUARDAR (FIJO) ===
+    # === COLUMNA DERECHA: SCORE FIJO ===
     with side_col:
         st.markdown(f"""
         <div class="sticky-score-card" style="border-color:{score_color};">
@@ -367,10 +380,10 @@ if st.session_state.page == 'checklist':
         
         if total > 0:
             if st.button("💾 SAVE TRADE", use_container_width=True):
-                st.toast("Abriendo modal de guardado...", icon="✅")
+                st.toast("Abriendo modal...", icon="✅")
 
 # ==============================================================================
-# OTRAS PÁGINAS (Placeholders)
+# PLACEHOLDERS
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
