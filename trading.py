@@ -6,7 +6,7 @@ import google.generativeai as genai
 from PIL import Image
 
 # ==============================================================================
-# 1. CONFIGURACIÓN Y ESTILOS (DISEÑO PREMIUM "CONTAINER")
+# 1. CONFIGURACIÓN Y ESTILOS (CSS PARA TRANSFORMAR EL CONTENEDOR NATIVO)
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
@@ -25,77 +25,59 @@ def inject_custom_css():
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
-        /* --- CONTENEDOR DE SECCIÓN (ESTILO IMAGEN 10) --- */
-        .section-container {
+        /* --- TRANSFORMAR EL CONTENEDOR NATIVO EN TU "CARD" --- */
+        /* Esto hace que st.container(border=True) se vea como tu diseño */
+        div[data-testid="stBorderDomWrapper"] {
             background-color: #161b26; /* Fondo de la tarjeta */
-            border: 1px solid #2d3748;
-            border-radius: 12px;
-            padding: 0; /* Padding 0 para que el header toque los bordes si quisieras, pero usaremos interno */
-            margin-bottom: 25px;
+            border: 1px solid #2d3748; /* Borde sutil */
+            border-radius: 16px; /* Bordes redondeados */
+            padding: 20px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
-            overflow: hidden; /* Para que el header no se salga */
+            transition: all 0.3s ease;
+        }
+        
+        /* Efecto Hover en la tarjeta completa */
+        div[data-testid="stBorderDomWrapper"]:hover {
+            border-color: #3b82f6; /* Brillo azul al pasar el mouse */
+            transform: translateY(-2px);
         }
 
-        .section-header-box {
-            background-color: #1f2937; /* Un tono ligeramente más claro para el título */
-            padding: 15px 25px;
-            border-bottom: 1px solid #2d3748;
+        /* --- HEADER DE SECCIÓN --- */
+        .custom-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #1f2937; /* Línea separadora gruesa */
+            padding-bottom: 15px;
         }
-
-        .section-title-text {
-            font-size: 1.1rem;
-            font-weight: 800;
+        
+        .header-title {
+            font-size: 1.3rem;
+            font-weight: 900;
             color: #e2e8f0;
             text-transform: uppercase;
             letter-spacing: 1px;
         }
 
-        .section-score-text {
-            font-size: 1.2rem;
+        .header-score {
+            font-size: 1.4rem;
             font-weight: 800;
             color: #10b981; /* Verde brillante */
         }
 
-        .section-body {
-            padding: 10px 25px 25px 25px; /* Espacio para los toggles */
+        /* --- ESTILO DE LOS TEXTOS DE LOS TOGGLES --- */
+        .toggle-text-active {
+            color: #e2e8f0; font-weight: 500; font-size: 1rem;
         }
-
-        /* --- TOGGLES DE LÍNEA --- */
-        .toggle-wrapper {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 12px 0;
-            border-bottom: 1px solid #2d3748; /* Línea separadora sutil */
+        .toggle-text-inactive {
+            color: #64748b; font-weight: 400; font-size: 1rem;
         }
-        
-        .toggle-wrapper:last-child {
-            border-bottom: none; /* Quitar línea al último elemento */
-        }
-
-        .toggle-label-text {
-            font-size: 0.95rem;
-            font-weight: 500;
-            color: #cbd5e1;
-        }
-
-        .right-side-controls {
-            display: flex;
-            align-items: center;
-            gap: 15px; /* Espacio entre +10% y el Switch */
-        }
-
         .points-badge {
-            font-size: 0.85rem;
-            font-weight: 700;
-            color: #10b981;
+            color: #10b981; font-weight: 700; font-size: 0.9rem; margin-right: 10px;
         }
-        
         .points-badge-disabled {
-            color: #475569;
+            color: #475569; font-weight: 700; font-size: 0.9rem; margin-right: 10px;
         }
 
         /* --- DASHBOARD SCORE (Gigante) --- */
@@ -116,7 +98,7 @@ def inject_custom_css():
             text-shadow: 0 0 10px rgba(20, 184, 166, 0.5);
         }
         
-        /* --- ESTILOS DE BOTONES --- */
+        /* --- BOTONES --- */
         .stButton button {
             background-color: #10b981 !important;
             color: #064e3b !important;
@@ -125,11 +107,6 @@ def inject_custom_css():
             font-size: 1rem;
             padding: 0.6rem 1.5rem;
             border-radius: 8px;
-            transition: all 0.2s;
-        }
-        .stButton button:hover {
-            background-color: #34d399 !important;
-            transform: scale(1.02);
         }
         </style>
     """, unsafe_allow_html=True)
@@ -142,9 +119,10 @@ inject_custom_css()
 
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
+# Control exclusivo para el Nivel Psicológico
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# Definición de la Estrategia (Orden Exacto)
+# ESTRATEGIA (Configuración)
 STRATEGY = {
     "WEEKLY": [
         ("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), 
@@ -169,7 +147,7 @@ STRATEGY = {
     ]
 }
 
-# --- LÓGICA DE CÁLCULO ---
+# --- CÁLCULO DE PUNTOS ---
 def calculate_totals():
     total_score = 0
     section_scores = {}
@@ -180,18 +158,18 @@ def calculate_totals():
             key = f"{section}_{label}"
             if st.session_state.checklist.get(key, False):
                 sec_score += pts
-        
         section_scores[section] = sec_score
         total_score += sec_score
         
     return total_score, section_scores
 
-# --- CALLBACK PARA PSYCH LEVEL ---
+# --- CALLBACK (LÓGICA DE BLOQUEO) ---
 def handle_psych_logic(section_changed):
     key_changed = f"{section_changed}_Round Psych Level"
     is_active = st.session_state.checklist.get(key_changed, False)
     
     if is_active:
+        # Se activó: lo asignamos a esta sección y apagamos los demás
         st.session_state.psych_selected_in = section_changed
         for sec in ["WEEKLY", "DAILY", "4H"]:
             if sec != section_changed:
@@ -199,6 +177,7 @@ def handle_psych_logic(section_changed):
                 if other_key in st.session_state.checklist:
                     st.session_state.checklist[other_key] = False
     else:
+        # Se desactivó: liberamos el bloqueo si era el dueño
         if st.session_state.psych_selected_in == section_changed:
             st.session_state.psych_selected_in = None
 
@@ -222,18 +201,19 @@ with c_nav2:
 st.markdown("---")
 
 # ==============================================================================
-# PÁGINA 1: CHECKLIST (Diseño Contenedor Único)
+# PÁGINA 1: CHECKLIST (DISEÑO CAJA ÚNICA)
 # ==============================================================================
 if st.session_state.page == 'checklist':
     
     total, sec_scores = calculate_totals()
     
+    # Textos Dinámicos
     status_txt = "WEAK SETUP"
     score_color = "#ef4444"
     if total >= 60: score_color = "#facc15"; status_txt = "MODERATE"
     if total >= 90: score_color = "#10b981"; status_txt = "🔥 SNIPER ENTRY"
 
-    # Dashboard Score Gigante
+    # --- DASHBOARD SCORE ---
     st.markdown(f"""
     <div class="total-score-box" style="border-color: {score_color};">
         <div style="color:#ccfbf1; letter-spacing:2px; font-weight:600; margin-bottom:10px;">TOTAL OVERALL SCORE</div>
@@ -248,59 +228,60 @@ if st.session_state.page == 'checklist':
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # GRIDS PARA LAS SECCIONES (2 Columnas)
-    left_col, right_col = st.columns(2, gap="large")
+    # --- GRID DE SECCIONES ---
+    col_izq, col_der = st.columns(2, gap="large")
     
     for i, (sec_name, items) in enumerate(STRATEGY.items()):
-        target_col = left_col if i % 2 == 0 else right_col
+        # Alternar columnas
+        target_col = col_izq if i % 2 == 0 else col_der
         
         with target_col:
-            # 1. INICIO DEL CONTENEDOR (Todo lo de esta sección va dentro)
-            current_score = sec_scores.get(sec_name, 0)
+            # PUNTUACIÓN DE LA SECCIÓN ACTUAL
+            current_sec_score = sec_scores.get(sec_name, 0)
             
-            # Header del Contenedor (Título + Score)
-            st.markdown(f"""
-            <div class="section-container">
-                <div class="section-header-box">
-                    <span class="section-title-text">{sec_name}</span>
-                    <span class="section-score-text">{current_score}%</span>
+            # --- AQUÍ ESTÁ EL SECRETO: USAMOS st.container(border=True) ---
+            # Esto crea la CAJA FÍSICA que rodea todo
+            with st.container(border=True):
+                
+                # 1. HEADER (Dentro de la caja)
+                st.markdown(f"""
+                <div class="custom-header">
+                    <span class="header-title">{sec_name}</span>
+                    <span class="header-score">{current_sec_score}%</span>
                 </div>
-                <div class="section-body">
-            """, unsafe_allow_html=True)
-            
-            # 2. CUERPO DEL CONTENEDOR (Lista de Toggles)
-            for label, pts in items:
-                key = f"{sec_name}_{label}"
+                """, unsafe_allow_html=True)
                 
-                # Lógica de bloqueo
-                disabled = False
-                help_msg = None
-                if label == "Round Psych Level":
-                    if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
-                        disabled = True
-                        help_msg = "⛔ Ya usado en otra TF"
-
-                # Layout de Fila: Label a la izquierda, (+10% Switch) a la derecha
-                c_label, c_ctrl = st.columns([3, 1])
-                
-                with c_label:
-                    color_lbl = "#64748b" if disabled else "#cbd5e1"
-                    st.markdown(f"""
-                    <div style="display:flex; align-items:center; height:40px;">
-                        <span class="toggle-label-text" style="color:{color_lbl}">{label}</span>
-                    </div>
-                    """, unsafe_allow_html=True)
-                    if help_msg: st.caption(help_msg)
-                
-                with c_ctrl:
-                    # Contenedor flex para alinear (+10% y Switch)
-                    col_pts = "#475569" if disabled else "#10b981"
+                # 2. LOS TOGGLES (Dentro de la misma caja)
+                for label, pts in items:
+                    key = f"{sec_name}_{label}"
                     
-                    # Usamos 2 subcolumnas apretadas para simular el "flex"
-                    sub_c1, sub_c2 = st.columns([1, 1])
-                    with sub_c1:
-                        st.markdown(f"<div style='text-align:right; color:{col_pts}; font-weight:bold; font-size:0.85rem; padding-top:10px;'>+{pts}%</div>", unsafe_allow_html=True)
-                    with sub_c2:
+                    # Logica de bloqueo Psych
+                    disabled = False
+                    help_txt = None
+                    if label == "Round Psych Level":
+                        if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
+                            disabled = True
+                            help_txt = "⛔ Usado en otra TF"
+
+                    # Layout de fila
+                    c1, c2, c3 = st.columns([5, 2, 1])
+                    
+                    with c1:
+                        # Estilo del texto (si está activo brilla más)
+                        is_active = st.session_state.checklist.get(key, False)
+                        txt_cls = "toggle-text-active" if is_active and not disabled else "toggle-text-inactive"
+                        if disabled: txt_cls = "points-badge-disabled" # Gris si deshabilitado
+                        
+                        st.markdown(f"""<div style="padding-top:10px;" class="{txt_cls}">{label}</div>""", unsafe_allow_html=True)
+                        if help_txt: st.caption(help_txt)
+                    
+                    with c2:
+                        # Puntos (+10%)
+                        pt_cls = "points-badge" if not disabled else "points-badge-disabled"
+                        st.markdown(f"""<div style="padding-top:10px; text-align:right;" class="{pt_cls}">+{pts}%</div>""", unsafe_allow_html=True)
+                    
+                    with c3:
+                        # El Toggle real
                         val = st.toggle(
                             "x", key=key, 
                             value=st.session_state.checklist.get(key, False),
@@ -310,13 +291,9 @@ if st.session_state.page == 'checklist':
                             args=(sec_name,) if label == "Round Psych Level" else None
                         )
                         st.session_state.checklist[key] = val
-                
-                # Divisor sutil entre items (menos el último)
-                if label != items[-1][0]:
-                    st.markdown("<div style='border-bottom:1px solid #2d3748; margin: 5px 0;'></div>", unsafe_allow_html=True)
-
-            # 3. CIERRE DEL CONTENEDOR
-            st.markdown("</div></div>", unsafe_allow_html=True)
+                    
+                    # Separador visual entre items
+                    st.markdown("<div style='border-bottom:1px solid #1f2937; margin-bottom:5px;'></div>", unsafe_allow_html=True)
 
 # ==============================================================================
 # PÁGINAS RESTANTES (PLACEHOLDERS)
