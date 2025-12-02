@@ -1,10 +1,36 @@
 import streamlit as st
 from datetime import datetime
 from PIL import Image
-from modules.data import save_trade, OFFICIAL_PAIRS, delete_trade
+from modules.data import save_trade, OFFICIAL_PAIRS, delete_trade, get_user_config, save_user_config
 from modules.ai import analyze_multiframe, save_image_locally
-from modules.utils import send_telegram_alert # IMPORTANTE
+from modules.utils import send_telegram_alert
 import pandas as pd
+
+# --- MODAL: CONFIGURACIÓN DE USUARIO (NUEVO) ---
+@st.dialog("⚙️ Configuración Personal")
+def modal_user_settings(user):
+    st.caption("Configura tus notificaciones. Estos datos son privados para tu usuario.")
+    
+    # Cargar datos actuales
+    config = get_user_config(user)
+    current_token = config.get("telegram_token", "")
+    current_chat_id = config.get("telegram_chat_id", "")
+    
+    with st.form("settings_form"):
+        st.markdown("##### 📲 Telegram Bot")
+        token = st.text_input("Bot Token (de BotFather)", value=current_token, type="password")
+        chat_id = st.text_input("Chat ID (de userinfobot)", value=current_chat_id)
+        
+        st.info("ℹ️ Recuerda iniciar tu bot en Telegram antes de guardar.")
+        
+        if st.form_submit_button("💾 Guardar Configuración"):
+            new_config = {
+                "telegram_token": token,
+                "telegram_chat_id": chat_id
+            }
+            save_user_config(user, new_config)
+            st.success("¡Configuración guardada!")
+            st.rerun()
 
 # --- MODAL NUEVO TRADE ---
 @st.dialog("➕ REGISTRAR TRADE & CALCULADORA")
@@ -66,17 +92,26 @@ def modal_new_trade(user, account, global_mode, prefilled_pair, confluence_score
         
         save_trade(user, account, trade_data)
         
-        # --- ENVÍO A TELEGRAM ---
-        # Preparamos datos bonitos para el mensaje
+        # --- ENVÍO DINÁMICO ---
+        # 1. Cargar Configuración del Usuario
+        user_config = get_user_config(user)
+        u_token = user_config.get("telegram_token")
+        u_chat = user_config.get("telegram_chat_id")
+
+        # 2. Enviar solo si tiene configurado
         tg_data = {
             "Par": par, "Direccion": direction, "Entry": entry_price, 
             "SL": sl_price, "TP": tp_price, "Risk": f"{risk_pct}% (${risk_usd:.0f})",
             "Lots": f"{lot_size:.2f}", "Notes": notes
         }
-        with st.spinner("Enviando alerta a Telegram... 📲"):
-            ok = send_telegram_alert(tg_data, img_path)
-            if ok: st.toast("¡Alerta enviada a Telegram!", icon="✈️")
-            else: st.toast("Guardado, pero faltan credenciales de Telegram.", icon="⚠️")
+        
+        if u_token and u_chat:
+            with st.spinner("Enviando a tu Telegram... 📲"):
+                ok = send_telegram_alert(tg_data, img_path, u_token, u_chat)
+                if ok: st.toast("¡Enviado!", icon="✈️")
+                else: st.toast("Error enviando Telegram", icon="❌")
+        else:
+            st.toast("Guardado (Sin Telegram configurado)", icon="💾")
         
         st.rerun()
 
