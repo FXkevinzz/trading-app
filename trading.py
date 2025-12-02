@@ -149,13 +149,13 @@ if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# --- DICCIONARIO DE AYUDAS ACTUALIZADO ---
-# Ahora "Trend" tiene una LISTA de imágenes para mostrar ambas.
+# --- DICCIONARIO DE AYUDAS ---
+# Imágenes configuradas como LISTAS [] para soportar múltiples fotos
 HELPER_DATA = {
     "Trend": {
-        "title": "Estructura de Mercado (Alcista y Bajista)",
-        "desc": "Identifica si estás en una tendencia Alcista (HH/HL) o Bajista (LH/LL).",
-        "images": ["trend img.jpg", "Bearish trend.jpg"] # AQUÍ ESTÁN LAS DOS
+        "title": "Estructura de Mercado",
+        "desc": "¿Estructura alcista (HH/HL) o bajista (LH/LL)?",
+        "images": ["trend img.jpg", "Bearish trend.jpg"] # Muestra AMBAS
     },
     "At AOI / Rejected": {
         "title": "Zona de Interés (AOI)",
@@ -351,7 +351,7 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # --- VISUAL HELPER CON LISTA DE IMÁGENES ---
+                    # --- VISUAL HELPER MEJORADO (Tamaño Reducido + Múltiples Imágenes) ---
                     if val and label in HELPER_DATA:
                         data = HELPER_DATA[label]
                         
@@ -362,13 +362,13 @@ if st.session_state.page == 'checklist':
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Iterar sobre la lista de imágenes (para mostrar 1 o 2)
+                        # Iterar sobre lista de imágenes
                         if "images" in data:
                             for img_name in data["images"]:
                                 img_path = get_local_image(img_name)
                                 if img_path:
-                                    # Use_container_width=True para máxima calidad responsiva
-                                    st.image(img_path, use_container_width=True)
+                                    # width=350 -> Hace la imagen mucho más pequeña y manejable
+                                    st.image(img_path, width=350) 
                                 else:
                                     st.caption(f"⚠️ Falta: foto/{img_name}")
 
@@ -392,7 +392,7 @@ if st.session_state.page == 'checklist':
                 st.toast("Abriendo modal de guardado...", icon="✅")
 
 # ==============================================================================
-# OTRAS PÁGINAS
+# OTRAS PÁGINAS (Placeholders)
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
@@ -400,3 +400,4 @@ elif st.session_state.page == 'dashboard':
     st.title("📊 Performance Dashboard")
 elif st.session_state.page == 'ai_mentor':
     st.title("🤖 AI Mentor")
+
