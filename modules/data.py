@@ -12,7 +12,7 @@ BRAIN_FILE = os.path.join(DATA_DIR, "brain_data.json")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# Lista Oficial de Activos (Centralizada)
+# Lista Oficial de Activos
 OFFICIAL_PAIRS = [
     "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF",
     "XAUUSD", "XAGUSD", "US30", "US100", "US500", "DE40", "BTCUSD", "ETHUSD",
@@ -57,7 +57,7 @@ def create_account(u, name, bal):
     save_json(ACCOUNTS_FILE, d)
     save_trade(u, name, None, init=True)
 
-@st.cache_data(ttl=2) # Cache bajo para ver actualizaciones rapido
+@st.cache_data(ttl=2)
 def get_balance_data(u, acc):
     d = load_json(ACCOUNTS_FILE)
     ini = d.get(u, {}).get(acc, 0.0)
@@ -66,8 +66,8 @@ def get_balance_data(u, acc):
     if os.path.exists(fp):
         try:
             df = pd.read_csv(fp)
-            # Asegurar columnas nuevas si el CSV es viejo
-            expected_cols = ["Fecha", "Par", "Direccion", "Status", "Resultado", "Dinero", "Ratio", "Notas", "Img_Antes", "Img_Despues"]
+            # Asegurar columnas nuevas
+            expected_cols = ["Fecha", "Par", "Direccion", "Status", "Resultado", "Dinero", "Ratio", "Notas", "Img_Antes", "Img_Despues", "Confluencia"]
             for col in expected_cols:
                 if col not in df.columns: df[col] = None
             
@@ -84,7 +84,7 @@ def save_trade(u, acc, data, init=False, index=None):
     folder = os.path.join(DATA_DIR, u)
     if not os.path.exists(folder): os.makedirs(folder)
     fp = os.path.join(folder, f"{acc}.csv".replace(" ", "_"))
-    cols = ["Fecha", "Par", "Direccion", "Status", "Resultado", "Dinero", "Ratio", "Notas", "Img_Antes", "Img_Despues"]
+    cols = ["Fecha", "Par", "Direccion", "Status", "Resultado", "Dinero", "Ratio", "Notas", "Img_Antes", "Img_Despues", "Confluencia"]
     
     if init:
         if not os.path.exists(fp): pd.DataFrame(columns=cols).to_csv(fp, index=False)
@@ -97,16 +97,13 @@ def save_trade(u, acc, data, init=False, index=None):
         
     if data:
         new_row = pd.DataFrame([data])
-        # Asegurar columnas
         for c in cols: 
             if c not in new_row.columns: new_row[c] = None
 
         if index is not None and not df.empty and index < len(df):
-            # ACTUALIZAR (UPDATE)
             for col in data.keys():
                 df.at[index, col] = data[col]
         else:
-            # NUEVO (INSERT)
             df = pd.concat([df, new_row], ignore_index=True)
             
         df.to_csv(fp, index=False)
