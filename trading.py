@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 import uuid
-import google.generativeai as genai
+import os
 from PIL import Image
 
 # ==============================================================================
-# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY)
+# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY "THE PERFECT TRADE")
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
@@ -94,16 +94,34 @@ def inject_custom_css():
             line-height: 1;
         }
         
-        /* --- AYUDA VISUAL (ALERTA) --- */
-        .visual-helper {
-            background-color: #111827;
+        /* --- AYUDA VISUAL (ALERTA DESPLEGABLE) --- */
+        .visual-helper-box {
+            background-color: #111827; /* Fondo más oscuro */
             border: 1px solid #374151;
+            border-left: 4px solid #10b981; /* Borde verde a la izquierda */
             border-radius: 8px;
             padding: 15px;
             margin-top: 10px;
             margin-bottom: 15px;
+            animation: fadeIn 0.3s ease-in-out;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .helper-title {
+            color: #10b981;
+            font-weight: 700;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .helper-text {
             color: #cbd5e1;
             font-size: 0.9rem;
+            line-height: 1.4;
         }
 
         /* --- BOTONES --- */
@@ -122,30 +140,61 @@ def inject_custom_css():
 inject_custom_css()
 
 # ==============================================================================
-# 2. LÓGICA Y DATOS (CON AYUDAS VISUALES)
+# 2. CONFIGURACIÓN DE ESTRATEGIA Y AYUDAS VISUALES
 # ==============================================================================
 
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# Diccionario de Ayudas Visuales (Texto en Español)
-VISUAL_AIDS = {
+# --- DICCIONARIO DE AYUDAS (TEXTO ESPAÑOL + NOMBRE DE IMAGEN EN CARPETA 'foto') ---
+# Asegúrate de poner imágenes con estos nombres en tu carpeta "foto"
+# Si no tienes la imagen, el código solo mostrará el texto.
+HELPER_DATA = {
     "Trend": {
-        "text": "**¿Tu estructura de mercado se ve así?**\n\nEl precio debe estar haciendo Altos Más Altos (HH) y Bajos Más Altos (HL) para compras, o viceversa para ventas.",
-        "img": "https://i.imgur.com/example_trend.png" # Placeholder, aquí iría tu imagen real
+        [cite_start]"title": "Estructura de Mercado [cite: 19, 23]",
+        "desc": "¿Tu estructura de mercado alcista o bajista se ve así?\nBusca Altos Más Altos (HH) y Bajos Más Altos (HL) para compras, o viceversa.",
+        "img": "trend.png" 
     },
     "At AOI / Rejected": {
-        "text": "**Validación de Zona**\n\nEl precio debe estar dentro o tocando la zona marcada en Semanal/Diario. ¡No entres si está flotando en medio de la nada!",
-        "img": None
+        [cite_start]"title": "Zona de Interés (AOI) [cite: 201]",
+        "desc": "¿El precio está tocando o dentro de la zona marcada?\nRecuerda: Si el precio está flotando lejos de la zona, NO es válido.",
+        "img": "aoi.png"
     },
     "Touching EMA": {
-        "text": "**Soporte Dinámico**\n\nLa EMA 50 debe actuar como un piso (compras) o techo (ventas) en este momento exacto.",
-        "img": None
+        [cite_start]"title": "Rechazo Dinámico (50 EMA) [cite: 281]",
+        "desc": "¿El precio está tocando o rechazando la línea de la EMA 50 en este momento?",
+        "img": "ema.png"
+    },
+    "Round Psych Level": {
+        [cite_start]"title": "Nivel Psicológico [cite: 231]",
+        "desc": "¿Hay un número redondo cerca (ej. 1.5000, 150.00, .500)?\nLos bancos usan estos niveles como imanes.",
+        "img": "psych.png"
+    },
+    "Rejection Structure": {
+        [cite_start]"title": "Estructura Previa [cite: 307]",
+        "desc": "¿El precio está rebotando en un Alto o Bajo anterior que ahora actúa como soporte/resistencia?",
+        "img": "structure.png"
     },
     "Candlestick Rejection": {
-        "text": "**Patrones de Rechazo**\n\nBusca mechas largas (Pinbar), Dojis o Envolventes justo en la zona.",
-        "img": None
+        [cite_start]"title": "Patrón de Velas [cite: 318]",
+        "desc": "¿Ves patrones de rechazo claros como Pinbars (Martillo), Dojis o Envolventes en la zona?",
+        "img": "candles.png"
+    },
+    "Break & Retest": {
+        [cite_start]"title": "Ruptura y Retesteo [cite: 410]",
+        "desc": "¿El precio rompió la zona y regresó para probarla antes de continuar?",
+        "img": "retest.png"
+    },
+    "SOS (Shift of Structure)": {
+        [cite_start]"title": "Cambio de Estructura (SOS) [cite: 460]",
+        "desc": "¿En temporalidad menor, el precio rompió el último alto/bajo validando el cambio de tendencia?",
+        "img": "sos.png"
+    },
+    "Engulfing candlestick": {
+        [cite_start]"title": "Vela Gatillo [cite: 322]",
+        "desc": "¿Tienes una vela envolvente clara que confirme la entrada?",
+        "img": "engulfing.png"
     }
 }
 
@@ -198,6 +247,13 @@ def handle_psych_logic(section_changed):
     else:
         if st.session_state.psych_selected_in == section_changed: st.session_state.psych_selected_in = None
 
+def get_local_image(filename):
+    """Busca la imagen en la carpeta 'foto'."""
+    path = os.path.join("foto", filename)
+    if os.path.exists(path):
+        return path
+    return None
+
 # ==============================================================================
 # 3. INTERFAZ
 # ==============================================================================
@@ -227,16 +283,16 @@ if st.session_state.page == 'checklist':
     if total >= 90: score_color = "#10b981"; status_txt = "🔥 Sniper Entry"
 
     # --- LAYOUT PRINCIPAL: 2 COLUMNAS (Checklist Izq | Score Der) ---
-    main_col, side_col = st.columns([3, 1], gap="large") # 3 partes para checklist, 1 para score
+    main_col, side_col = st.columns([3, 1], gap="large")
 
     # === COLUMNA IZQUIERDA: EL CHECKLIST ===
     with main_col:
         for sec_name, items in STRATEGY.items():
             current_sec_score = sec_scores.get(sec_name, 0)
             
-            # Caja Contenedora
+            # CAJA CONTENEDORA
             with st.container(border=True):
-                # Header Interno
+                # HEADER
                 st.markdown(f"""
                 <div class="section-header-row">
                     <div class="section-title">{sec_name}</div>
@@ -244,16 +300,17 @@ if st.session_state.page == 'checklist':
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Toggles
+                # LISTA DE TOGGLES
                 for label, pts in items:
                     key = f"{sec_name}_{label}"
                     
+                    # Logica bloqueo
                     disabled = False
                     if label == "Round Psych Level":
                         if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
                             disabled = True
 
-                    # Fila Flex
+                    # FILA FLEX
                     c1, c2 = st.columns([3, 1])
                     
                     with c1:
@@ -276,17 +333,29 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # --- AQUÍ ESTÁ TU "ALGO CURIOSO" (AYUDA VISUAL) ---
-                    # Si el toggle está activado Y tenemos ayuda para ese label
-                    if val and label in VISUAL_AIDS:
-                        help_data = VISUAL_AIDS[label]
+                    # --- AQUÍ LA MAGIA: VISUAL HELPER PARA TODOS ---
+                    # Se activa si el toggle está ON y existe ayuda para ese label
+                    if val and label in HELPER_DATA:
+                        data = HELPER_DATA[label]
+                        
+                        # Buscamos si existe imagen en la carpeta 'foto'
+                        img_path = get_local_image(data['img'])
+                        
+                        # Renderizamos la caja de ayuda
                         st.markdown(f"""
-                        <div class="visual-helper">
-                            {help_data['text']}
+                        <div class="visual-helper-box">
+                            <div class="helper-title">👁️ {data['title']}</div>
+                            <div class="helper-text">{data['desc']}</div>
                         </div>
                         """, unsafe_allow_html=True)
-                        # Si tuvieras una imagen real: st.image(help_data['img'])
-                        # st.image("https://via.placeholder.com/600x300.png?text=Ejemplo+Visual+Trend", use_container_width=True)
+                        
+                        # Si existe la imagen, la mostramos
+                        if img_path:
+                            st.image(img_path, use_container_width=True)
+                        else:
+                            # Mensaje de debug discreto si no hay imagen (opcional)
+                            # st.caption(f"(Sube '{data['img']}' a la carpeta 'foto' para ver referencia)")
+                            pass
 
                     # Separador visual
                     if label != items[-1][0]:
@@ -309,7 +378,7 @@ if st.session_state.page == 'checklist':
                 st.toast("Abriendo modal de guardado...", icon="✅")
 
 # ==============================================================================
-# OTRAS PÁGINAS
+# OTRAS PÁGINAS (Placeholders)
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
