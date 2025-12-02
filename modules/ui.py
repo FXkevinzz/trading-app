@@ -8,12 +8,11 @@ from modules.ai import analyze_multiframe, save_image_locally
 from modules.utils import send_telegram_alert, check_telegram_connection
 import pandas as pd
 
-# --- MODAL: CONFIGURACIÓN MÁGICA (NUEVO) ---
-@st.dialog("📲 Conectar Telegram")
+# --- MODAL: CONFIGURACIÓN MÁGICA (IGUAL) ---
+@st.dialog("⚙️ Conectar Telegram")
 def modal_user_settings(user):
     st.caption("Vincula tu cuenta para recibir alertas automáticas.")
     
-    # Cargar si ya tiene ID
     config = get_user_config(user)
     current_chat_id = config.get("telegram_chat_id", None)
     
@@ -24,34 +23,26 @@ def modal_user_settings(user):
             save_user_config(user, {"telegram_chat_id": None})
             st.rerun()
     else:
-        # Generar código único para este usuario
         if 'telegram_code' not in st.session_state:
             st.session_state.telegram_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
         
         code = st.session_state.telegram_code
-        
         st.markdown(f"""
         ### 1. Abre el bot
-        Busca **@TradingProBot** (o el nombre de tu bot) en Telegram.
-        
+        Busca el nombre de tu bot oficial en Telegram.
         ### 2. Envíale este código:
-        """)
-        st.code(code, language="text")
-        
+        """); st.code(code, language="text")
         st.markdown("### 3. Dale al botón verificar:")
         
         if st.button("🔄 YA ENVIÉ EL CÓDIGO", type="primary"):
             with st.spinner("Buscando tu mensaje..."):
                 found_id = check_telegram_connection(code)
                 if found_id:
-                    save_user_config(user, {"telegram_chat_id": found_id})
-                    st.balloons()
-                    st.success("¡Conectado exitosamente!")
-                    st.rerun()
+                    save_user_config(user, {"telegram_chat_id": found_id}); st.balloons(); st.success("¡Conectado!"); st.rerun()
                 else:
-                    st.error("No encontré el mensaje. Asegúrate de enviarlo al bot correcto y reintenta.")
+                    st.error("No encontré el mensaje. Reintenta.")
 
-# --- MODAL NUEVO TRADE (ENVÍO SIMPLE) ---
+# --- MODAL NUEVO TRADE (CALCULADORA CORREGIDA) ---
 @st.dialog("➕ REGISTRAR TRADE & CALCULADORA")
 def modal_new_trade(user, account, global_mode, prefilled_pair, confluence_score):
     st.markdown(f"""<div style="background:rgba(16, 185, 129, 0.1); border-left: 4px solid #10b981; padding:10px; margin-bottom:15px;"><strong style="color:#10b981;">💎 Score: {confluence_score}%</strong></div>""", unsafe_allow_html=True)
@@ -68,21 +59,24 @@ def modal_new_trade(user, account, global_mode, prefilled_pair, confluence_score
     with r1: bal = st.number_input("Balance ($)", value=10000.0, step=100.0)
     with r2: risk_pct = st.number_input("Riesgo (%)", value=1.0, step=0.1)
 
+    # --- VALORES REALISTAS PARA QUE LA CALCULADORA FUNCIONE ---
     p1, p2, p3 = st.columns(3)
-    with p1: entry_price = st.number_input("Entrada", format="%.5f")
-    with p2: sl_price = st.number_input("Stop Loss", format="%.5f")
-    with p3: tp_price = st.number_input("Take Profit", format="%.5f")
+    with p1: entry_price = st.number_input("Entrada", format="%.5f", value=1.08000)
+    with p2: sl_price = st.number_input("Stop Loss", format="%.5f", value=1.07900) # 10 pips SL
+    with p3: tp_price = st.number_input("Take Profit", format="%.5f", value=1.08250) # 25 pips TP
 
     lot_size = 0.0; risk_usd = bal*(risk_pct/100); pips = 0.0
-    if entry_price > 0 and sl_price > 0:
+    if entry_price > 0 and sl_price > 0 and entry_price != sl_price: # Se asegura que no es 0/0
         if "JPY" in par: mult=100
         elif "XAU" in par: mult=10 
         else: mult=10000
         pips = abs(entry_price-sl_price)*mult
         if pips>0: lot_size = risk_usd/(pips*(9 if "JPY" in par else 100 if "XAU" in par else 10))
-
+    
+    # Caja de Resultado
     st.markdown(f"""<div style="background-color:#0f172a; border:1px solid #334155; border-radius:10px; padding:15px; margin-top:10px; display:flex; justify-content:space-between;"><div><div style="color:#94a3b8; font-size:0.8rem;">LOTAJE SUGERIDO</div><div style="font-size:2rem; font-weight:900; color:#10b981;">{lot_size:.2f}</div></div><div style="text-align:right;"><div style="color:#e2e8f0;">Riesgo: ${risk_usd:.0f}</div><div style="color:#64748b; font-size:0.8rem;">{pips:.1f} pips</div></div></div><br>""", unsafe_allow_html=True)
 
+    # ... (Resto del código del modal)
     notes = st.text_area("Notas", placeholder="Plan...", height=100)
     img_file = st.file_uploader("Gráfico (Antes)", type=['png', 'jpg'])
     
@@ -102,28 +96,13 @@ def modal_new_trade(user, account, global_mode, prefilled_pair, confluence_score
         full_notes = f"Entry: {entry_price} | SL: {sl_price} | TP: {tp_price}\n{notes}"
         if 'temp_ai' in st.session_state: full_notes += f"\n\n[IA]: {st.session_state['temp_ai']}"
 
-        trade_data = {
-            "Fecha": str(datetime.now().date()), "Par": par, "Direccion": direction, 
-            "Status": "OPEN", "Resultado": "PENDING", "Dinero": 0.0, 
-            "Ratio": 0.0, "Notas": full_notes, "Img_Antes": img_path, "Img_Despues": None,
-            "Confluencia": confluence_score
-        }
-        
+        trade_data = {"Fecha": str(datetime.now().date()), "Par": par, "Direccion": direction, "Status": "OPEN", "Resultado": "PENDING", "Dinero": 0.0, "Ratio": 0.0, "Notas": full_notes, "Img_Antes": img_path, "Img_Despues": None, "Confluencia": confluence_score}
         save_trade(user, account, trade_data)
         
-        # --- ENVÍO SIMPLE (YA NO PIDE TOKENS) ---
-        user_config = get_user_config(user)
-        u_chat = user_config.get("telegram_chat_id") # Solo necesitamos el ID, el token es global
-
-        tg_data = {
-            "Par": par, "Direccion": direction, "Entry": entry_price, 
-            "SL": sl_price, "TP": tp_price, "Risk": f"{risk_pct}% (${risk_usd:.0f})",
-            "Lots": f"{lot_size:.2f}", "Notes": notes
-        }
-        
+        user_config = get_user_config(user); u_chat = user_config.get("telegram_chat_id")
+        tg_data = {"Par": par, "Direccion": direction, "Entry": entry_price, "SL": sl_price, "TP": tp_price, "Risk": f"{risk_pct}% (${risk_usd:.0f})", "Lots": f"{lot_size:.2f}", "Notes": notes}
         if u_chat:
-            with st.spinner("Enviando alerta..."):
-                send_telegram_alert(tg_data, img_path, u_chat) # Usamos token global implícito
+            with st.spinner("Enviando alerta..."): send_telegram_alert(tg_data, img_path, u_chat)
         
         st.rerun()
 
