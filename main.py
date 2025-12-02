@@ -118,12 +118,30 @@ def main_app():
     # --- PESTAÑAS PRINCIPALES ---
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
-    # TAB 1: OPERATIVA (COMPLETA RESTAURADA)
+    # TAB 1: OPERATIVA (CON LISTA DESPLEGABLE DE ACTIVOS)
     with tabs[0]:
         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
         c_mod = st.columns([1,2,1])
         with c_mod[1]: st.session_state.global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
-        st.markdown("---"); st.session_state.global_pair = st.text_input("ACTIVO GLOBAL", st.session_state.global_pair).upper()
+        st.markdown("---")
+        
+        # --- NUEVA LISTA OFICIAL DE ACTIVOS ---
+        OFFICIAL_PAIRS = [
+            "XAUUSD", "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF", # Majors
+            "US30", "US100", "US500", "DE40", # Índices
+            "BTCUSD", "ETHUSD", # Crypto
+            "GBPJPY", "EURJPY", "AUDJPY" # Cruces populares
+        ]
+        
+        # Lógica para mantener la selección si ya existe
+        curr_idx = 0
+        if st.session_state.global_pair in OFFICIAL_PAIRS:
+            curr_idx = OFFICIAL_PAIRS.index(st.session_state.global_pair)
+        
+        # Usamos selectbox en lugar de text_input
+        st.session_state.global_pair = st.selectbox("ACTIVO GLOBAL", OFFICIAL_PAIRS, index=curr_idx)
+        # -------------------------------------
+        
         st.markdown('</div><br>', unsafe_allow_html=True)
 
         r1_c1, r1_c2 = st.columns(2)
