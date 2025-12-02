@@ -12,8 +12,8 @@ from modules.utils import get_live_clock_html, render_cal_html
 from modules.ai import init_ai, chat_with_mentor
 import streamlit.components.v1 as components
 
-# 1. CONFIGURACIÓN
-st.set_page_config(page_title="Trading Pro Dashboard", layout="wide", page_icon="🦁")
+# 1. CONFIG
+st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
 init_filesystem()
 
 # 2. LOGIN
@@ -36,16 +36,16 @@ def login_screen():
 # 3. APP PRINCIPAL
 def main_app():
     user = st.session_state.user
-    inject_theme("Oscuro") # Inyecta el CSS nuevo
+    inject_theme("Oscuro")
     
     # Inicializar chat
     if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "Hola. Soy tu Mentor IA. ¿Analizamos tu rendimiento?"}]
+        st.session_state.messages = [{"role": "assistant", "content": "🦁 **Mentor IA:** Hola. He analizado tu bitácora. Sube un gráfico si quieres que revise tu análisis o pregúntame sobre psicología.", "image": None}]
 
     # --- SIDEBAR ---
     with st.sidebar:
         st.markdown(f"### 👤 {user.upper()}")
-        components.html(get_live_clock_html(), height=160) # Reloj Vivo
+        components.html(get_live_clock_html(), height=160)
         
         accs = get_user_accounts(user)
         sel_acc = st.selectbox("Cuenta Seleccionada", accs)
@@ -66,9 +66,7 @@ def main_app():
     # --- PESTAÑAS ---
     tab_op, tab_hist, tab_dash, tab_ai = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA"])
 
-    # ==========================================
-    # PESTAÑA 1: OPERATIVA (TU CHECKLIST)
-    # ==========================================
+    # 1. PESTAÑA OPERATIVA
     with tab_op:
         c_mod = st.columns([1,2,1])
         with c_mod[1]: 
@@ -84,7 +82,7 @@ def main_app():
 
         def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
 
-        # Lógica Original (Resumida para visualización, tu lógica completa sigue funcionando)
+        # Lógica Original
         with r1_c1:
             st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
             st.markdown(header("1. CONTEXTO MACRO"), unsafe_allow_html=True)
@@ -99,7 +97,6 @@ def main_app():
         total = s1 + s2
         st.markdown("<br>", unsafe_allow_html=True)
         
-        # HUD DE PUNTAJE
         col_hud, col_btn = st.columns([3, 1])
         with col_hud:
             st.markdown(f"""
@@ -111,9 +108,7 @@ def main_app():
             if st.button("🚀 EJECUTAR", type="primary", use_container_width=True):
                 modal_new_trade(user, sel_acc, global_mode, st.session_state.pair_selector, total)
 
-    # ==========================================
-    # PESTAÑA 2: HISTORIAL
-    # ==========================================
+    # 2. PESTAÑA HISTORIAL
     with tab_hist:
         if not df.empty:
             f1, f2 = st.columns([2, 1])
@@ -131,184 +126,114 @@ def main_app():
         else:
             st.info("No hay trades registrados.")
 
-    # ==========================================
-    # PESTAÑA 3: DASHBOARD PRO (ESTILO IMAGEN)
-    # ==========================================
+    # 3. PESTAÑA DASHBOARD PRO
     with tab_dash:
         st.markdown("### 📊 Trading Dashboard")
-        
-        # --- CÁLCULOS AVANZADOS ---
         net_pnl = 0; win_rate = 0; pf = 0; best_streak = 0; largest_win = 0; largest_loss = 0
         total_trades = 0; wins_count = 0; loss_count = 0
         
         if not df.empty:
-            # Básicos
             net_pnl = df['Dinero'].sum()
             closed = df[df['Status'] == 'CLOSED']
             total_trades = len(closed)
             wins = closed[closed['Resultado'] == 'WIN']
             losses = closed[closed['Resultado'] == 'LOSS']
-            wins_count = len(wins)
-            loss_count = len(losses)
-            
-            # Win Rate & PF
+            wins_count = len(wins); loss_count = len(losses)
             if total_trades > 0: win_rate = (wins_count / total_trades) * 100
-            gross_win = wins['Dinero'].sum()
-            gross_loss = abs(losses['Dinero'].sum())
+            gross_win = wins['Dinero'].sum(); gross_loss = abs(losses['Dinero'].sum())
             if gross_loss > 0: pf = gross_win / gross_loss
             else: pf = gross_win
-            
-            # Records
             if not wins.empty: largest_win = wins['Dinero'].max()
             if not losses.empty: largest_loss = losses['Dinero'].min()
-            
-            # Cálculo de Racha (Streak)
             current_streak = 0
             for res in closed['Resultado']:
-                if res == 'WIN':
-                    current_streak += 1
-                    best_streak = max(best_streak, current_streak)
-                else:
-                    current_streak = 0
+                if res == 'WIN': current_streak += 1; best_streak = max(best_streak, current_streak)
+                else: current_streak = 0
 
-        # --- SECCIÓN SUPERIOR: PNL GRANDE Y RESUMEN ---
         top_c1, top_c2, top_c3 = st.columns([2, 1, 1])
-        
-        # TARJETA GIGANTE PNL
         with top_c1:
             pnl_color = "text-green" if net_pnl >= 0 else "text-red"
-            st.markdown(f"""
-            <div class="dashboard-card">
-                <div class="sub-stat-label">Net Profit & Loss</div>
-                <div class="big-pnl {pnl_color}">${net_pnl:,.2f}</div>
-                <div style="margin-top:10px; color:#94a3b8;">{total_trades} trades completados</div>
-            </div>
-            """, unsafe_allow_html=True)
-            
-        # TARJETAS LATERALES (WIN RATE / PF)
-        with top_c2:
-            st.markdown(f"""
-            <div class="dashboard-card">
-                <div class="sub-stat-label">Win Rate</div>
-                <div class="sub-stat-value">{win_rate:.1f}%</div>
-                <div style="font-size:0.8rem; color:#10b981;">{wins_count} Wins</div>
-            </div>
-            """, unsafe_allow_html=True)
-        with top_c3:
-            st.markdown(f"""
-            <div class="dashboard-card">
-                <div class="sub-stat-label">Profit Factor</div>
-                <div class="sub-stat-value">{pf:.2f}</div>
-                <div style="font-size:0.8rem; color:#ef4444;">{loss_count} Losses</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Net Profit & Loss</div><div class="big-pnl {pnl_color}">${net_pnl:,.2f}</div><div style="margin-top:10px; color:#94a3b8;">{total_trades} trades completados</div></div>""", unsafe_allow_html=True)
+        with top_c2: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Win Rate</div><div class="sub-stat-value">{win_rate:.1f}%</div><div style="font-size:0.8rem; color:#10b981;">{wins_count} Wins</div></div>""", unsafe_allow_html=True)
+        with top_c3: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Profit Factor</div><div class="sub-stat-value">{pf:.2f}</div><div style="font-size:0.8rem; color:#ef4444;">{loss_count} Losses</div></div>""", unsafe_allow_html=True)
 
-        # --- SECCIÓN MEDIA: ESTADÍSTICAS RÁPIDAS ---
         m1, m2, m3, m4 = st.columns(4)
-        with m1:
-            st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Largest Win</div><div class="sub-stat-value text-green">${largest_win:,.2f}</div></div>""", unsafe_allow_html=True)
-        with m2:
-            st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Largest Loss</div><div class="sub-stat-value text-red">${largest_loss:,.2f}</div></div>""", unsafe_allow_html=True)
-        with m3:
-            st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Best Streak</div><div class="sub-stat-value">🔥 {best_streak}</div></div>""", unsafe_allow_html=True)
-        with m4:
-            st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Avg Confluence</div><div class="sub-stat-value">{(df['Confluencia'].mean() if not df.empty else 0):.0f}%</div></div>""", unsafe_allow_html=True)
+        with m1: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Largest Win</div><div class="sub-stat-value text-green">${largest_win:,.2f}</div></div>""", unsafe_allow_html=True)
+        with m2: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Largest Loss</div><div class="sub-stat-value text-red">${largest_loss:,.2f}</div></div>""", unsafe_allow_html=True)
+        with m3: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Best Streak</div><div class="sub-stat-value">🔥 {best_streak}</div></div>""", unsafe_allow_html=True)
+        with m4: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Avg Confluence</div><div class="sub-stat-value">{(df['Confluencia'].mean() if not df.empty else 0):.0f}%</div></div>""", unsafe_allow_html=True)
 
-        # --- SECCIÓN INFERIOR: CALENDARIO Y RESUMEN SEMANAL ---
-        st.markdown("#### 📅 Trading Calendar")
+        st.markdown("#### 📅 Calendar")
         c_cal, c_week = st.columns([3, 1])
-        
-        # Lógica del Calendario
         d = st.session_state.get('cal_date', datetime.now())
-        y, m = d.year, d.month
-        
-        # Preparar datos
-        day_pnl = {}
-        if not df.empty:
-            try:
-                df['Fecha'] = pd.to_datetime(df['Fecha'])
-                mask = (df['Fecha'].dt.year == y) & (df['Fecha'].dt.month == m)
-                day_pnl = df[mask].groupby(df['Fecha'].dt.day)['Dinero'].sum().to_dict()
-            except: pass
-
         with c_cal:
-            # Navegación
             nc1, nc2, nc3 = st.columns([1, 6, 1])
             with nc1: 
                 if st.button("◀"): st.session_state['cal_date'] = d.replace(month=d.month-1) if d.month>1 else d.replace(year=d.year-1, month=12); st.rerun()
             with nc2: st.markdown(f"<h3 style='text-align:center; margin:0;'>{d.strftime('%B %Y')}</h3>", unsafe_allow_html=True)
             with nc3: 
                 if st.button("▶"): st.session_state['cal_date'] = d.replace(month=d.month+1) if d.month<12 else d.replace(year=d.year+1, month=1); st.rerun()
-            
-            # Grid del Calendario
-            cal = calendar.Calendar(firstweekday=0)
-            month_days = cal.monthdayscalendar(y, m)
-            
-            # Cabecera Días
-            cols = st.columns(7)
-            days_header = ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
-            for idx, col in enumerate(cols):
-                col.markdown(f"<div style='text-align:center; color:#64748b; font-weight:bold; font-size:0.8rem;'>{days_header[idx]}</div>", unsafe_allow_html=True)
-            
-            # Días
-            for week in month_days:
-                cols = st.columns(7)
-                for idx, day in enumerate(week):
-                    with cols[idx]:
-                        if day == 0:
-                            st.markdown("<div style='min-height:80px;'></div>", unsafe_allow_html=True)
-                        else:
-                            val = day_pnl.get(day, 0)
-                            color_day = "#10b981" if val > 0 else "#ef4444" if val < 0 else "#64748b"
-                            bg_day = "rgba(16, 185, 129, 0.1)" if val > 0 else "rgba(239, 68, 68, 0.1)" if val < 0 else "#1e293b"
-                            border_day = color_day if val != 0 else "#2a3655"
-                            
-                            st.markdown(f"""
-                            <div class="cal-day-box" style="background:{bg_day}; border-color:{border_day};">
-                                <div style="color:#94a3b8; font-size:0.8rem;">{day}</div>
-                                <div style="color:{color_day}; font-weight:bold; text-align:right;">
-                                    {f"${val:,.0f}" if val != 0 else "-"}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-
+            html_cal, _, _ = render_cal_html(df, True)
+            st.markdown(html_cal, unsafe_allow_html=True)
         with c_week:
-            st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True) # Espaciador
+            st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
             st.markdown("##### Weekly Summary")
-            # Simulación de semanas (Podríamos hacerlo real agrupando df)
-            weeks = ["Week 1", "Week 2", "Week 3", "Week 4"]
-            for wk in weeks:
-                st.markdown(f"""
-                <div class="dashboard-card" style="padding:10px; margin-bottom:8px; min-height:60px;">
-                    <div style="display:flex; justify-content:space-between;">
-                        <span style="color:#94a3b8; font-size:0.8rem;">{wk}</span>
-                        <span style="color:#10b981; font-weight:bold;">$0.00</span>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
+            for wk in ["Week 1", "Week 2", "Week 3", "Week 4"]:
+                st.markdown(f"""<div class="dashboard-card" style="padding:10px; margin-bottom:8px; min-height:60px;"><div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8; font-size:0.8rem;">{wk}</span><span style="color:#10b981; font-weight:bold;">$0.00</span></div></div>""", unsafe_allow_html=True)
 
     # ==========================================
-    # PESTAÑA 4: MENTOR IA
+    # PESTAÑA 4: MENTOR IA (REDSEÑADA)
     # ==========================================
     with tab_ai:
-        st.markdown("### 🧠 Mentor IA")
         if not init_ai():
             st.error("⚠️ Configura GEMINI_KEY en Secrets")
         else:
-            chat_container = st.container(height=400)
+            # Layout de Chat Pro
+            st.markdown("### 🧠 Mentor Inteligente")
+            
+            # 1. ÁREA DE CHAT (Scrollable)
+            chat_container = st.container(height=500)
+            
+            # 2. MOSTRAR MENSAJES
             with chat_container:
                 for msg in st.session_state.messages:
-                    with st.chat_message(msg["role"]): st.markdown(msg["content"])
-            if prompt := st.chat_input("Escribe tu pregunta..."):
-                st.session_state.messages.append({"role": "user", "content": prompt})
-                with chat_container:
-                    with st.chat_message("user"): st.markdown(prompt)
-                with chat_container:
-                    with st.chat_message("assistant"):
-                        with st.spinner("Pensando..."):
-                            resp = chat_with_mentor(prompt, df)
-                            st.markdown(resp)
-                st.session_state.messages.append({"role": "assistant", "content": resp})
+                    with st.chat_message(msg["role"], avatar="🦁" if msg["role"]=="assistant" else "👤"):
+                        if msg.get("image"):
+                            st.image(msg["image"], width=250)
+                        st.markdown(msg["content"])
+
+            # 3. ZONA DE INPUT (ESTILO COMANDO)
+            st.markdown("---")
+            col_upl, col_txt = st.columns([1, 4])
+            
+            # Uploader en un Expander para no ensuciar
+            with col_upl:
+                with st.popover("📸 Adjuntar", use_container_width=True):
+                    img_upload = st.file_uploader("Subir Gráfico", type=['png', 'jpg'], key="chat_img")
+            
+            # Input de texto
+            with col_txt:
+                if prompt := st.chat_input("Escribe tu consulta al Mentor..."):
+                    # a) Guardar mensaje usuario
+                    user_msg = {"role": "user", "content": prompt, "image": img_upload}
+                    st.session_state.messages.append(user_msg)
+                    
+                    # Mostrar inmediatamente en el chat
+                    with chat_container:
+                        with st.chat_message("user", avatar="👤"):
+                            if img_upload: st.image(img_upload, width=250)
+                            st.markdown(prompt)
+
+                    # b) Pensar y Responder
+                    with chat_container:
+                        with st.chat_message("assistant", avatar="🦁"):
+                            with st.spinner("Analizando gráfico y datos..."):
+                                response = chat_with_mentor(prompt, df, img_upload)
+                                st.markdown(response)
+                    
+                    # c) Guardar respuesta
+                    st.session_state.messages.append({"role": "assistant", "content": response, "image": None})
+                    st.rerun() # Refrescar para limpiar uploader si se usó
 
 if 'user' not in st.session_state: st.session_state.user = None
 if st.session_state.user: main_app()
