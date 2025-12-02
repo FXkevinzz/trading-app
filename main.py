@@ -41,7 +41,7 @@ def main_app():
         sel_acc = st.selectbox("Cuenta", accs)
         ini, act, df = get_balance_data(user, sel_acc)
         
-        # Balance Card
+        # Balance
         pnl_total = act - ini
         color_pnl = "#10b981" if pnl_total >= 0 else "#ef4444"
         st.markdown(f"""
@@ -52,12 +52,9 @@ def main_app():
         </div>""", unsafe_allow_html=True)
         
         st.markdown("---")
-        # Selector de Modo basado en el PDF
-        mode = st.radio("Estrategia (Cheat Sheet)", ["Swing (W + D + 4H)", "Intraday (D + 4H)", "Scalping (4H + 2H + 1H)"])
-        
         if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
 
-    # DASHBOARD SUPERIOR
+    # DASHBOARD
     st.markdown("### 📊 Dashboard Ejecutivo")
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)
     win_rate = 0
@@ -66,198 +63,165 @@ def main_app():
         wins = len(closed[closed['Resultado'] == 'WIN'])
         if len(closed) > 0: win_rate = (wins / len(closed)) * 100
         with kpi1: st.metric("Win Rate", f"{win_rate:.1f}%")
-        with kpi2: st.metric("Trades Totales", len(df))
+        with kpi2: st.metric("Trades", len(df))
         with kpi3: st.metric("Mejor Trade", f"${df['Dinero'].max():,.0f}" if not df.empty else "$0")
         with kpi4: st.metric("Peor Trade", f"${df['Dinero'].min():,.0f}" if not df.empty else "$0")
 
-    tab_op, tab_hist = st.tabs(["🚀 OPERATIVA (CHECKLIST OFICIAL)", "📜 HISTORIAL"])
+    # --- PESTAÑAS PRINCIPALES ---
+    tab_op, tab_hist = st.tabs(["🚀 OPERATIVA (TU ESTRATEGIA)", "📜 HISTORIAL"])
 
-    # --- PESTAÑA OPERATIVA: CHECKLIST DEL PDF ---
+    # 1. PESTAÑA OPERATIVA (RECUPERADA AL 100%)
     with tab_op:
-        # 1. Configuración Inicial
+        # Configuración Superior
+        c_mod = st.columns([1,2,1])
+        with c_mod[1]: 
+            # Selector de Modo Original
+            global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
+        
         c_sel, c_info = st.columns([1, 2])
         with c_sel:
             curr_pair = st.selectbox("ACTIVO", OFFICIAL_PAIRS)
         with c_info:
             time_str, sess, status, col_st = get_market_status()
-            st.markdown(f"""
-            <div style="margin-top: 10px;">
-                <b>Sesión:</b> {sess} | <b>Estado:</b> <span style='color:{col_st}'><b>{status}</b></span>
-            </div>
-            """, unsafe_allow_html=True)
-
-        st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
-        st.markdown(f"<h4 style='color:var(--accent); border-bottom:1px solid var(--border-color); padding-bottom:5px;'>📋 CONFLUENCIAS: {mode.upper()}</h4>", unsafe_allow_html=True)
-        
-        total_score = 0
-        
-        # === LÓGICA SWING (W + D + 4H) - Páginas 31-32 del PDF ===
-        if "Swing" in mode:
-            col_a, col_b, col_c = st.columns(3)
-            
-            with col_a:
-                st.markdown("**1. CONTEXTO MACRO (W/D)**")
-                # Semanal / Diario Mix
-                s_w_aoi = st.checkbox("Rechazo W AOI (+10%)") 
-                s_d_aoi = st.checkbox("Rechazo D AOI (+10%)")
-                s_w_ema = st.checkbox("Rechazo W 50 EMA (+5%)")
-                s_d_ema = st.checkbox("Rechazo D 50 EMA (+5%)")
-                s_psych = st.checkbox("Nivel Psicológico Redondo (+5%)")
-                
-                score_a = (10 if s_w_aoi else 0) + (10 if s_d_aoi else 0) + \
-                          (5 if s_w_ema else 0) + (5 if s_d_ema else 0) + (5 if s_psych else 0)
-
-            with col_b:
-                st.markdown("**2. ESTRUCTURA & PATRONES**")
-                s_w_str = st.checkbox("Rechazo Estructura Previa W (+10%)")
-                s_d_str = st.checkbox("Rechazo Estructura Previa D (+10%)")
-                s_w_cnd = st.checkbox("Rechazo Vela W (+10%)")
-                s_d_cnd = st.checkbox("Rechazo Vela D (+10%)")
-                s_pat = st.checkbox("Patrón (H&S, Doble Suelo/Techo) (+10%)")
-                
-                score_b = (10 if s_w_str else 0) + (10 if s_d_str else 0) + \
-                          (10 if s_w_cnd else 0) + (10 if s_d_cnd else 0) + (10 if s_pat else 0)
-
-            with col_c:
-                st.markdown("**3. EJECUCIÓN (4H)**")
-                s_4h_ema = st.checkbox("4H 50 EMA (+5%)")
-                s_4h_cnd = st.checkbox("4H Rechazo Vela (+10%)")
-                s_4h_str = st.checkbox("4H Rechazo Estructura (+5%)")
-                s_4h_pat = st.checkbox("4H Patrón (+10%)")
-                
-                score_c = (5 if s_4h_ema else 0) + (10 if s_4h_cnd else 0) + \
-                          (5 if s_4h_str else 0) + (10 if s_4h_pat else 0)
-            
-            total_score = score_a + score_b + score_c
-
-        # === LÓGICA INTRADAY (D + 4H) - Página 32 del PDF ===
-        elif "Intraday" in mode:
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.markdown("**1. CONTEXTO DIARIO (D)**")
-                i_d_aoi = st.checkbox("Rechazo D AOI (+10%)")
-                i_d_ema = st.checkbox("Rechazo D 50 EMA (+5%)")
-                i_psych = st.checkbox("Nivel Psicológico (+5%)")
-                i_d_str = st.checkbox("Rechazo Estructura Previa D (+10%)")
-                i_d_cnd = st.checkbox("Rechazo Vela D (+10%)")
-                i_d_pat = st.checkbox("Patrón D (+10%)")
-                
-                score_a = (10 if i_d_aoi else 0) + (5 if i_d_ema else 0) + (5 if i_psych else 0) + \
-                          (10 if i_d_str else 0) + (10 if i_d_cnd else 0) + (10 if i_d_pat else 0)
-
-            with col_b:
-                st.markdown("**2. CONTEXTO 4H**")
-                i_4_aoi = st.checkbox("Rechazo 4H AOI (+5%)")
-                i_4_ema = st.checkbox("Rechazo 4H 50 EMA (+5%)")
-                i_4_str = st.checkbox("Rechazo Estructura Previa 4H (+5%)")
-                i_4_cnd = st.checkbox("Rechazo Vela 4H (+10%)")
-                i_4_pat = st.checkbox("Patrón 4H (+10%)")
-                
-                score_b = (5 if i_4_aoi else 0) + (5 if i_4_ema else 0) + (5 if i_4_str else 0) + \
-                          (10 if i_4_cnd else 0) + (10 if i_4_pat else 0)
-            
-            total_score = score_a + score_b
-
-        # === LÓGICA SCALPING (4H + 2H + 1H) - Página 33 del PDF ===
-        else:
-            col_a, col_b, col_c = st.columns(3)
-            with col_a:
-                st.markdown("**1. CONTEXTO 4H**")
-                sc_4_aoi = st.checkbox("4H AOI (+5%)")
-                sc_4_ema = st.checkbox("4H 50 EMA (+5%)")
-                sc_psy = st.checkbox("Psicológico (+5%)")
-                sc_4_str = st.checkbox("4H Estructura (+5%)")
-                sc_4_cnd = st.checkbox("4H Vela (+5%)")
-                
-                score_a = (5 if sc_4_aoi else 0) + (5 if sc_4_ema else 0) + (5 if sc_psy else 0) + \
-                          (5 if sc_4_str else 0) + (5 if sc_4_cnd else 0)
-
-            with col_b:
-                st.markdown("**2. CONTEXTO 2H**")
-                sc_2_aoi = st.checkbox("2H AOI (+5%)")
-                sc_2_ema = st.checkbox("2H 50 EMA (+5%)")
-                sc_2_str = st.checkbox("2H Estructura (+5%)")
-                sc_2_cnd = st.checkbox("2H Vela (+5%)")
-                
-                score_b = (5 if sc_2_aoi else 0) + (5 if sc_2_ema else 0) + \
-                          (5 if sc_2_str else 0) + (5 if sc_2_cnd else 0)
-
-            with col_c:
-                st.markdown("**3. CONTEXTO 1H**")
-                sc_1_aoi = st.checkbox("1H AOI (+5%)")
-                sc_1_ema = st.checkbox("1H 50 EMA (+5%)")
-                sc_1_str = st.checkbox("1H Estructura (+5%)")
-                sc_1_cnd = st.checkbox("1H Vela (+5%)")
-                
-                score_c = (5 if sc_1_aoi else 0) + (5 if sc_1_ema else 0) + \
-                          (5 if sc_1_str else 0) + (5 if sc_1_cnd else 0)
-            
-            total_score = score_a + score_b + score_c
+            st.markdown(f"<div style='margin-top:10px;'><b>Sesión:</b> {sess} | <b>Estado:</b> <span style='color:{col_st}'><b>{status}</b></span></div>", unsafe_allow_html=True)
 
         st.markdown("---")
-        
-        # === GATILLO DE ENTRADA (MANDATORIOS DEL PDF) ===
-        st.markdown("##### 🔫 GATILLO DE ENTRADA (Obligatorios)")
-        c_trig1, c_trig2, c_trig3 = st.columns(3)
-        with c_trig1: 
-            trig_sos = st.checkbox("⚡ Cambio de Estructura (SOS) (+10%)")
-        with c_trig2: 
-            trig_eng = st.checkbox("🕯️ Vela Envolvente (+10%)")
-        with c_trig3:
-            trig_rr = st.checkbox("💰 Ratio Riesgo/Beneficio > 1:2.5")
+
+        # --- AQUÍ ESTÁ TU LÓGICA ORIGINAL RECUPERADA ---
+        r1_c1, r1_c2 = st.columns(2)
+        r2_c1, r2_c2 = st.columns(2)
+        total = 0
+        sos, eng, rr = False, False, False
+
+        def header(t): return f"<div class='strategy-header'>{t}</div>"
+
+        # LÓGICA SWING ORIGINAL
+        if "Swing" in global_mode:
+            # SEMANAL
+            with r1_c1:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
+                tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
+                w_sc = sum([
+                    st.checkbox("Rechazo AOI (+10%)", key="w1")*10,
+                    st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="w4")*10,
+                    st.checkbox("EMA 50 (+5%)", key="w5")*5,
+                    st.checkbox("Nivel Psicológico (+5%)", key="w6")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
             
-        trig_pat = st.checkbox("Patrón de Entrada (+5%)")
-        
-        entry_score = (10 if trig_sos else 0) + (10 if trig_eng else 0) + (5 if trig_pat else 0)
-        final_total = total_score + entry_score
-        
-        st.markdown('</div>', unsafe_allow_html=True)
-        
-        # --- VISUALIZACIÓN DEL PUNTAJE Y BOTÓN ---
+            # DIARIO
+            with r1_c2:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
+                td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
+                d_sc = sum([
+                    st.checkbox("Rechazo AOI (+10%)", key="d1")*10,
+                    st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="d4")*10,
+                    st.checkbox("EMA 50 (+5%)", key="d5")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            # 4 HORAS
+            with r2_c1:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
+                t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
+                h4_sc = sum([
+                    st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="h2")*10,
+                    st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5,
+                    st.checkbox("EMA 50 (+5%)", key="h4")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # GATILLO
+            with r2_c2:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
+                if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
+                
+                sos = st.checkbox("⚡ SOS (Obligatorio)")
+                eng = st.checkbox("🕯️ Envolvente (Obligatorio)")
+                pat_ent = st.checkbox("Patrón en Entrada (+5%)")
+                rr = st.checkbox("💰 Ratio > 1:2.5")
+                
+                entry_score = (10 if sos else 0) + (10 if eng else 0) + (5 if pat_ent else 0)
+                total = w_sc + d_sc + h4_sc + entry_score
+
+        # LÓGICA SCALPING ORIGINAL
+        else: 
+            with r1_c1:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
+                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
+                w_sc = sum([
+                    st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Rechazo Estructura (+5%)", key="sc2")*5,
+                    st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5,
+                    st.checkbox("Psicológico (+5%)", key="sc5")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r1_c2:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("2. CONTEXTO (2H)"), unsafe_allow_html=True)
+                t2 = st.selectbox("Trend 2H", ["Alcista", "Bajista"], key="s2t")
+                d_sc = sum([
+                    st.checkbox("AOI (+5%)", key="s21")*5, st.checkbox("Rechazo Estructura (+5%)", key="s22")*5,
+                    st.checkbox("Vela (+5%)", key="s23")*5, st.checkbox("Patrón (+5%)", key="s24")*5,
+                    st.checkbox("EMA 50 (+5%)", key="s25")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r2_c1:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("3. EJECUCIÓN (1H)"), unsafe_allow_html=True)
+                t1 = st.selectbox("Trend 1H", ["Alcista", "Bajista"], key="s1t")
+                h4_sc = sum([
+                    st.checkbox("Vela (+5%)", key="s31")*5, st.checkbox("Patrón (+5%)", key="s32")*5,
+                    st.checkbox("Rechazo Estructura (+5%)", key="s33")*5, st.checkbox("EMA 50 (+5%)", key="s34")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r2_c2:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("4. GATILLO (M15)"), unsafe_allow_html=True)
+                if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
+                sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Vela Entrada")
+                pat_ent = st.checkbox("Patrón Entrada (+5%)"); rr = st.checkbox("💰 Ratio")
+                entry_score = sum([sos*10, eng*10, pat_ent*5])
+                total = w_sc + d_sc + h4_sc + entry_score + 15
+
+        # --- BARRA DE PUNTAJE Y BOTÓN DE EJECUCIÓN ---
         st.markdown("<br>", unsafe_allow_html=True)
-        col_bar, col_btn = st.columns([3, 1])
+        valid = sos and eng and rr
+        msg, css_cl = "💤 ESPERAR", "status-warning"
         
-        # Validaciones del PDF
-        is_valid = trig_sos and trig_eng and trig_rr
+        # Lógica de Estado Original
+        if not sos: msg, css_cl = "⛔ FALTA SOS", "status-stop"
+        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
+        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
+        elif total >= 60 and valid: msg, css_cl = "✅ VÁLIDO", "status-sniper"
         
-        with col_bar:
-            # Lógica de Calificación del PDF (Página 37)
-            grade = "F"
-            if final_total >= 90: grade = "A (90%+)"
-            elif final_total >= 80: grade = "B (80%+)"
-            elif final_total >= 70: grade = "C (70%+)"
-            elif final_total >= 60: grade = "D (60%+)"
-            
-            msg_cls = "status-stop"
-            if final_total >= 60 and is_valid: msg_cls = "status-warning"
-            if final_total >= 80 and is_valid: msg_cls = "status-sniper"
-            
-            # Si faltan los obligatorios, mostramos error aunque el puntaje sea alto
-            if not is_valid:
-                msg_txt = "⛔ FALTAN REGLAS DE ORO (SOS/VELA/RR)"
-                msg_cls = "status-stop"
-            else:
-                msg_txt = f"CALIFICACIÓN: {grade}"
+        # HUD DE PUNTAJE
+        st.markdown(f"""
+        <div class="hud-container">
+            <div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div>
+            <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div>
+        </div>
+        """, unsafe_allow_html=True)
+        st.progress(min(total, 100))
 
-            st.markdown(f"""
-            <div style="display:flex; align-items:center; gap:15px;">
-                <div style="font-size:2.5rem; font-weight:900; color:var(--text-main);">{final_total}%</div>
-                <div class="{msg_cls}" style="flex-grow:1; text-align:center; font-size:1.1rem;">{msg_txt}</div>
-            </div>
-            """, unsafe_allow_html=True)
-            st.progress(min(final_total, 100))
-
-        with col_btn:
-            # BOTÓN DE EJECUCIÓN
-            # Se permite hacer click siempre, pero visualmente te avisa
-            btn_type = "primary" if (is_valid and final_total >= 60) else "secondary"
-            if st.button("🚀 EJECUTAR TRADE", type=btn_type, use_container_width=True):
-                modal_new_trade(user, sel_acc, mode, curr_pair, final_total)
+        # BOTÓN PARA ABRIR EL MODAL DE REGISTRO
+        # Solo sugerimos ejecutar si el puntaje es decente, pero dejamos el botón activo
+        if st.button("🚀 EJECUTAR TRADE", type="primary" if total >= 60 else "secondary", use_container_width=True):
+            modal_new_trade(user, sel_acc, global_mode, curr_pair, total)
 
     # --- PESTAÑA HISTORIAL ---
     with tab_hist:
         if not df.empty:
-            # Filtros básicos
+            # Filtros
             f1, f2 = st.columns([2, 1])
             with f1: f_pair = st.text_input("Buscar Activo", placeholder="EURUSD...")
             with f2: f_res = st.multiselect("Resultado", ["WIN", "LOSS", "BE", "PENDING"])
