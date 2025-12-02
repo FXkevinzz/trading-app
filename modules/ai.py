@@ -3,7 +3,7 @@ import google.generativeai as genai
 import os
 import json
 from datetime import datetime
-from modules.data import BRAIN_FILE, IMG_DIR  # Importamos constantes
+from modules.data import BRAIN_FILE, IMG_DIR 
 
 def init_ai():
     """Inicializa la API."""
@@ -26,31 +26,10 @@ def save_image_locally(image_obj, filename):
         return path
     except: return None
 
-def save_to_brain(analysis_text, pair, result, mode, images_list=None):
-    memory = load_brain()
-    saved_paths = []
-    
-    if images_list:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        for idx, img in enumerate(images_list):
-            fname = f"{pair}_{result}_{timestamp}_{idx}.png"
-            path = save_image_locally(img, fname)
-            if path: saved_paths.append(path)
-
-    new_mem = {
-        "date": str(datetime.now()), "pair": pair, "mode": mode,
-        "result": result, "analysis": analysis_text, "images": saved_paths
-    }
-    memory.append(new_mem)
-    
-    try:
-        with open(BRAIN_FILE, "w") as f: json.dump(memory, f, indent=4)
-        load_brain.clear()
-    except: pass
-
+# --- FUNCIÓN DE ANÁLISIS DE IMÁGENES (PARA EL MODAL) ---
 def analyze_multiframe(images_data, mode, pair):
+    # (Esta función se mantiene igual que antes para el análisis visual)
     brain = load_brain()
-    # Contexto (Few-Shot Learning)
     context = ""
     if brain:
         wins = [x for x in brain if x.get('result') == 'WIN']
@@ -82,21 +61,54 @@ def analyze_multiframe(images_data, mode, pair):
     content = [prompt]
     for data in images_data: content.append(data['img'])
 
-    # Intento con modelos 2.0
-    modelos = ['gemini-2.0-pro-exp', 'gemini-2.0-flash']
+    modelos = ['gemini-2.0-flash', 'gemini-1.5-flash']
     for m in modelos:
         try:
             model = genai.GenerativeModel(m)
             return model.generate_content(content).text
         except: continue
             
-    return "Error de conexión IA. Verifica API Key o cuotas."
+    return "Error de conexión IA. Verifica API Key."
 
-def generate_audit_report(df):
-    if df.empty: return "Sin datos para auditar."
-    csv_txt = df.to_string()
-    prompt = f"Audita estos trades (Riesgo Prop Firm):\n{csv_txt}\nDetecta: Fugas de Capital, Zonas de Poder, Consejo Psicológico."
+# --- NUEVA FUNCIÓN: CHAT MENTOR ---
+def chat_with_mentor(user_input, trade_history_df):
+    """
+    Función de chat que recibe el mensaje del usuario y el historial de trades (DataFrame).
+    """
+    # 1. Convertir historial a texto para que la IA lo entienda
+    history_context = "HISTORIAL DE TRADES DEL USUARIO (CSV):\n"
+    if not trade_history_df.empty:
+        # Pasamos las últimas 20 operaciones para no saturar
+        history_context += trade_history_df.tail(20).to_string()
+    else:
+        history_context += "El usuario aún no tiene trades registrados."
+
+    # 2. El Prompt del Mentor (Personalidad Alex G / Cheat Sheet)
+    system_prompt = f"""
+    Eres el MENTOR DE TRADING personal de este usuario. Te basas estrictamente en la estrategia "Set & Forget" y la "Cheat Sheet" de Alex G.
+    
+    TUS REGLAS DE ORO:
+    1. Solo operamos Lunes-Jueves (Viernes es riesgo).
+    2. Solo operamos Londres y NY (11pm - 11am EST).
+    3. Buscamos SIEMPRE confluencia de 3 temporalidades (W+D+4H o D+4H+1H).
+    4. Psicología: Eres firme pero empático. Si el usuario pierde por romper reglas, regáñalo constructivamente. Si gana siguiendo el plan, felicítalo.
+    
+    CONTEXTO ACTUAL DEL USUARIO:
+    {history_context}
+    
+    INSTRUCCIONES:
+    - Analiza sus datos si te pregunta sobre su rendimiento.
+    - Si te dice que se siente mal/ansioso, dale consejos de psicología de trading (Mark Douglas/Trading in the Zone).
+    - Sé conciso, directo y profesional. Usa emojis ocasionalmente.
+    - Si detectas que está operando contra tendencia en su historial, házselo saber.
+    
+    PREGUNTA DEL USUARIO: {user_input}
+    """
+
+    # 3. Llamada a Gemini
     try:
         model = genai.GenerativeModel('gemini-2.0-flash')
-        return model.generate_content(prompt).text
-    except: return "Error en Auditoría."
+        response = model.generate_content(system_prompt)
+        return response.text
+    except Exception as e:
+        return f"Error conectando con el Mentor IA: {str(e)}"
