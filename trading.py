@@ -26,42 +26,26 @@ def inject_custom_css():
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
-        /* --- GRID DE RESUMEN (LAS 5 TARJETAS SUPERIORES) --- */
-        .summary-grid-container {
-            display: flex;
+        /* --- GRID DE RESUMEN --- */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
             gap: 10px;
-            margin-bottom: 20px;
-            justify-content: space-between;
+            margin-bottom: 25px;
         }
-        
         .mini-card {
             background-color: #1e293b;
             border: 1px solid #334155;
             border-radius: 8px;
-            padding: 15px 5px;
+            padding: 10px 5px;
             text-align: center;
-            flex: 1; /* Ocupar espacio igual */
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         }
-        
-        .mini-title {
-            font-size: 0.7rem;
-            font-weight: 800;
-            color: #e2e8f0;
-            text-transform: uppercase;
-            margin-bottom: 5px;
-            letter-spacing: 0.5px;
-        }
-        
-        .mini-val {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: #34d399; /* Verde */
-        }
+        .mini-title { font-size: 0.65rem; color: #cbd5e1; font-weight: 700; text-transform: uppercase; margin-bottom: 5px; }
+        .mini-val { font-size: 1.2rem; color: #34d399; font-weight: 800; }
 
-        /* --- CONTENEDOR DE CHECKLIST (CAJA PRINCIPAL) --- */
+        /* --- CONTENEDOR DE SECCIONES --- */
         div[data-testid="stBorderDomWrapper"] {
-            background-color: #1e293b; /* Slate 800 */
+            background-color: #1e293b; 
             border: 1px solid #334155;
             border-radius: 12px;
             padding: 24px;
@@ -69,151 +53,116 @@ def inject_custom_css():
             margin-bottom: 20px;
         }
 
-        /* --- HEADER DE CADA SECCIÓN (WEEKLY, DAILY...) --- */
-        .section-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-        
-        .section-title {
-            font-size: 0.9rem;
-            font-weight: 800;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .section-title { font-size: 0.9rem; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-score { font-size: 1.2rem; font-weight: 800; color: #34d399; }
 
-        .section-score {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #34d399;
-        }
+        /* --- TOGGLES --- */
+        .toggle-label { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; }
+        .points-text { color: #34d399; font-weight: 700; font-size: 0.85rem; }
+        .points-text-disabled { color: #64748b; font-weight: 600; font-size: 0.85rem; }
 
-        /* --- TOGGLES Y TEXTO --- */
-        .toggle-label {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-
-        .points-text {
-            color: #34d399;
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-        
-        .points-text-disabled {
-            color: #64748b;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        /* --- PANEL DERECHO (SCORE FLOTANTE) --- */
+        /* --- PANEL DERECHO --- */
         .sticky-score-card {
             background: linear-gradient(180deg, #115e59 0%, #0f172a 100%);
-            border: 1px solid #14b8a6;
+            border: 2px solid #14b8a6;
             border-radius: 16px;
             padding: 30px;
             text-align: center;
             position: sticky;
             top: 20px;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
         }
+        .score-big-val { font-size: 4rem; font-weight: 900; color: #ccfbf1; line-height: 1; text-shadow: 0 0 15px rgba(20, 184, 166, 0.4); }
         
-        .score-big-val {
-            font-size: 4.5rem;
-            font-weight: 900;
-            color: #fff;
-            line-height: 1;
+        /* --- CAJA DE CONFIRMACIÓN (NUEVO) --- */
+        .confirmation-box {
+            background-color: #0f172a; 
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 10px;
+            margin-bottom: 20px;
+            animation: slideDown 0.3s ease-out;
+            text-align: center;
         }
+        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* --- AYUDA VISUAL --- */
-        .visual-helper-box {
-            background-color: #111827; 
-            border: 1px solid #374151; 
-            border-left: 4px solid #10b981; 
-            border-radius: 8px; 
-            padding: 15px; 
-            margin-top: 10px; 
-            margin-bottom: 15px;
-            animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .confirm-question { color: #f1f5f9; font-weight: 600; margin-bottom: 15px; font-size: 0.95rem; }
 
-        .helper-title { color: #10b981; font-weight: 700; font-size: 0.9rem; margin-bottom: 5px; }
-        .helper-text { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; margin-bottom: 10px; }
-
-        /* --- BOTONES --- */
+        /* --- BOTONES YES/NO PERSONALIZADOS --- */
+        /* Botón general (Save Trade) */
         .stButton button {
             background-color: #10b981 !important;
             color: #ffffff !important;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            padding: 0.6rem 1.2rem;
-            width: 100%;
+            border: none; border-radius: 6px; font-weight: 600; padding: 0.6rem 1.2rem; width: 100%;
         }
+        
+        /* Identificar botones por posición es difícil en Streamlit puro, 
+           así que usaremos columnas y orden para el efecto visual */
+
         </style>
     """, unsafe_allow_html=True)
 
 inject_custom_css()
 
 # ==============================================================================
-# 2. LÓGICA Y DATOS
+# 2. DATOS Y LÓGICA
 # ==============================================================================
 
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
+# NUEVO: Estado para saber qué estamos confirmando
+if 'confirming_key' not in st.session_state: st.session_state.confirming_key = None
 
+# --- DICCIONARIO DE AYUDAS VISUALES ---
 HELPER_DATA = {
     "Trend": {
         "title": "Estructura de Mercado",
-        "desc": "¿Estructura alcista (HH/HL) o bajista (LH/LL)?",
-        "img": "trend img.jpg"
+        "desc": "¿Tu estructura de mercado alcista o bajista se ve así?",
+        # Aquí ponemos las DOS imágenes para que salgan lado a lado como en tu ejemplo
+        "images": ["trend img.jpg", "Bearish trend.jpg"] 
     },
     "At AOI / Rejected": {
-        "title": "Zona de Interés (AOI)",
-        "desc": "El precio debe estar tocando o reaccionando a la zona.",
-        "img": "ATAOI.jpg"
+        "title": "Validación de Zona",
+        "desc": "¿El precio está reaccionando dentro de la zona marcada?",
+        "images": ["ATAOI.jpg"]
     },
     "Touching EMA": {
-        "title": "Rechazo Dinámico (50 EMA)",
-        "desc": "El precio toca o rechaza la EMA 50.",
-        "img": "EMA.jpg"
+        "title": "EMA 50",
+        "desc": "¿El precio está tocando o rechazando la EMA 50?",
+        "images": ["EMA.jpg"]
     },
     "Round Psych Level": {
         "title": "Nivel Psicológico",
-        "desc": "Número redondo cercano (ej. 1.5000, .500).",
-        "img": "ROUND-PSYCHO-LEVEL.jpg"
+        "desc": "¿Hay un número redondo cerca?",
+        "images": ["ROUND-PSYCHO-LEVEL.jpg"]
     },
     "Rejection from Previous Structure": {
         "title": "Estructura Previa",
-        "desc": "Rebote en un Alto o Bajo anterior.",
-        "img": "PREVIOUS STRUCTURE.jpg"
+        "desc": "¿Rebote en estructura anterior?",
+        "images": ["PREVIOUS STRUCTURE.jpg"]
     },
     "Candlestick Rejection from AOI": {
         "title": "Patrón de Velas",
-        "desc": "Mechas largas, Dojis o Envolventes en la zona.",
-        "img": "ATAOIII.jpg" 
+        "desc": "¿Ves mechas o patrones de rechazo?",
+        "images": ["ATAOIII.jpg"]
     },
     "Break & Retest / Head & Shoulders Pattern": {
-        "title": "Patrones Avanzados",
-        "desc": "Ruptura y Retesteo o Hombro-Cabeza-Hombro.",
-        "img": "HEAD&SHOULDERS copy.jpg"
+        "title": "Patrones Chartistas",
+        "desc": "¿Ves una ruptura y retesteo o HCH?",
+        "images": ["HEAD&SHOULDERS copy.jpg"]
     },
     "SOS": {
-        "title": "Cambio de Estructura (SOS)",
-        "desc": "Ruptura del último alto/bajo válido.",
-        "img": "trend img.jpg"
+        "title": "Shift of Structure",
+        "desc": "¿Hubo quiebre de estructura (BOS/CHoCH)?",
+        "images": ["trend img.jpg"]
     },
     "Engulfing candlestick (30m, 1H, 2H, 4H)": {
-        "title": "Vela Gatillo",
-        "desc": "Vela envolvente clara que confirma la dirección.",
-        "img": "ATAOIII.jpg"
+        "title": "Vela Envolvente",
+        "desc": "¿Hay una vela envolvente clara?",
+        "images": ["ATAOIII.jpg"]
     }
 }
 
@@ -248,23 +197,45 @@ def calculate_totals():
         sec_score = 0
         for label, pts in items:
             key = f"{section}_{label}"
+            # Solo suma si está True en checklist (que significa CONFIRMADO)
             if st.session_state.checklist.get(key, False):
                 sec_score += pts
         section_scores[section] = sec_score
         total_score += sec_score
     return total_score, section_scores
 
-def handle_psych_logic(section_changed):
-    key_changed = f"{section_changed}_Round Psych Level"
-    is_active = st.session_state[key_changed]
-    if is_active:
-        st.session_state.psych_selected_in = section_changed
+def handle_toggle_change(key, section):
+    # Lógica: Cuando tocas el toggle, activamos el modo confirmación para esa key
+    current_val = st.session_state[key]
+    
+    if current_val: # Se encendió
+        st.session_state.confirming_key = key # Activamos confirmación
+        st.session_state.checklist[key] = False # Mantenemos apagado internamente hasta confirmar
+    else: # Se apagó manualmente
+        st.session_state.confirming_key = None
+        st.session_state.checklist[key] = False
+        # Liberar psych logic si aplica
+        if "Round Psych Level" in key and st.session_state.psych_selected_in == section:
+            st.session_state.psych_selected_in = None
+
+def confirm_yes(key, section):
+    st.session_state.checklist[key] = True # Confirmado
+    st.session_state[key] = True # Asegurar visual
+    st.session_state.confirming_key = None # Cerrar caja
+    
+    # Lógica especial Psych Level
+    if "Round Psych Level" in key:
+        st.session_state.psych_selected_in = section
         for sec in ["WEEKLY", "DAILY", "4H"]:
-            if sec != section_changed:
+            if sec != section:
                 other_key = f"{sec}_Round Psych Level"
-                if other_key in st.session_state.checklist: st.session_state.checklist[other_key] = False
-    else:
-        if st.session_state.psych_selected_in == section_changed: st.session_state.psych_selected_in = None
+                st.session_state.checklist[other_key] = False
+                if other_key in st.session_state: st.session_state[other_key] = False
+
+def confirm_no(key):
+    st.session_state.checklist[key] = False # Rechazado
+    st.session_state[key] = False # Apagar visualmente el toggle
+    st.session_state.confirming_key = None # Cerrar caja
 
 def get_local_image(filename):
     paths = [os.path.join("foto", filename), os.path.join("Foto", filename), filename]
@@ -273,7 +244,7 @@ def get_local_image(filename):
     return None
 
 # ==============================================================================
-# 3. INTERFAZ: NAVBAR
+# 3. INTERFAZ
 # ==============================================================================
 c_nav1, c_nav2 = st.columns([1, 4])
 with c_nav1:
@@ -300,40 +271,26 @@ if st.session_state.page == 'checklist':
     if total >= 60: score_color = "#facc15"; status_txt = "Moderate Setup"
     if total >= 90: score_color = "#10b981"; status_txt = "🔥 Sniper Entry"
 
-    # --- LAYOUT PRINCIPAL: 2 COLUMNAS (3 IZQ | 1 DER) ---
-    main_col, side_col = st.columns([3, 1], gap="large")
+    # --- LAYOUT PRINCIPAL ---
+    main_col, side_col = st.columns([3, 1], gap="medium")
 
-    # === COLUMNA IZQUIERDA: RESUMEN + CHECKLIST ===
+    # === COLUMNA IZQUIERDA ===
     with main_col:
         
-        # 1. BLOQUE DE RESUMEN (HTML SEGURO SIN F-STRINGS COMPLEJOS)
+        # 1. SUMMARY
         st.markdown('<div style="color:#e2e8f0; font-weight:700; margin-bottom:10px;">CONFLUENCE BREAKDOWN</div>', unsafe_allow_html=True)
-        
-        # Construcción manual y segura del HTML para evitar el error
-        html_cards = '<div class="summary-grid-container">'
-        
-        # Weekly
-        html_cards += f'<div class="mini-card"><div class="mini-title">WEEKLY</div><div class="mini-val">{sec_scores.get("WEEKLY",0)}%</div></div>'
-        # Daily
-        html_cards += f'<div class="mini-card"><div class="mini-title">DAILY</div><div class="mini-val">{sec_scores.get("DAILY",0)}%</div></div>'
-        # 4H
-        html_cards += f'<div class="mini-card"><div class="mini-title">4H</div><div class="mini-val">{sec_scores.get("4H",0)}%</div></div>'
-        # 2H/1H
-        html_cards += f'<div class="mini-card"><div class="mini-title">2H, 1H, 30M</div><div class="mini-val">{sec_scores.get("2H, 1H, 30M",0)}%</div></div>'
-        # Entry
-        html_cards += f'<div class="mini-card"><div class="mini-title">ENTRY SIGNAL</div><div class="mini-val">{sec_scores.get("ENTRY SIGNAL",0)}%</div></div>'
-        
-        html_cards += '</div>'
-        st.markdown(html_cards, unsafe_allow_html=True)
+        cards_html = '<div class="summary-grid">'
+        for sec in ["WEEKLY", "DAILY", "4H", "2H, 1H, 30M", "ENTRY SIGNAL"]:
+            val = sec_scores.get(sec, 0)
+            cards_html += f'<div class="mini-card"><div class="mini-title">{sec}</div><div class="mini-val">{val}%</div></div>'
+        cards_html += '</div>'
+        st.markdown(cards_html, unsafe_allow_html=True)
 
-        st.markdown("<br>", unsafe_allow_html=True)
-
-        # 2. SECCIONES DE TOGGLES
+        # 2. CHECKLIST
         for sec_name, items in STRATEGY.items():
             current_sec_score = sec_scores.get(sec_name, 0)
             
             with st.container(border=True):
-                # Header Interno
                 st.markdown(f"""
                 <div class="section-header-row">
                     <div class="section-title">{sec_name}</div>
@@ -341,64 +298,83 @@ if st.session_state.page == 'checklist':
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # Toggles
                 for label, pts in items:
                     key = f"{sec_name}_{label}"
                     
                     disabled = False
-                    if label == "Round Psych Level":
-                        if st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
-                            disabled = True
+                    if label == "Round Psych Level" and st.session_state.psych_selected_in and st.session_state.psych_selected_in != sec_name:
+                        disabled = True
 
                     c1, c2 = st.columns([4, 1])
-                    
                     with c1:
                         col_lbl = "#4b5563" if disabled else "#e2e8f0"
                         st.markdown(f"""<div style="padding-top:8px; font-weight:600; font-size:0.9rem; color:{col_lbl};">{label}</div>""", unsafe_allow_html=True)
-                    
                     with c2:
                         sub_c1, sub_c2 = st.columns([1, 1])
                         with sub_c1:
                             pts_cls = "points-text" if not disabled else "points-text-disabled"
                             st.markdown(f"""<div style="padding-top:8px; text-align:right;" class="{pts_cls}">+{pts}%</div>""", unsafe_allow_html=True)
                         with sub_c2:
-                            val = st.toggle(
+                            # EL TOGGLE MAESTRO
+                            st.toggle(
                                 "x", key=key, 
-                                value=st.session_state.checklist.get(key, False),
                                 label_visibility="collapsed",
                                 disabled=disabled,
-                                on_change=handle_psych_logic if label == "Round Psych Level" else None,
-                                args=(sec_name,) if label == "Round Psych Level" else None
+                                on_change=handle_toggle_change,
+                                args=(key, sec_name)
                             )
-                            st.session_state.checklist[key] = val
                     
-                    # AYUDA VISUAL (Imagen 350px)
-                    if val and label in HELPER_DATA:
-                        data = HELPER_DATA[label]
-                        img_path = get_local_image(data['img'])
+                    # --- CAJA DE CONFIRMACIÓN (TU PEDIDO ESPECIAL) ---
+                    # Solo se muestra si este key específico está en modo confirmación
+                    if st.session_state.confirming_key == key:
                         
-                        st.markdown(f"""
-                        <div class="visual-helper-box">
-                            <div class="helper-title">👁️ {data['title']}</div>
-                            <div class="helper-text">{data['desc']}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        st.markdown('<div class="confirmation-box">', unsafe_allow_html=True)
                         
-                        if img_path:
-                            st.image(img_path, width=350)
+                        # Datos de ayuda
+                        if label in HELPER_DATA:
+                            data = HELPER_DATA[label]
+                            st.markdown(f"<div class='confirm-question'>{data['desc']}</div>", unsafe_allow_html=True)
+                            
+                            # Mostrar imágenes (soporta 1 o 2)
+                            if "images" in data and data["images"]:
+                                cols_img = st.columns(len(data["images"]))
+                                for idx, img_name in enumerate(data["images"]):
+                                    p = get_local_image(img_name)
+                                    if p: 
+                                        with cols_img[idx]:
+                                            st.image(p, use_container_width=True)
+                                    else:
+                                        st.caption(f"Falta: {img_name}")
                         else:
-                            st.caption(f"⚠️ Falta imagen: {data['img']}")
+                            st.markdown("<div class='confirm-question'>¿Confirmas esta condición?</div>", unsafe_allow_html=True)
+
+                        st.markdown("<br>", unsafe_allow_html=True)
+                        
+                        # BOTONES YES / NO
+                        # Usamos columnas para centrarlos
+                        cb1, cb2, cb3, cb4 = st.columns([1, 2, 2, 1])
+                        with cb2:
+                            if st.button("YES", key=f"yes_{key}", type="primary"):
+                                confirm_yes(key, sec_name)
+                                st.rerun()
+                        with cb3:
+                            # Botón NO (Estilo rojo mediante key o css trick, aqui usaremos secondary standard)
+                            if st.button("NO", key=f"no_{key}"):
+                                confirm_no(key)
+                                st.rerun()
+                        
+                        st.markdown('</div>', unsafe_allow_html=True)
 
                     if label != items[-1][0]:
                         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # === COLUMNA DERECHA: SCORE + SAVE (FIJO) ===
+    # === COLUMNA DERECHA ===
     with side_col:
         st.markdown(f"""
         <div class="sticky-score-card" style="border-color:{score_color};">
-            <div style="color:#ccfbf1; letter-spacing:1px; font-weight:700; font-size:0.9rem; text-transform:uppercase; margin-bottom:15px;">TOTAL SCORE</div>
+            <div style="color:#ccfbf1; letter-spacing:1px; font-weight:700; font-size:0.8rem; text-transform:uppercase; margin-bottom:15px;">TOTAL SCORE</div>
             <div class="score-big-val" style="color:{score_color};">{total}%</div>
-            <div style="font-size:1.2rem; font-weight:700; color:{score_color}; margin-top:10px; margin-bottom:20px;">{status_txt}</div>
+            <div style="font-size:1.1rem; font-weight:700; color:{score_color}; margin-top:10px; margin-bottom:20px;">{status_txt}</div>
         </div>
         """, unsafe_allow_html=True)
         
