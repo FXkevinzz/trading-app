@@ -4,9 +4,10 @@ from datetime import datetime
 import uuid
 import os
 from PIL import Image
+import google.generativeai as genai
 
 # ==============================================================================
-# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY "THE PERFECT TRADE")
+# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY)
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
@@ -147,53 +148,46 @@ if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# --- DICCIONARIO DE AYUDAS LIMPIO ---
+# --- DICCIONARIO DE AYUDAS (Con tus nombres de archivo EXACTOS) ---
 HELPER_DATA = {
     "Trend": {
         "title": "Estructura de Mercado",
-        "desc": "¿Tu estructura de mercado alcista o bajista se ve así?\nBusca Altos Más Altos (HH) y Bajos Más Altos (HL) para compras, o viceversa.",
-        "img": "trend.png" 
+        "desc": "¿Tu estructura de mercado alcista o bajista se ve así? Busca Altos Más Altos (HH) y Bajos Más Altos (HL).",
+        "img": "trend img.jpg"  # Actualizado según tu captura
     },
     "At AOI / Rejected": {
         "title": "Zona de Interés (AOI)",
-        "desc": "¿El precio está tocando o dentro de la zona marcada?\nRecuerda: Si el precio está flotando lejos de la zona, NO es válido.",
-        "img": "aoi.png"
+        "desc": "¿El precio está tocando o dentro de la zona marcada?",
+        "img": "ATAOI.jpg"  # Actualizado según tu captura
     },
     "Touching EMA": {
         "title": "Rechazo Dinámico (50 EMA)",
-        "desc": "¿El precio está tocando o rechazando la línea de la EMA 50 en este momento?",
-        "img": "ema.png"
+        "desc": "¿El precio está tocando o rechazando la línea de la EMA 50?",
+        "img": "EMA.jpg"  # Actualizado según tu captura
     },
     "Round Psych Level": {
         "title": "Nivel Psicológico",
-        "desc": "¿Hay un número redondo cerca (ej. 1.5000, 150.00, .500)?\nLos bancos usan estos niveles como imanes.",
-        "img": "psych.png"
+        "desc": "¿Hay un número redondo cerca (ej. 1.5000, 150.00)?",
+        "img": "ROUND-PSYCHO-LEVEL.jpg"  # Actualizado según tu captura
     },
     "Rejection Structure": {
         "title": "Estructura Previa",
-        "desc": "¿El precio está rebotando en un Alto o Bajo anterior que ahora actúa como soporte/resistencia?",
-        "img": "structure.png"
+        "desc": "¿El precio está rebotando en un Alto o Bajo anterior?",
+        "img": "PREVIOUS STRUCTURE.jpg"  # Actualizado según tu captura
     },
     "Candlestick Rejection": {
         "title": "Patrón de Velas",
-        "desc": "¿Ves patrones de rechazo claros como Pinbars (Martillo), Dojis o Envolventes en la zona?",
-        "img": "candles.png"
+        "desc": "¿Ves patrones de rechazo claros como Pinbars, Dojis o Envolventes?",
+        "img": "ATAOIII.jpg" # Usé esta como ejemplo de rechazo, ajusta si tienes otra
     },
     "Break & Retest": {
-        "title": "Ruptura y Retesteo",
-        "desc": "¿El precio rompió la zona y regresó para probarla antes de continuar?",
-        "img": "retest.png"
+        "title": "Ruptura y Retesteo / H&S",
+        "desc": "¿El precio rompió la zona y regresó para probarla?",
+        "img": "HEAD&SHOULDERS copy.jpg"  # Actualizado según tu captura
     },
-    "SOS (Shift of Structure)": {
-        "title": "Cambio de Estructura (SOS)",
-        "desc": "¿En temporalidad menor, el precio rompió el último alto/bajo validando el cambio de tendencia?",
-        "img": "sos.png"
-    },
-    "Engulfing candlestick": {
-        "title": "Vela Gatillo",
-        "desc": "¿Tienes una vela envolvente clara que confirme la entrada?",
-        "img": "engulfing.png"
-    }
+    # Valores por defecto para otros
+    "SOS (Shift of Structure)": { "title": "Cambio de Estructura", "desc": "Ruptura del último alto/bajo.", "img": "trend img.jpg" },
+    "Engulfing candlestick": { "title": "Vela Gatillo", "desc": "Vela envolvente clara.", "img": "ATAOIII.jpg" }
 }
 
 STRATEGY = {
@@ -246,10 +240,17 @@ def handle_psych_logic(section_changed):
         if st.session_state.psych_selected_in == section_changed: st.session_state.psych_selected_in = None
 
 def get_local_image(filename):
-    """Busca la imagen en la carpeta 'foto'."""
-    path = os.path.join("foto", filename)
-    if os.path.exists(path):
-        return path
+    """Busca la imagen en la carpeta 'foto' con manejo de errores."""
+    # Posibles rutas
+    paths_to_check = [
+        os.path.join("foto", filename),
+        os.path.join("fotos", filename), # Por si acaso se llama fotos
+        filename # En la raiz
+    ]
+    
+    for path in paths_to_check:
+        if os.path.exists(path):
+            return path
     return None
 
 # ==============================================================================
@@ -332,14 +333,10 @@ if st.session_state.page == 'checklist':
                             st.session_state.checklist[key] = val
                     
                     # --- VISUAL HELPER PARA TODOS ---
-                    # Se activa si el toggle está ON y existe ayuda para ese label
                     if val and label in HELPER_DATA:
                         data = HELPER_DATA[label]
-                        
-                        # Buscamos si existe imagen en la carpeta 'foto'
                         img_path = get_local_image(data['img'])
                         
-                        # Renderizamos la caja de ayuda
                         st.markdown(f"""
                         <div class="visual-helper-box">
                             <div class="helper-title">👁️ {data['title']}</div>
@@ -347,9 +344,10 @@ if st.session_state.page == 'checklist':
                         </div>
                         """, unsafe_allow_html=True)
                         
-                        # Si existe la imagen, la mostramos
                         if img_path:
                             st.image(img_path, use_container_width=True)
+                        else:
+                            st.warning(f"No encuentro la imagen: {data['img']} en la carpeta 'foto'")
 
                     # Separador visual
                     if label != items[-1][0]:
@@ -372,7 +370,7 @@ if st.session_state.page == 'checklist':
                 st.toast("Abriendo modal de guardado...", icon="✅")
 
 # ==============================================================================
-# OTRAS PÁGINAS
+# OTRAS PÁGINAS (Placeholders)
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
