@@ -37,7 +37,6 @@ def main_app():
     user = st.session_state.user
     inject_theme("Oscuro")
     
-    # Inicialización de chat
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "🦁 **Mentor IA:** Hola. He analizado tu bitácora. Sube un gráfico si quieres que revise tu análisis o pregúntame sobre psicología.", "image": None}]
     
@@ -53,10 +52,10 @@ def main_app():
         sel_acc = st.selectbox("Cuenta Seleccionada", accs)
         ini, act, df = get_balance_data(user, sel_acc)
         
-        # --- RECTÁNGULO DE PNL TOTAL (RESTAURADO) ---
+        # --- RECTÁNGULO DE PNL TOTAL (CORREGIDO) ---
         pnl_total = act - ini
         color_pnl = "#10b981" if pnl_total >= 0 else "#ef4444"
-        pnl_bg = color_pnl + '10' # 10 para baja opacidad
+        pnl_bg = color_pnl + '10' # Baja opacidad para el fondo del rectángulo
         pnl_sign = '+' if pnl_total > 0 else ''
 
         st.markdown(f"""
@@ -69,7 +68,7 @@ def main_app():
                 <div style="color:var(--text-muted); font-size:0.7rem;">(Net PnL)</div>
             </div>
             </div>""", unsafe_allow_html=True)
-        # ---------------------------------------------
+        # ----------------------------------------
         
         st.markdown("---")
         
@@ -96,43 +95,25 @@ def main_app():
 
         def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
 
-        # Lógica Original
+        # Lógica Original (Simplificada en el último paso para evitar la repetición masiva)
         if "Swing" in global_mode:
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
                 tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
-                w_sc = sum([
-                    st.checkbox("Rechazo AOI (+10%)", key="w1")*10,
-                    st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10,
-                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10,
-                    st.checkbox("Patrón Mercado (+10%)", key="w4")*10,
-                    st.checkbox("EMA 50 (+5%)", key="w5")*5,
-                    st.checkbox("Nivel Psicológico (+5%)", key="w6")*5
-                ])
+                w_sc = sum([st.checkbox("Rechazo AOI (+10%)", key="w1")*10, st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10, st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10, st.checkbox("Patrón Mercado (+10%)", key="w4")*10, st.checkbox("EMA 50 (+5%)", key="w5")*5, st.checkbox("Nivel Psicológico (+5%)", key="w6")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r1_c2:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
                 st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
                 td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
-                d_sc = sum([
-                    st.checkbox("Rechazo AOI (+10%)", key="d1")*10,
-                    st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10,
-                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10,
-                    st.checkbox("Patrón Mercado (+10%)", key="d4")*10,
-                    st.checkbox("EMA 50 (+5%)", key="d5")*5
-                ])
+                d_sc = sum([st.checkbox("Rechazo AOI (+10%)", key="d1")*10, st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10, st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10, st.checkbox("Patrón Mercado (+10%)", key="d4")*10, st.checkbox("EMA 50 (+5%)", key="d5")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c1:
                 st.markdown('<div class="dashboard-card" style="margin-top:20px">', unsafe_allow_html=True)
                 st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
-                h4_sc = sum([
-                    st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
-                    st.checkbox("Patrón Mercado (+10%)", key="h2")*10,
-                    st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5,
-                    st.checkbox("EMA 50 (+5%)", key="h4")*5
-                ])
+                h4_sc = sum([st.checkbox("Rechazo Vela (+10%)", key="h1")*10, st.checkbox("Patrón Mercado (+10%)", key="h2")*10, st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5, st.checkbox("EMA 50 (+5%)", key="h4")*5])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c2:
                 st.markdown('<div class="dashboard-card" style="margin-top:20px">', unsafe_allow_html=True)
@@ -149,7 +130,6 @@ def main_app():
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
-                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
                 total = sum([st.checkbox("AOI (+50%)")*50, st.checkbox("Estructura (+50%)")*50])
                 st.markdown('</div>', unsafe_allow_html=True)
 
