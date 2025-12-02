@@ -12,7 +12,6 @@ BRAIN_FILE = os.path.join(DATA_DIR, "brain_data.json")
 USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
-# Lista Oficial de Activos
 OFFICIAL_PAIRS = [
     "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF",
     "XAUUSD", "XAGUSD", "US30", "US100", "US500", "DE40", "BTCUSD", "ETHUSD",
@@ -34,6 +33,21 @@ def save_json(fp, data):
     try:
         with open(fp, "w") as f: json.dump(data, f)
     except: pass
+
+# --- GESTIÓN DE CONFIGURACIÓN DE USUARIO (NUEVO) ---
+def get_user_config(user):
+    """Carga la configuración personal (Telegram) del usuario."""
+    folder = os.path.join(DATA_DIR, user)
+    if not os.path.exists(folder): os.makedirs(folder)
+    fp = os.path.join(folder, "config.json")
+    return load_json(fp)
+
+def save_user_config(user, config_data):
+    """Guarda la configuración personal."""
+    folder = os.path.join(DATA_DIR, user)
+    if not os.path.exists(folder): os.makedirs(folder)
+    fp = os.path.join(folder, "config.json")
+    save_json(fp, config_data)
 
 # --- Auth ---
 def verify_user(u, p):
@@ -66,18 +80,14 @@ def get_balance_data(u, acc):
     if os.path.exists(fp):
         try:
             df = pd.read_csv(fp)
-            # Asegurar columnas nuevas
             expected_cols = ["Fecha", "Par", "Direccion", "Status", "Resultado", "Dinero", "Ratio", "Notas", "Img_Antes", "Img_Despues", "Confluencia"]
             for col in expected_cols:
                 if col not in df.columns: df[col] = None
-            
             pnl = df["Dinero"].sum() if not df.empty else 0
         except:
-            df = pd.DataFrame()
-            pnl = 0
+            df = pd.DataFrame(); pnl = 0
     else:
-        df = pd.DataFrame()
-        pnl = 0
+        df = pd.DataFrame(); pnl = 0
     return ini, ini + pnl, df
 
 def save_trade(u, acc, data, init=False, index=None):
@@ -101,8 +111,7 @@ def save_trade(u, acc, data, init=False, index=None):
             if c not in new_row.columns: new_row[c] = None
 
         if index is not None and not df.empty and index < len(df):
-            for col in data.keys():
-                df.at[index, col] = data[col]
+            for col in data.keys(): df.at[index, col] = data[col]
         else:
             df = pd.concat([df, new_row], ignore_index=True)
             
