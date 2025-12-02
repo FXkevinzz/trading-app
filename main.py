@@ -37,8 +37,12 @@ def main_app():
     user = st.session_state.user
     inject_theme("Oscuro")
     
+    # Inicialización de estado de chat
     if "messages" not in st.session_state:
         st.session_state.messages = [{"role": "assistant", "content": "🦁 **Mentor IA:** Hola. He analizado tu bitácora. Sube un gráfico si quieres que revise tu análisis o pregúntame sobre psicología.", "image": None}]
+    
+    if 'pair_selector' not in st.session_state: st.session_state.pair_selector = OFFICIAL_PAIRS[0]
+
 
     # --- SIDEBAR ---
     with st.sidebar:
@@ -60,24 +64,25 @@ def main_app():
         
         st.markdown("---")
         
-        # --- BOTÓN DE CONFIGURACIÓN DE USUARIO ---
         if st.button("⚙️ Configurar Alertas", use_container_width=True):
             modal_user_settings(user)
-        # ----------------------------------------
 
         if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
 
     # --- PESTAÑAS ---
     tab_op, tab_hist, tab_dash, tab_ai, tab_news = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA", "📰 NOTICIAS"])
 
-    # 1. PESTAÑA OPERATIVA
+    # ==========================================
+    # PESTAÑA 1: OPERATIVA (CHECKLIST RESTAURADO)
+    # ==========================================
     with tab_op:
+        # 1. Configuración Superior (Modo de Operación)
         c_mod = st.columns([1,2,1])
         with c_mod[1]: 
-            global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, label_visibility="collapsed")
+            global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, key="mode_op", label_visibility="collapsed")
         
-        if 'pair_selector' not in st.session_state: st.session_state.pair_selector = OFFICIAL_PAIRS[0]
-        st.session_state.pair_selector = st.selectbox("ACTIVO", OFFICIAL_PAIRS)
+        # Selector de activo que alimenta la sesión
+        st.session_state.pair_selector = st.selectbox("ACTIVO", OFFICIAL_PAIRS, key="sb_pair_main")
         st.markdown("---")
         
         r1_c1, r1_c2 = st.columns(2)
@@ -86,37 +91,84 @@ def main_app():
 
         def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
 
-        # Lógica Original
+        # LÓGICA SWING (W-D-4H)
         if "Swing" in global_mode:
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-                st.markdown(header("1. CONTEXTO MACRO"), unsafe_allow_html=True)
-                s1 = sum([st.checkbox("Tendencia Alineada (+20%)")*20, st.checkbox("Rechazo AOI (+20%)")*20, st.checkbox("Patrón Vela (+10%)")*10])
+                st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
+                tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
+                w_sc = sum([
+                    st.checkbox("Rechazo AOI (+10%)", key="w1")*10,
+                    st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="w4")*10,
+                    st.checkbox("EMA 50 (+5%)", key="w5")*5,
+                    st.checkbox("Nivel Psicológico (+5%)", key="w6")*5
+                ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r1_c2:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-                st.markdown(header("2. GATILLO FINAL"), unsafe_allow_html=True)
-                s2 = sum([st.checkbox("SOS / Quiebre (+20%)")*20, st.checkbox("Vela Envolvente (+20%)")*20, st.checkbox("Ratio > 1:2.5 (+10%)")*10])
+                st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
+                td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
+                d_sc = sum([
+                    st.checkbox("Rechazo AOI (+10%)", key="d1")*10,
+                    st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="d4")*10,
+                    st.checkbox("EMA 50 (+5%)", key="d5")*5
+                ])
                 st.markdown('</div>', unsafe_allow_html=True)
-            total = s1 + s2
-        else: # Scalping
+            with r2_c1:
+                st.markdown('<div class="dashboard-card" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
+                t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
+                h4_sc = sum([
+                    st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="h2")*10,
+                    st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5,
+                    st.checkbox("EMA 50 (+5%)", key="h4")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r2_c2:
+                st.markdown('<div class="dashboard-card" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
+                if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
+                sos = st.checkbox("⚡ SOS (Obligatorio)")
+                eng = st.checkbox("🕯️ Envolvente (Obligatorio)")
+                pat_ent = st.checkbox("Patrón en Entrada (+5%)")
+                rr = st.checkbox("💰 Ratio > 1:2.5")
+                entry_score = (10 if sos else 0) + (10 if eng else 0) + (5 if pat_ent else 0)
+                total = w_sc + d_sc + h4_sc + entry_score
+        
+        # LÓGICA SCALPING (4H-2H-1H)
+        else:
             with r1_c1:
                 st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
-                total = sum([st.checkbox("AOI (+50%)")*50, st.checkbox("Estructura (+50%)")*50])
+                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
+                w_sc = sum([st.checkbox("AOI", key="s1")*10, st.checkbox("Estructura", key="s2")*10]) 
                 st.markdown('</div>', unsafe_allow_html=True)
-
+            total = w_sc 
+        
+        # 2. HUD DE PUNTAJE Y BOTÓN
         st.markdown("<br>", unsafe_allow_html=True)
+        valid = sos and eng and rr
+        msg, css_cl = "💤 ESPERAR", "status-warning"
+        if total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
+        elif total >= 60: msg, css_cl = "✅ VÁLIDO", "status-sniper"
         
         col_hud, col_btn = st.columns([3, 1])
         with col_hud:
             st.markdown(f"""
-            <div class="dashboard-card" style="display:flex; align-items:center; justify-content:space-between; padding:15px;">
-                <span class="sub-stat-label">CALIDAD DEL TRADE</span>
-                <span style="font-size:2rem; font-weight:900; color:{'#10b981' if total>=60 else '#ef4444'}">{total}%</span>
-            </div>""", unsafe_allow_html=True)
+            <div class="hud-container">
+                <div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div>
+                <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div>
+            </div>
+            """, unsafe_allow_html=True)
+            st.progress(min(total, 100))
         with col_btn:
-            if st.button("🚀 EJECUTAR", type="primary", use_container_width=True):
+            if st.button("🚀 EJECUTAR", type="primary" if total >= 60 else "secondary", use_container_width=True):
+                # Llamada al modal con el puntaje y el par actual
                 modal_new_trade(user, sel_acc, global_mode, st.session_state.pair_selector, total)
 
     # 2. PESTAÑA HISTORIAL
@@ -147,8 +199,7 @@ def main_app():
             net_pnl = df['Dinero'].sum()
             closed = df[df['Status'] == 'CLOSED']
             total_trades = len(closed)
-            wins = closed[closed['Resultado'] == 'WIN']
-            losses = closed[closed['Resultado'] == 'LOSS']
+            wins = closed[closed['Resultado'] == 'WIN']; losses = closed[closed['Resultado'] == 'LOSS']
             wins_count = len(wins); loss_count = len(losses)
             if total_trades > 0: win_rate = (wins_count / total_trades) * 100
             gross_win = wins['Dinero'].sum(); gross_loss = abs(losses['Dinero'].sum())
