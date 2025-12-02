@@ -4,9 +4,10 @@ from datetime import datetime
 import uuid
 import os
 from PIL import Image
+import google.generativeai as genai
 
 # ==============================================================================
-# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY "THE PERFECT TRADE")
+# 1. CONFIGURACIÓN VISUAL (ESTILO DARK NAVY)
 # ==============================================================================
 st.set_page_config(page_title="The Perfect Trade AI", layout="wide", page_icon="🦁")
 
@@ -15,141 +16,61 @@ def inject_custom_css():
         <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-        /* --- FONDO GENERAL --- */
-        .stApp {
-            background-color: #0f172a; /* Slate 900 */
-            font-family: 'Inter', sans-serif;
-            color: #f8fafc;
-        }
-        
+        .stApp { background-color: #0f172a; font-family: 'Inter', sans-serif; color: #f8fafc; }
         #MainMenu, footer, header {visibility: hidden;}
         .stDeployButton {display:none;}
 
-        /* --- CONTENEDOR DE LA TARJETA (CHECKLIST) --- */
+        /* CAJA CHECKLIST */
         div[data-testid="stBorderDomWrapper"] {
-            background-color: #1e293b; /* Slate 800 */
-            border: 1px solid #334155;
-            border-radius: 12px;
-            padding: 24px;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+            background-color: #1e293b; border: 1px solid #334155;
+            border-radius: 12px; padding: 24px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
         }
 
-        /* --- HEADER DE SECCIÓN --- */
-        .section-header-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 25px;
-        }
-        
-        .section-title {
-            font-size: 0.9rem;
-            font-weight: 800;
-            color: #ffffff;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
+        /* HEADER */
+        .section-header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .section-title { font-size: 0.9rem; font-weight: 800; color: #ffffff; text-transform: uppercase; letter-spacing: 0.5px; }
+        .section-score { font-size: 1.5rem; font-weight: 800; color: #34d399; }
 
-        .section-score {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #34d399; /* Verde esmeralda */
-        }
+        /* TOGGLES */
+        .toggle-label { font-size: 0.95rem; font-weight: 600; color: #e2e8f0; }
+        .points-text { color: #34d399; font-weight: 700; font-size: 0.85rem; }
+        .points-text-disabled { color: #64748b; font-weight: 600; font-size: 0.85rem; }
 
-        /* --- TOGGLES Y TEXTO --- */
-        .toggle-label {
-            font-size: 0.95rem;
-            font-weight: 600;
-            color: #e2e8f0;
-        }
-
-        .points-text {
-            color: #34d399;
-            font-weight: 700;
-            font-size: 0.85rem;
-        }
-        
-        .points-text-disabled {
-            color: #64748b;
-            font-weight: 600;
-            font-size: 0.85rem;
-        }
-
-        /* --- PANEL DERECHO (SCORE FLOTANTE) --- */
+        /* SCORE DERECHO */
         .sticky-score-card {
             background: linear-gradient(180deg, #115e59 0%, #0f172a 100%);
-            border: 1px solid #14b8a6;
-            border-radius: 16px;
-            padding: 30px;
-            text-align: center;
-            position: sticky;
-            top: 20px;
+            border: 1px solid #14b8a6; border-radius: 16px; padding: 30px;
+            text-align: center; position: sticky; top: 20px;
         }
+        .score-big-val { font-size: 4.5rem; font-weight: 900; color: #fff; line-height: 1; }
         
-        .score-big-val {
-            font-size: 4.5rem;
-            font-weight: 900;
-            color: #fff;
-            line-height: 1;
-        }
-        
-        /* --- AYUDA VISUAL (ALERTA DESPLEGABLE) --- */
+        /* AYUDA VISUAL */
         .visual-helper-box {
-            background-color: #111827; /* Fondo más oscuro */
-            border: 1px solid #374151;
-            border-left: 4px solid #10b981; /* Borde verde a la izquierda */
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-            margin-bottom: 15px;
+            background-color: #111827; border: 1px solid #374151; border-left: 4px solid #10b981;
+            border-radius: 8px; padding: 15px; margin-top: 10px; margin-bottom: 15px;
             animation: fadeIn 0.3s ease-in-out;
         }
-        
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-5px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        .helper-title { color: #10b981; font-weight: 700; font-size: 0.9rem; margin-bottom: 5px; }
+        .helper-text { color: #cbd5e1; font-size: 0.9rem; line-height: 1.4; margin-bottom: 10px; }
 
-        .helper-title {
-            color: #10b981;
-            font-weight: 700;
-            font-size: 0.9rem;
-            margin-bottom: 5px;
-        }
-        
-        .helper-text {
-            color: #cbd5e1;
-            font-size: 0.9rem;
-            line-height: 1.4;
-            margin-bottom: 10px;
-        }
-
-        /* --- BOTONES --- */
-        .stButton button {
-            background-color: #10b981 !important;
-            color: #ffffff !important;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            padding: 0.6rem 1.2rem;
-            width: 100%;
-        }
+        .stButton button { background-color: #10b981 !important; color: #ffffff !important; border: none; border-radius: 6px; font-weight: 600; padding: 0.6rem 1.2rem; width: 100%; }
         </style>
     """, unsafe_allow_html=True)
 
 inject_custom_css()
 
 # ==============================================================================
-# 2. CONFIGURACIÓN DE ESTRATEGIA Y AYUDAS VISUALES
+# 2. LOGICA Y DATOS
 # ==============================================================================
 
 if 'page' not in st.session_state: st.session_state.page = 'checklist'
 if 'checklist' not in st.session_state: st.session_state.checklist = {}
 if 'psych_selected_in' not in st.session_state: st.session_state.psych_selected_in = None 
 
-# --- DICCIONARIO DE AYUDAS ---
-# He unificado las claves para que coincidan con la Estrategia
+# --- NOMBRES EXACTOS DE ARCHIVOS ---
+# Asegúrate de que tu carpeta se llame "foto" (minúsculas) y los archivos sean idénticos a esto:
 HELPER_DATA = {
     "Trend": {
         "title": "Estructura de Mercado",
@@ -189,52 +110,36 @@ HELPER_DATA = {
     "SOS": {
         "title": "Cambio de Estructura (SOS)",
         "desc": "Ruptura del último alto/bajo válido.",
-        "img": "trend img.jpg" # Reusamos trend o podrías tener una específica SOS.jpg
+        "img": "trend img.jpg"
     },
     "Engulfing candlestick (30m, 1H, 2H, 4H)": {
         "title": "Vela Gatillo",
         "desc": "Vela envolvente clara que confirma la dirección.",
-        "img": "ATAOIII.jpg" # Reusamos la de velas
+        "img": "ATAOIII.jpg"
     }
 }
 
-# He estandarizado los nombres aquí para que sean iguales en todas las secciones
 STRATEGY = {
     "WEEKLY": [
-        ("Trend", 10), 
-        ("At AOI / Rejected", 10), 
-        ("Touching EMA", 5), 
-        ("Round Psych Level", 5), 
-        ("Rejection from Previous Structure", 10), 
-        ("Candlestick Rejection from AOI", 10), 
-        ("Break & Retest / Head & Shoulders Pattern", 10)
+        ("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), 
+        ("Round Psych Level", 5), ("Rejection from Previous Structure", 10), 
+        ("Candlestick Rejection from AOI", 10), ("Break & Retest / Head & Shoulders Pattern", 10)
     ],
     "DAILY": [
-        ("Trend", 10), 
-        ("At AOI / Rejected", 10), 
-        ("Touching EMA", 5), 
-        ("Round Psych Level", 5), 
-        ("Rejection from Previous Structure", 10), 
-        ("Candlestick Rejection from AOI", 10), 
-        ("Break & Retest / Head & Shoulders Pattern", 10)
+        ("Trend", 10), ("At AOI / Rejected", 10), ("Touching EMA", 5), 
+        ("Round Psych Level", 5), ("Rejection from Previous Structure", 10), 
+        ("Candlestick Rejection from AOI", 10), ("Break & Retest / Head & Shoulders Pattern", 10)
     ],
     "4H": [
-        ("Trend", 5), 
-        ("At AOI / Rejected", 5), 
-        ("Touching EMA", 5), 
-        ("Round Psych Level", 5), 
-        ("Rejection from Previous Structure", 10), 
-        ("Candlestick Rejection from AOI", 5), 
-        ("Break & Retest / Head & Shoulders Pattern", 10)
+        ("Trend", 5), ("At AOI / Rejected", 5), ("Touching EMA", 5), 
+        ("Round Psych Level", 5), ("Rejection from Previous Structure", 10), 
+        ("Candlestick Rejection from AOI", 5), ("Break & Retest / Head & Shoulders Pattern", 10)
     ],
     "2H, 1H, 30M": [
-        ("Trend", 5), 
-        ("Touching EMA", 5), 
-        ("Break & Retest / Head & Shoulders Pattern", 5)
+        ("Trend", 5), ("Touching EMA", 5), ("Break & Retest / Head & Shoulders Pattern", 5)
     ],
     "ENTRY SIGNAL": [
-        ("SOS", 10), 
-        ("Engulfing candlestick (30m, 1H, 2H, 4H)", 10)
+        ("SOS", 10), ("Engulfing candlestick (30m, 1H, 2H, 4H)", 10)
     ]
 }
 
@@ -251,23 +156,36 @@ def calculate_totals():
         total_score += sec_score
     return total_score, section_scores
 
+# --- CORRECCIÓN LÓGICA DE BLOQUEO ---
 def handle_psych_logic(section_changed):
     key_changed = f"{section_changed}_Round Psych Level"
-    is_active = st.session_state.checklist.get(key_changed, False)
+    # CORRECCIÓN IMPORTANTE: Leer el estado directamente del widget, no del dict checklist
+    # (Streamlit actualiza el estado del widget antes de ejecutar el callback)
+    is_active = st.session_state[key_changed]
+    
     if is_active:
         st.session_state.psych_selected_in = section_changed
+        # Forzar apagado en otras secciones
         for sec in ["WEEKLY", "DAILY", "4H"]:
             if sec != section_changed:
                 other_key = f"{sec}_Round Psych Level"
-                if other_key in st.session_state.checklist: st.session_state.checklist[other_key] = False
+                # Si existe en el estado, lo apagamos
+                if other_key in st.session_state.checklist: 
+                    st.session_state.checklist[other_key] = False
     else:
-        if st.session_state.psych_selected_in == section_changed: st.session_state.psych_selected_in = None
+        # Si se desactivó el dueño, liberamos el bloqueo
+        if st.session_state.psych_selected_in == section_changed:
+            st.session_state.psych_selected_in = None
 
 def get_local_image(filename):
-    # Busca en la carpeta 'foto'
+    # Busca en carpeta 'foto' (minúscula)
     path = os.path.join("foto", filename)
     if os.path.exists(path):
         return path
+    # Intenta en 'Foto' (mayúscula) por si acaso
+    path_cap = os.path.join("Foto", filename)
+    if os.path.exists(path_cap):
+        return path_cap
     return None
 
 # ==============================================================================
@@ -298,16 +216,13 @@ if st.session_state.page == 'checklist':
     if total >= 60: score_color = "#facc15"; status_txt = "Moderate Setup"
     if total >= 90: score_color = "#10b981"; status_txt = "🔥 Sniper Entry"
 
-    # --- LAYOUT PRINCIPAL: 2 COLUMNAS ---
     main_col, side_col = st.columns([3, 1], gap="large")
 
-    # === COLUMNA IZQUIERDA: CHECKLIST ===
     with main_col:
         for sec_name, items in STRATEGY.items():
             current_sec_score = sec_scores.get(sec_name, 0)
             
             with st.container(border=True):
-                # HEADER
                 st.markdown(f"""
                 <div class="section-header-row">
                     <div class="section-title">{sec_name}</div>
@@ -315,7 +230,6 @@ if st.session_state.page == 'checklist':
                 </div>
                 """, unsafe_allow_html=True)
                 
-                # TOGGLES
                 for label, pts in items:
                     key = f"{sec_name}_{label}"
                     
@@ -346,7 +260,7 @@ if st.session_state.page == 'checklist':
                             )
                             st.session_state.checklist[key] = val
                     
-                    # --- VISUAL HELPER CON IMAGEN PEQUEÑA ---
+                    # --- HELPER VISUAL ---
                     if val and label in HELPER_DATA:
                         data = HELPER_DATA[label]
                         img_path = get_local_image(data['img'])
@@ -359,14 +273,15 @@ if st.session_state.page == 'checklist':
                         """, unsafe_allow_html=True)
                         
                         if img_path:
-                            # AQUÍ ESTÁ EL CAMBIO: width=350 para hacerla pequeña
-                            st.image(img_path, width=350) 
+                            # IMAGEN MÁS PEQUEÑA (Width 350)
+                            st.image(img_path, width=350)
+                        else:
+                            # Mensaje de ayuda si no encuentra la foto
+                            st.caption(f"⚠️ Falta archivo: foto/{data['img']}")
 
-                    # Separador
                     if label != items[-1][0]:
                         st.markdown("<div style='margin-bottom:12px;'></div>", unsafe_allow_html=True)
 
-    # === COLUMNA DERECHA: SCORE FIJO ===
     with side_col:
         st.markdown(f"""
         <div class="sticky-score-card" style="border-color:{score_color};">
@@ -380,10 +295,10 @@ if st.session_state.page == 'checklist':
         
         if total > 0:
             if st.button("💾 SAVE TRADE", use_container_width=True):
-                st.toast("Abriendo modal...", icon="✅")
+                st.toast("Abriendo modal de guardado...", icon="✅")
 
 # ==============================================================================
-# PLACEHOLDERS
+# OTRAS PÁGINAS
 # ==============================================================================
 elif st.session_state.page == 'history':
     st.title("📖 Trading History")
