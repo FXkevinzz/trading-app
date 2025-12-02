@@ -118,7 +118,7 @@ def main_app():
     # --- PESTAÑAS PRINCIPALES ---
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
-    # TAB 1: OPERATIVA (CON LISTA COMPLETA OANDA)
+    # TAB 1: OPERATIVA (CON CAJAS MÁS CLARAS)
     with tabs[0]:
         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
         c_mod = st.columns([1,2,1])
@@ -146,29 +146,31 @@ def main_app():
             "BTCUSD", "ETHUSD", "LTCUSD", "BCHUSD", "XRPUSD", "SOLUSD"
         ]
         
-        # Lógica para mantener la selección
         curr_idx = 0
         if st.session_state.global_pair in OFFICIAL_PAIRS:
             curr_idx = OFFICIAL_PAIRS.index(st.session_state.global_pair)
-        elif "XAU" in st.session_state.global_pair: # Fallback inteligente para Oro
+        elif "XAU" in st.session_state.global_pair: 
              if "XAUUSD" in OFFICIAL_PAIRS: curr_idx = OFFICIAL_PAIRS.index("XAUUSD")
 
-        # Selectbox con búsqueda
         st.session_state.global_pair = st.selectbox("ACTIVO GLOBAL", OFFICIAL_PAIRS, index=curr_idx)
         
         st.markdown('</div><br>', unsafe_allow_html=True)
 
-        r1_c1, r1_c2 = st.columns(2)
-        r2_c1, r2_c2 = st.columns(2)
+        # Usamos 'gap="medium"' para separar visualmente los cuadrantes
+        r1_c1, r1_c2 = st.columns(2, gap="medium")
+        st.markdown("<br>", unsafe_allow_html=True) # Espacio vertical extra
+        r2_c1, r2_c2 = st.columns(2, gap="medium")
+        
         total = 0; sos, eng, rr = False, False, False
         modo = st.session_state.global_mode
 
         def header(t): return f"<div class='strategy-header'>{t}</div>"
 
+        # --- AQUI APLICAMOS LA NUEVA CAJA 'quadrant-container' ---
         if "Swing" in modo:
             # SEMANAL
             with r1_c1:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
                 tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
                 w_sc = sum([
@@ -183,7 +185,7 @@ def main_app():
             
             # DIARIO
             with r1_c2:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
                 td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
                 d_sc = sum([
@@ -197,7 +199,7 @@ def main_app():
 
             # 4 HORAS
             with r2_c1:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
                 t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
                 h4_sc = sum([
@@ -210,7 +212,7 @@ def main_app():
             
             # GATILLO
             with r2_c2:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
                 if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
                 
@@ -224,7 +226,7 @@ def main_app():
 
         else: # SCALPING
             with r1_c1:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
                 t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
                 w_sc = sum([
@@ -234,7 +236,7 @@ def main_app():
                 ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r1_c2:
-                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("2. CONTEXTO (2H)"), unsafe_allow_html=True)
                 t2 = st.selectbox("Trend 2H", ["Alcista", "Bajista"], key="s2t")
                 d_sc = sum([
@@ -244,7 +246,7 @@ def main_app():
                 ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c1:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("3. EJECUCIÓN (1H)"), unsafe_allow_html=True)
                 t1 = st.selectbox("Trend 1H", ["Alcista", "Bajista"], key="s1t")
                 h4_sc = sum([
@@ -253,7 +255,7 @@ def main_app():
                 ])
                 st.markdown('</div>', unsafe_allow_html=True)
             with r2_c2:
-                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown('<div class="quadrant-container">', unsafe_allow_html=True)
                 st.markdown(header("4. GATILLO (M15)"), unsafe_allow_html=True)
                 if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
                 sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Vela Entrada")
@@ -348,38 +350,4 @@ def main_app():
                         if st.button("🗑️", key=f"del_{idx}"):
                             delete_trade(user, sel_acc, idx); st.rerun()
 
-    # TAB 4: ANALYTICS
-    with tabs[3]:
-        if not df_bal.empty:
-            fig = go.Figure(go.Scatter(x=df_bal["Fecha"], y=df_bal["Dinero"].cumsum() + ini, mode='lines+markers'))
-            st.plotly_chart(fig, use_container_width=True)
-            fig_h = render_heatmap(df_bal, is_dark); st.plotly_chart(fig_h, use_container_width=True)
-            if st.button("AUDITAR RENDIMIENTO"):
-                if init_ai(): st.info(generate_audit_report(df_bal))
-
-    # TAB 5: CALENDARIO
-    with tabs[4]:
-        c_p, c_t, c_n = st.columns([1,5,1])
-        d = st.session_state.cal_date
-        with c_p: 
-            if st.button("⬅️"): 
-                m, y = (d.month - 1, d.year) if d.month > 1 else (12, d.year - 1)
-                st.session_state.cal_date = d.replace(month=m, year=y); st.rerun()
-        with c_n: 
-            if st.button("➡️"):
-                m, y = (d.month + 1, d.year) if d.month < 12 else (1, d.year + 1)
-                st.session_state.cal_date = d.replace(month=m, year=y); st.rerun()
-        
-        html, y, m = render_cal_html(df_bal, is_dark)
-        with c_t: st.markdown(f"<h3 style='text-align:center;'>{calendar.month_name[m]} {y}</h3>", unsafe_allow_html=True)
-        st.markdown(html, unsafe_allow_html=True)
-
-    # TAB 6: NOTICIAS
-    with tabs[5]:
-        tv = "dark" if is_dark else "light"
-        html = f"""<div class="tradingview-widget-container"><div class="tradingview-widget-container__widget"></div><script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>{{"colorTheme": "{tv}","isTransparent": true,"width": "100%","height": "800","locale": "es","importanceFilter": "-1,0","currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}}</script></div>"""
-        components.html(html, height=800)
-
-if 'user' not in st.session_state: st.session_state.user = None
-if st.session_state.user: main_app()
-else: login_screen()
+    #
