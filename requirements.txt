@@ -4,4 +4,6 @@ plotly
 google-generativeai
 Pillow
 pytz
+watchdog
+requests
 
