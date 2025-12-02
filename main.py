@@ -118,7 +118,7 @@ def main_app():
     # --- PESTAÑAS PRINCIPALES ---
     tabs = st.tabs(["🦁 OPERATIVA", "🧠 IA VISION", "📝 BITÁCORA", "📊 ANALYTICS", "📅 CALENDARIO", "📰 NOTICIAS"])
 
-    # TAB 1: OPERATIVA (CHECKLIST)
+    # TAB 1: OPERATIVA (COMPLETA RESTAURADA)
     with tabs[0]:
         st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
         c_mod = st.columns([1,2,1])
@@ -126,15 +126,119 @@ def main_app():
         st.markdown("---"); st.session_state.global_pair = st.text_input("ACTIVO GLOBAL", st.session_state.global_pair).upper()
         st.markdown('</div><br>', unsafe_allow_html=True)
 
-        # Aquí iría la lógica completa de los checkboxes (Resumida para brevedad en refactor)
-        # Puedes copiar la lógica exacta de checkboxes de tu código original aquí dentro.
-        st.info("💡 (Aquí va tu lógica de Checkboxes original. Al ser UI pura, la mantendremos aquí en main.py por ahora para no sobre-complicar la migración).")
-        # --- EJEMPLO RÁPIDO PARA QUE FUNCIONE ---
-        total = 0; sos = st.checkbox("SOS"); eng = st.checkbox("Envolvente")
-        if sos and eng: total = 90
-        # ----------------------------------------
+        r1_c1, r1_c2 = st.columns(2)
+        r2_c1, r2_c2 = st.columns(2)
+        total = 0; sos, eng, rr = False, False, False
+        modo = st.session_state.global_mode
+
+        def header(t): return f"<div class='strategy-header'>{t}</div>"
+
+        if "Swing" in modo:
+            # SEMANAL
+            with r1_c1:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
+                tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
+                w_sc = sum([
+                    st.checkbox("Rechazo AOI (+10%)", key="w1")*10,
+                    st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="w4")*10,
+                    st.checkbox("EMA 50 (+5%)", key="w5")*5,
+                    st.checkbox("Nivel Psicológico (+5%)", key="w6")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # DIARIO
+            with r1_c2:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
+                td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
+                d_sc = sum([
+                    st.checkbox("Rechazo AOI (+10%)", key="d1")*10,
+                    st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10,
+                    st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="d4")*10,
+                    st.checkbox("EMA 50 (+5%)", key="d5")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+
+            # 4 HORAS
+            with r2_c1:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
+                t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
+                h4_sc = sum([
+                    st.checkbox("Rechazo Vela (+10%)", key="h1")*10,
+                    st.checkbox("Patrón Mercado (+10%)", key="h2")*10,
+                    st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5,
+                    st.checkbox("EMA 50 (+5%)", key="h4")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            
+            # GATILLO
+            with r2_c2:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
+                if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
+                
+                sos = st.checkbox("⚡ SOS (Obligatorio)")
+                eng = st.checkbox("🕯️ Envolvente (Obligatorio)")
+                pat_ent = st.checkbox("Patrón en Entrada (+5%)")
+                rr = st.checkbox("💰 Ratio > 1:2.5")
+                
+                entry_score = (10 if sos else 0) + (10 if eng else 0) + (5 if pat_ent else 0)
+                total = w_sc + d_sc + h4_sc + entry_score
+
+        else: # SCALPING
+            with r1_c1:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
+                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
+                w_sc = sum([
+                    st.checkbox("AOI (+5%)", key="sc1")*5, st.checkbox("Rechazo Estructura (+5%)", key="sc2")*5,
+                    st.checkbox("Patrón (+5%)", key="sc3")*5, st.checkbox("EMA 50 (+5%)", key="sc4")*5,
+                    st.checkbox("Psicológico (+5%)", key="sc5")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r1_c2:
+                st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
+                st.markdown(header("2. CONTEXTO (2H)"), unsafe_allow_html=True)
+                t2 = st.selectbox("Trend 2H", ["Alcista", "Bajista"], key="s2t")
+                d_sc = sum([
+                    st.checkbox("AOI (+5%)", key="s21")*5, st.checkbox("Rechazo Estructura (+5%)", key="s22")*5,
+                    st.checkbox("Vela (+5%)", key="s23")*5, st.checkbox("Patrón (+5%)", key="s24")*5,
+                    st.checkbox("EMA 50 (+5%)", key="s25")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r2_c1:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("3. EJECUCIÓN (1H)"), unsafe_allow_html=True)
+                t1 = st.selectbox("Trend 1H", ["Alcista", "Bajista"], key="s1t")
+                h4_sc = sum([
+                    st.checkbox("Vela (+5%)", key="s31")*5, st.checkbox("Patrón (+5%)", key="s32")*5,
+                    st.checkbox("Rechazo Estructura (+5%)", key="s33")*5, st.checkbox("EMA 50 (+5%)", key="s34")*5
+                ])
+                st.markdown('</div>', unsafe_allow_html=True)
+            with r2_c2:
+                st.markdown('<div class="strategy-box" style="margin-top:20px">', unsafe_allow_html=True)
+                st.markdown(header("4. GATILLO (M15)"), unsafe_allow_html=True)
+                if t4==t2==t1: st.success("💎 TRIPLE ALINEACIÓN")
+                sos = st.checkbox("⚡ SOS"); eng = st.checkbox("🕯️ Vela Entrada")
+                pat_ent = st.checkbox("Patrón Entrada (+5%)"); rr = st.checkbox("💰 Ratio")
+                entry_score = sum([sos*10, eng*10, pat_ent*5])
+                total = w_sc + d_sc + h4_sc + entry_score + 15
+
+        st.markdown("<br>", unsafe_allow_html=True)
+        valid = sos and eng and rr
+        msg, css_cl = "💤 ESPERAR", "status-warning"
+        if not sos: msg, css_cl = "⛔ FALTA SOS", "status-stop"
+        elif not eng: msg, css_cl = "⚠️ FALTA VELA", "status-warning"
+        elif total >= 90: msg, css_cl = "💎 SNIPER ENTRY", "status-sniper"
+        elif total >= 60 and valid: msg, css_cl = "✅ VÁLIDO", "status-sniper"
         
-        st.progress(total)
+        st.markdown(f"""<div class="hud-container"><div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div><div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{css_cl}">{msg}</span></div></div>""", unsafe_allow_html=True)
+        st.progress(min(total, 100))
 
     # TAB 2: IA VISION
     with tabs[1]:
@@ -144,15 +248,21 @@ def main_app():
             else:
                 c_img, c_res = st.columns([1, 1.5])
                 with c_img:
-                    img1 = st.file_uploader("1. MACRO", type=["jpg","png"], key="u1")
-                    img2 = st.file_uploader("2. INTERMEDIO", type=["jpg","png"], key="u2")
-                    img3 = st.file_uploader("3. GATILLO", type=["jpg","png"], key="u3")
+                    col_up1, col_up2, col_up3 = st.columns(3)
+                    with col_up1: img1 = st.file_uploader("1. MACRO", type=["jpg","png"], key="u1")
+                    with col_up2: img2 = st.file_uploader("2. INTERMEDIO", type=["jpg","png"], key="u2")
+                    with col_up3: img3 = st.file_uploader("3. GATILLO", type=["jpg","png"], key="u3")
                     
+                    c_tf1, c_tf2, c_tf3 = st.columns(3)
+                    with c_tf1: tf1 = st.selectbox("TF Macro", ["W", "D"], key="tf1")
+                    with c_tf2: tf2 = st.selectbox("TF Intermedio", ["Daily", "4H", "1H"], key="tf2")
+                    with c_tf3: tf3 = st.selectbox("TF Gatillo", ["4H", "1H", "15M", "5M"], key="tf3")
+
                     if st.button("🦁 ANALIZAR SINCRONÍA", type="primary", use_container_width=True):
                         images_data = []
-                        if img1: images_data.append({'img': Image.open(img1), 'tf': "Macro"})
-                        if img2: images_data.append({'img': Image.open(img2), 'tf': "Intermedio"})
-                        if img3: images_data.append({'img': Image.open(img3), 'tf': "Gatillo"})
+                        if img1: images_data.append({'img': Image.open(img1), 'tf': tf1})
+                        if img2: images_data.append({'img': Image.open(img2), 'tf': tf2})
+                        if img3: images_data.append({'img': Image.open(img3), 'tf': tf3})
                         
                         if images_data:
                             with st.spinner("Analizando..."):
@@ -179,6 +289,7 @@ def main_app():
     with tabs[2]:
         c_form, c_hist = st.columns([1, 1.5])
         with c_form:
+            st.markdown('<div class="strategy-box">', unsafe_allow_html=True)
             with st.form("reg_trade"):
                 dt = st.date_input("Fecha", datetime.now())
                 pr = st.text_input("Par", st.session_state.global_pair)
@@ -191,7 +302,9 @@ def main_app():
                     if rs == "WIN" and st.session_state.ai_temp_result:
                         save_to_brain(st.session_state.ai_temp_result, pr, rs, st.session_state.global_mode, st.session_state.ai_temp_images)
                         st.session_state.ai_temp_result = None
+                        st.session_state.ai_temp_images = None
                     st.success("Guardado"); st.rerun()
+            st.markdown('</div>', unsafe_allow_html=True)
         
         with c_hist:
             df_h = load_trades(user, sel_acc)
