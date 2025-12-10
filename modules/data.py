@@ -13,9 +13,32 @@ USERS_FILE = os.path.join(DATA_DIR, "users.json")
 ACCOUNTS_FILE = os.path.join(DATA_DIR, "accounts_config.json")
 
 OFFICIAL_PAIRS = [
-    "EURUSD", "GBPUSD", "USDJPY", "USDCAD", "AUDUSD", "NZDUSD", "USDCHF",
-    "XAUUSD", "XAGUSD", "US30", "US100", "US500", "DE40", "BTCUSD", "ETHUSD",
-    "GBPJPY", "EURJPY", "AUDJPY", "USDMXN"
+    # --- MAJORS ---
+    "EURUSD", "GBPUSD", "USDJPY", "USDCHF", "USDCAD", "AUDUSD", "NZDUSD",
+    
+    # --- MINORS (CROSSES) ---
+    "EURGBP", "EURAUD", "EURCAD", "EURCHF", "EURJPY", "EURNZD",
+    "GBPAUD", "GBPCAD", "GBPCHF", "GBPJPY", "GBPNZD",
+    "AUDCAD", "AUDCHF", "AUDJPY", "AUDNZD",
+    "CADCHF", "CADJPY",
+    "CHFJPY",
+    "NZDCAD", "NZDCHF", "NZDJPY",
+    
+    # --- METALS & COMMODITIES (Spot) ---
+    "XAUUSD", "XAGUSD", "XPTUSD", "XPDUSD", # Oro, Plata, Platino, Paladio
+    "WTIUSD", "BCOUSD", # Petróleo
+    
+    # --- INDICES (CFDs comunes en Oanda/Prop firms) ---
+    "US30", "NAS100", "SPX500", "GER30", "UK100", "JPN225",
+    
+    # --- CRYPTO (CFDs) ---
+    "BTCUSD", "ETHUSD", "LTCUSD",
+    
+    # --- EXOTICS (Oanda) ---
+    "USDMXN", "USDZAR", "USDTRY", "USDSEK", "USDNOK", "USDDKK",
+    "USDHKD", "USDSGD", "USDCNH", "USDPLN", "USDCZK", "USDHUF",
+    "USDTHB", "USDINR", "EURTRY", "EURPLN", "EURHUF", "EURZAR",
+    "GBPZAR", "TRYJPY", "ZARJPY", "SGDJPY"
 ]
 
 def init_filesystem():
@@ -131,3 +154,4 @@ def delete_trade(u, acc, index):
 def create_backup_zip():
     shutil.make_archive("backup_trading", 'zip', DATA_DIR)
     return "backup_trading.zip"
+
