@@ -104,8 +104,9 @@ def chat_with_mentor(user_input, trade_history_df, image_file=None):
 
     # 4. Generar Respuesta
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        model = genai.GenerativeModel('gemini-2.5-flash-live')
         response = model.generate_content(content)
         return response.text
     except Exception as e:
         return f"⚠️ Error conectando con el Mentor: {str(e)}"
+
