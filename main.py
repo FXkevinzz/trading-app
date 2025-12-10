@@ -1,272 +1,43 @@
-import streamlit as st
-import pandas as pd
-from datetime import datetime
-from modules.styles import inject_theme
-from modules.data import (
-    init_filesystem, verify_user, register_user, get_user_accounts, 
-    get_balance_data, OFFICIAL_PAIRS
-)
-from modules.ui import modal_new_trade, modal_update_trade, modal_user_settings
-from modules.utils import get_live_clock_html, render_cal_html
-from modules.ai import init_ai, chat_with_mentor
-import streamlit.components.v1 as components
-
-# 1. CONFIG
-st.set_page_config(page_title="Trading Pro Suite", layout="wide", page_icon="🦁")
-init_filesystem()
-
-# 2. LOGIN
-def login_screen():
-    inject_theme("Oscuro")
-    c1,c2,c3 = st.columns([1,1,1])
-    with c2:
-        st.markdown("<h1 style='text-align:center; color:#10b981;'>🦁 Trading Pro Suite</h1>", unsafe_allow_html=True)
-        t1, t2 = st.tabs(["INGRESAR", "REGISTRARSE"])
-        with t1:
-            u = st.text_input("Usuario", key="l_u"); p = st.text_input("Password", type="password", key="l_p")
-            if st.button("ENTRAR", use_container_width=True):
-                if verify_user(u, p): st.session_state.user = u; st.rerun()
-                else: st.error("Error")
-        with t2:
-            nu = st.text_input("Nuevo Usuario"); np = st.text_input("Nueva Password", type="password")
-            if st.button("REGISTRAR", use_container_width=True):
-                if nu and np: register_user(nu, np); st.success("Listo"); st.rerun()
-
-# 3. APP PRINCIPAL
-def main_app():
-    user = st.session_state.user
-    inject_theme("Oscuro")
+# --- BLOQUE DE DIAGNÓSTICO TEMPORAL (Pégalo al final de main.py) ---
+def debug_available_models():
+    import google.generativeai as genai
     
-    if "messages" not in st.session_state:
-        st.session_state.messages = [{"role": "assistant", "content": "🦁 **Mentor IA:** Hola. He analizado tu bitácora. Sube un gráfico si quieres que revise tu análisis o pregúntame sobre psicología.", "image": None}]
+    st.markdown("---")
+    st.header("🛠️ Diagnóstico de Modelos (ListModels)")
     
-    if 'pair_selector' not in st.session_state: st.session_state.pair_selector = OFFICIAL_PAIRS[0]
+    # 1. Autenticación
+    try:
+        api_key = st.secrets["GEMINI_KEY"]
+        genai.configure(api_key=api_key)
+    except Exception as e:
+        st.error(f"Error de API Key: {e}")
+        return
 
-
-    # --- SIDEBAR ---
-    with st.sidebar:
-        st.markdown(f"### 👤 {user.upper()}")
-        components.html(get_live_clock_html(), height=160)
+    # 2. Llamada a ListModels
+    try:
+        st.write("Consultando API de Google...")
+        # Iteramos sobre todos los modelos disponibles
+        valid_models = []
         
-        accs = get_user_accounts(user)
-        sel_acc = st.selectbox("Cuenta Seleccionada", accs)
-        ini, act, df = get_balance_data(user, sel_acc)
+        for m in genai.list_models():
+            # Filtramos solo los que sirven para 'generateContent' (Chat/Texto)
+            if 'generateContent' in m.supported_generation_methods:
+                valid_models.append({
+                    "Model ID (Lo que debes poner en código)": m.name,
+                    "Nombre": m.display_name,
+                    "Límite Tokens": m.input_token_limit
+                })
         
-        # --- RECTÁNGULO DE PNL TOTAL (FINALMENTE CORREGIDO) ---
-        pnl_total = act - ini
-        color_pnl = "#10b981" if pnl_total >= 0 else "#ef4444"
-        pnl_bg = color_pnl + '10'
-        pnl_sign = '+' if pnl_total > 0 else ''
-
-        st.markdown(f"""
-        <div class="dashboard-card" style="text-align:center; padding:15px;">
-            <div class="sub-stat-label">BALANCE ACTUAL</div>
-            <div style="font-size:2rem; font-weight:bold; color:white;">${act:,.2f}</div>
-            
-            <div style="border: 1px solid {color_pnl}; background: {pnl_bg}; border-radius: 8px; padding: 8px; margin-top: 15px;">
-                <div style="color:{color_pnl}; font-weight:bold; font-size:1.1rem;">{pnl_sign}${pnl_total:,.2f}</div>
-                <div style="color:var(--text-muted); font-size:0.7rem;">(Net PnL)</div>
-            </div>
-            
-        </div>""", unsafe_allow_html=True) # <<< AHORA SÍ CON EL PERMISO CLARO
-        # ----------------------------------------
-        
-        st.markdown("---")
-        
-        if st.button("⚙️ Configurar Alertas", use_container_width=True):
-            modal_user_settings(user)
-
-        if st.button("Cerrar Sesión"): st.session_state.user = None; st.rerun()
-
-    # --- PESTAÑAS ---
-    tab_op, tab_hist, tab_dash, tab_ai, tab_news = st.tabs(["🚀 OPERATIVA", "📜 HISTORIAL", "📊 DASHBOARD PRO", "🧠 MENTOR IA", "📰 NOTICIAS"])
-
-    # 1. PESTAÑA OPERATIVA
-    with tab_op:
-        c_mod = st.columns([1,2,1])
-        with c_mod[1]: 
-            global_mode = st.radio("", ["Swing (W-D-4H)", "Scalping (4H-2H-1H)"], horizontal=True, key="mode_op", label_visibility="collapsed")
-        
-        st.session_state.pair_selector = st.selectbox("ACTIVO", OFFICIAL_PAIRS, key="sb_pair_main")
-        st.markdown("---")
-        
-        r1_c1, r1_c2 = st.columns(2)
-        r2_c1, r2_c2 = st.columns(2)
-        total = 0; sos, eng, rr = False, False, False
-
-        def header(t): return f"<div style='color:#10b981; font-weight:bold; margin-bottom:10px; border-bottom:1px solid #2a3655;'>{t}</div>"
-
-        # Lógica Original
-        if "Swing" in global_mode:
-            with r1_c1:
-                st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-                st.markdown(header("1. CONTEXTO SEMANAL (W)"), unsafe_allow_html=True)
-                tw = st.selectbox("Tendencia W", ["Alcista", "Bajista"], key="tw")
-                w_sc = sum([st.checkbox("Rechazo AOI (+10%)", key="w1")*10, st.checkbox("Rechazo Estructura Previa (+10%)", key="w2")*10, st.checkbox("Patrón de Vela Rechazo (+10%)", key="w3")*10, st.checkbox("Patrón Mercado (+10%)", key="w4")*10, st.checkbox("EMA 50 (+5%)", key="w5")*5, st.checkbox("Nivel Psicológico (+5%)", key="w6")*5])
-                st.markdown('</div>', unsafe_allow_html=True)
-            with r1_c2:
-                st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-                st.markdown(header("2. CONTEXTO DIARIO (D)"), unsafe_allow_html=True)
-                td = st.selectbox("Tendencia D", ["Alcista", "Bajista"], key="td")
-                d_sc = sum([st.checkbox("Rechazo AOI (+10%)", key="d1")*10, st.checkbox("Rechazo Estructura Previa (+10%)", key="d2")*10, st.checkbox("Patrón de Vela Rechazo (+10%)", key="d3")*10, st.checkbox("Patrón Mercado (+10%)", key="d4")*10, st.checkbox("EMA 50 (+5%)", key="d5")*5])
-                st.markdown('</div>', unsafe_allow_html=True)
-            with r2_c1:
-                st.markdown('<div class="dashboard-card" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("3. EJECUCIÓN (4H)"), unsafe_allow_html=True)
-                t4 = st.selectbox("Tendencia 4H", ["Alcista", "Bajista"], key="t4")
-                h4_sc = sum([st.checkbox("Rechazo Vela (+10%)", key="h1")*10, st.checkbox("Patrón Mercado (+10%)", key="h2")*10, st.checkbox("Rechazo Estructura Previa (+5%)", key="h3")*5, st.checkbox("EMA 50 (+5%)", key="h4")*5])
-                st.markdown('</div>', unsafe_allow_html=True)
-            with r2_c2:
-                st.markdown('<div class="dashboard-card" style="margin-top:20px">', unsafe_allow_html=True)
-                st.markdown(header("4. GATILLO FINAL"), unsafe_allow_html=True)
-                if tw==td==t4: st.success("💎 TRIPLE ALINEACIÓN")
-                sos = st.checkbox("⚡ SOS (Obligatorio)")
-                eng = st.checkbox("🕯️ Envolvente (Obligatorio)")
-                pat_ent = st.checkbox("Patrón en Entrada (+5%)")
-                rr = st.checkbox("💰 Ratio > 1:2.5")
-                entry_score = (10 if sos else 0) + (10 if eng else 0) + (5 if pat_ent else 0)
-                total = w_sc + d_sc + h4_sc + entry_score
-        
-        else: # Scalping
-            with r1_c1:
-                st.markdown('<div class="dashboard-card">', unsafe_allow_html=True)
-                st.markdown(header("1. CONTEXTO (4H)"), unsafe_allow_html=True)
-                t4 = st.selectbox("Trend 4H", ["Alcista", "Bajista"], key="s4")
-                total = sum([st.checkbox("AOI (+50%)")*50, st.checkbox("Estructura (+50%)")*50])
-                st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown("<br>", unsafe_allow_html=True)
-        
-        col_hud, col_btn = st.columns([3, 1])
-        with col_hud:
-            st.markdown(f"""
-            <div class="hud-container">
-                <div class="hud-stat"><div class="hud-label">PUNTAJE</div><div class="hud-value-large">{total}%</div></div>
-                <div style="flex-grow:1; text-align:center; margin:0 20px;"><span class="{'status-sniper' if total>=90 else 'status-warning' if total>=60 else 'status-stop'}">{('SNIPER' if total>=90 else 'VÁLIDO' if total>=60 else 'ESPERAR')}</span></div>
-            </div>
-            """, unsafe_allow_html=True)
-            st.progress(min(total, 100))
-        with col_btn:
-            if st.button("🚀 EJECUTAR", type="primary" if total >= 60 else "secondary", use_container_width=True):
-                modal_new_trade(user, sel_acc, global_mode, st.session_state.pair_selector, total)
-
-    # 2. PESTAÑA HISTORIAL
-    with tab_hist:
-        if not df.empty:
-            f1, f2 = st.columns([2, 1])
-            with f1: f_pair = st.text_input("Buscar", placeholder="EURUSD...")
-            with f2: f_res = st.multiselect("Filtro", ["WIN", "LOSS", "BE", "PENDING"])
-            
-            df_view = df.copy()
-            if f_pair: df_view = df_view[df_view['Par'].str.contains(f_pair.upper())]
-            if f_res: df_view = df_view[df_view['Resultado'].isin(f_res)]
-            
-            st.dataframe(df_view[['Fecha', 'Par', 'Direccion', 'Status', 'Resultado', 'Dinero', 'Confluencia']], use_container_width=True, hide_index=True)
-            tr_idx = st.selectbox("Editar Trade:", df_view.index, format_func=lambda x: f"#{x} {df_view.loc[x,'Par']}")
-            if st.button("📂 ABRIR"):
-                modal_update_trade(user, sel_acc, tr_idx, df.loc[tr_idx])
+        if valid_models:
+            st.success(f"¡Conexión Exitosa! Se encontraron {len(valid_models)} modelos compatibles.")
+            st.table(valid_models)
         else:
-            st.info("No hay trades registrados.")
+            st.warning("La API respondió, pero no devolvió modelos compatibles con generateContent.")
 
-    # 3. PESTAÑA DASHBOARD PRO
-    with tab_dash:
-        st.markdown("### 📊 Trading Dashboard")
-        net_pnl = 0; win_rate = 0; pf = 0; best_streak = 0; largest_win = 0; largest_loss = 0
-        total_trades = 0; wins_count = 0; loss_count = 0
-        
-        if not df.empty:
-            net_pnl = df['Dinero'].sum()
-            closed = df[df['Status'] == 'CLOSED']
-            total_trades = len(closed)
-            wins = closed[closed['Resultado'] == 'WIN']; losses = closed[closed['Resultado'] == 'LOSS']
-            wins_count = len(wins); loss_count = len(losses)
-            if total_trades > 0: win_rate = (wins_count / total_trades) * 100
-            gross_win = wins['Dinero'].sum(); gross_loss = abs(losses['Dinero'].sum())
-            if gross_loss > 0: pf = gross_win / gross_loss
-            else: pf = gross_win
-            if not wins.empty: largest_win = wins['Dinero'].max()
-            if not losses.empty: largest_loss = losses['Dinero'].min()
-            current_streak = 0
-            for res in closed['Resultado']:
-                if res == 'WIN': current_streak += 1; best_streak = max(best_streak, current_streak)
-                else: current_streak = 0
+    except Exception as e:
+        st.error(f"❌ Error fatal conectando a Google: {e}")
 
-        top_c1, top_c2, top_c3 = st.columns([2, 1, 1])
-        with top_c1:
-            pnl_color = "text-green" if net_pnl >= 0 else "text-red"
-            st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Net Profit & Loss</div><div class="big-pnl {pnl_color}">${net_pnl:,.2f}</div><div style="margin-top:10px; color:#94a3b8;">{total_trades} trades completados</div></div>""", unsafe_allow_html=True)
-        with top_c2: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Win Rate</div><div class="sub-stat-value">{win_rate:.1f}%</div><div style="font-size:0.8rem; color:#10b981;">{wins_count} Wins</div></div>""", unsafe_allow_html=True)
-        with top_c3: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Profit Factor</div><div class="sub-stat-value">{pf:.2f}</div><div style="font-size:0.8rem; color:#ef4444;">{loss_count} Losses</div></div>""", unsafe_allow_html=True)
-
-        m1, m2, m3, m4 = st.columns(4)
-        with m1: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Largest Win</div><div class="sub-stat-value text-green">${largest_win:,.2f}</div></div>""", unsafe_allow_html=True)
-        with m2: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Largest Loss</div><div class="sub-stat-value text-red">${largest_loss:,.2f}</div></div>""", unsafe_allow_html=True)
-        with m3: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Best Streak</div><div class="sub-stat-value">🔥 {best_streak}</div></div>""", unsafe_allow_html=True)
-        with m4: st.markdown(f"""<div class="dashboard-card"><div class="sub-stat-label">Avg Confluence</div><div class="sub-stat-value">{(df['Confluencia'].mean() if not df.empty else 0):.0f}%</div></div>""", unsafe_allow_html=True)
-
-        st.markdown("#### 📅 Calendar")
-        c_cal, c_week = st.columns([3, 1])
-        d = st.session_state.get('cal_date', datetime.now())
-        with c_cal:
-            nc1, nc2, nc3 = st.columns([1, 6, 1])
-            with nc1: 
-                if st.button("◀"): st.session_state['cal_date'] = d.replace(month=d.month-1) if d.month>1 else d.replace(year=d.year-1, month=12); st.rerun()
-            with nc2: st.markdown(f"<h3 style='text-align:center; margin:0;'>{d.strftime('%B %Y')}</h3>", unsafe_allow_html=True)
-            with nc3: 
-                if st.button("▶"): st.session_state['cal_date'] = d.replace(month=d.month+1) if d.month<12 else d.replace(year=d.year+1, month=1); st.rerun()
-            html_cal, _, _ = render_cal_html(df, True)
-            st.markdown(html_cal, unsafe_allow_html=True)
-        with c_week:
-            st.markdown("<div style='margin-top:40px;'></div>", unsafe_allow_html=True)
-            st.markdown("##### Weekly Summary")
-            for wk in ["Week 1", "Week 2", "Week 3", "Week 4"]:
-                st.markdown(f"""<div class="dashboard-card" style="padding:10px; margin-bottom:8px; min-height:60px;"><div style="display:flex; justify-content:space-between;"><span style="color:#94a3b8; font-size:0.8rem;">{wk}</span><span style="color:#10b981; font-weight:bold;">$0.00</span></div></div>""", unsafe_allow_html=True)
-
-    # 4. PESTAÑA MENTOR IA
-    with tab_ai:
-        if not init_ai():
-            st.error("⚠️ Configura GEMINI_KEY en Secrets")
-        else:
-            st.markdown("### 🧠 Mentor Inteligente")
-            chat_container = st.container(height=500)
-            with chat_container:
-                for msg in st.session_state.messages:
-                    with st.chat_message(msg["role"], avatar="🦁" if msg["role"]=="assistant" else "👤"):
-                        if msg.get("image"): st.image(msg["image"], width=250)
-                        st.markdown(msg["content"])
-            st.markdown("---")
-            col_upl, col_txt = st.columns([1, 4])
-            with col_upl:
-                with st.popover("📸 Adjuntar", use_container_width=True):
-                    img_upload = st.file_uploader("Subir Gráfico", type=['png', 'jpg'], key="chat_img")
-            with col_txt:
-                if prompt := st.chat_input("Escribe tu consulta al Mentor..."):
-                    user_msg = {"role": "user", "content": prompt, "image": img_upload}
-                    st.session_state.messages.append(user_msg)
-                    with chat_container:
-                        with st.chat_message("user", avatar="👤"):
-                            if img_upload: st.image(img_upload, width=250)
-                            st.markdown(prompt)
-                    with chat_container:
-                        with st.chat_message("assistant", avatar="🦁"):
-                            with st.spinner("Analizando gráfico y datos..."):
-                                response = chat_with_mentor(prompt, df, img_upload)
-                                st.markdown(response)
-                    st.session_state.messages.append({"role": "assistant", "content": response, "image": None})
-                    st.rerun()
-
-    # 5. PESTAÑA NOTICIAS
-    with tab_news:
-        st.markdown("### 🌍 Calendario Económico")
-        components.html(
-            """<div class="tradingview-widget-container">
-              <div class="tradingview-widget-container__widget"></div>
-              <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-events.js" async>
-              {"colorTheme": "dark", "isTransparent": true, "width": "100%", "height": "600", "locale": "es", "importanceFilter": "-1,0", "currencyFilter": "USD,EUR,GBP,JPY,AUD,CAD,CHF,NZD"}
-              </script></div>""",
-            height=600
-        )
-
-if 'user' not in st.session_state: st.session_state.user = None
-if st.session_state.user: main_app()
-else: login_screen()
+# Ejecutar diagnóstico
+if st.button("🔍 VER LISTA DE MODELOS DISPONIBLES"):
+    debug_available_models()
+# ------------------------------------------------------------------
